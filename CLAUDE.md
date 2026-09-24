@@ -107,6 +107,9 @@ durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse
 - **Un paso del plan a la vez.** No avances al siguiente sin cumplir la condición de terminado.
 - **Antes de editar, propón un plan y espera aprobación.** El proyecto exige cuidado extremo.
 - Cambios pequeños y verificables. Un commit por unidad lógica, con mensaje en español.
+- **Sin atribución a herramientas.** Los commits, PR y documentos no llevan `Co-Authored-By`
+  ni ninguna mención a Claude u otra herramienta. Los únicos autores son Julián y Laura.
+  Lo refuerza `attribution` en `.claude/settings.json`.
 - Toda decisión de diseño nueva se registra en `docs/decisiones/` como registro de decisión.
 - Si algo falla, reporta el error completo antes de intentar arreglarlo.
 
