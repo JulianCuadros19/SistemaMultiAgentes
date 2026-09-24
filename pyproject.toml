@@ -1,0 +1,63 @@
+# Configuración del código del sistema, el que escribe el equipo.
+# El estilo del código que genera el agente desarrollador vive en config/estilo_generado/
+# y no debe mezclarse con este archivo. Ver docs/decisiones/0001-empaquetado-y-dependencias.md.
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multiagente"
+dynamic = ["version"]
+description = "Sistema multiagente de IA para Realtix: de la conversación con el cliente al código Python validado."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Julián Andrés Cuadros Muñoz" },
+    { name = "Laura Catalina Riveros Flórez" },
+]
+classifiers = [
+    "Private :: Do Not Upload",
+    "Programming Language :: Python :: 3",
+]
+# Dependencias de los pasos 1 a 5. Los embeddings (BGE-M3) se agregan en el paso 6.
+dependencies = [
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-postgres>=3.1,<4",
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.15,<3",
+    "psycopg[binary,pool]>=3.3,<4",
+    "openai>=3.19,<4",
+    "langfuse>=4.15,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1,<10",
+    "ruff>=0.16,<0.17",
+]
+
+[tool.hatch.version]
+path = "src/multiagente/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/multiagente"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["config/estilo_generado", "knowledge_base", "evaluacion"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "ANN", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "D"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--import-mode=importlib"]
