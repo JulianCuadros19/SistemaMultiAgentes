@@ -1,0 +1,27 @@
+# Infraestructura local del sistema. Las credenciales se leen de .env (plantilla en .env.example).
+# Por ahora solo la base de datos; los demás servicios de la vista de despliegue se agregan en
+# sus pasos. Ver docs/decisiones/0002-postgresql-en-contenedor.md.
+
+name: multiagente
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.6-pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  datos_postgres:
