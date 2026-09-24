@@ -60,4 +60,8 @@ convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["-ra", "--import-mode=importlib"]
+# Las pruebas de integración requieren los contenedores; se ejecutan con `pytest -m integracion`.
+addopts = ["-ra", "--import-mode=importlib", "--strict-markers", "-m", "not integracion"]
+markers = [
+    "integracion: requiere los servicios de docker compose y el archivo .env",
+]
