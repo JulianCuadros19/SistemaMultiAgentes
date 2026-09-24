@@ -133,7 +133,13 @@ Mantener esta sección actualizada al cerrar cada paso.
   (ADR-0001), `.venv` sobre Python 3.14.4, `pip install -e ".[dev]"` sin conflictos. El
   paquete `multiagente` y sus trece subpaquetes se importan; 14 pruebas pasan y Ruff no
   reporta hallazgos. BGE-M3 y sus dependencias quedan diferidos al paso 6.
-- **Paso actual: 2.** Infraestructura en contenedores: PostgreSQL 16 con pgvector.
+- **Paso 2: cerrado el 2026-09-24.** `docker-compose.yml` con `pgvector/pgvector:0.8.6-pg16`
+  (PostgreSQL 16.15, pgvector 0.8.6) en `127.0.0.1:5432`, volumen persistente y extensión
+  `vector` creada por `db/init/` (ADR-0002). Se levanta con `docker compose up -d --wait`.
+  Las pruebas de integración pasan con `pytest -m integracion`, también tras reiniciar el
+  contenedor. Credenciales en `.env`.
+- **Paso actual: 3.** Validar Azure OpenAI: una llamada real responde y su costo queda
+  registrado.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo.** gpt-5-nano desplegado y probado. Riesgo de cuota resuelto.
