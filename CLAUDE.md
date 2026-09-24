@@ -123,9 +123,12 @@ Mantener esta sección actualizada al cerrar cada paso.
 
 - Objetivos 1 y 2: completados, documentos aprobados.
 - Objetivo 3: en curso.
-- **Paso actual: 0.** Verificar el entorno dentro de Ubuntu. La instalación que reportó el
-  equipo corresponde a Windows; Python, Git y Docker deben comprobarse en Ubuntu. Si la
-  versión de Python de Ubuntu es menor a 3.11, resolverlo antes de continuar.
+- **Paso 0: cerrado el 2026-09-24.** Verificado en Ubuntu 26.04.1 LTS sobre WSL2:
+  Python 3.14.4 con `python3.14-venv`, Git 2.53.0, Docker 29.8.0 y Docker Compose v5.5.1
+  mediante la integración WSL de Docker Desktop (`hello-world` se ejecuta).
+- **Paso actual: 1.** Estructura, repositorio y dependencias.
+- **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
+  Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo.** gpt-5-nano desplegado y probado. Riesgo de cuota resuelto.
   Pendiente en el paso 3: registrar región y endpoint, conectar desde código y medir los
   tokens reales de cada llamada, incluidos los de razonamiento.
