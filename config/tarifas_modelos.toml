@@ -1,0 +1,13 @@
+# Tarifas en USD por millón de tokens, por modelo. Rigen el cálculo de costo de cada llamada.
+# El nombre de cada tabla es un prefijo del modelo que devuelve la API
+# (por ejemplo, gpt-5-nano cubre gpt-5-nano-2025-08-07).
+# Los tokens de razonamiento se facturan como salida.
+#
+# Fuente: API de precios minoristas de Azure (prices.azure.com), consultada el 2026-09-25.
+# Recurso en southcentralus, despliegue Global Standard.
+# Si el despliegue cambia a Data Zone, las tarifas suben a 0.055, 0.0055 y 0.44.
+
+[gpt-5-nano]
+entrada = "0.05"
+entrada_cacheada = "0.005"
+salida = "0.40"

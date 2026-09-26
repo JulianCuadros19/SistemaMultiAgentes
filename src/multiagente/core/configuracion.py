@@ -34,3 +34,48 @@ class ConfiguracionBaseDatos(BaseSettings):
             user=self.user,
             password=self.password.get_secret_value(),
         )
+
+
+class ConfiguracionAzureOpenAI(BaseSettings):
+    """Acceso a Azure OpenAI por la API v1, tomado de las variables AZURE_OPENAI_*."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="AZURE_OPENAI_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    endpoint: str
+    api_key: SecretStr
+
+    def url_base(self) -> str:
+        """Construye la URL base de la API v1 a partir de la raíz del recurso.
+
+        Acepta el endpoint con o sin barra final y con o sin el sufijo `/openai/v1`.
+
+        Returns:
+            URL de la forma `https://<recurso>.openai.azure.com/openai/v1/`.
+        """
+        raiz = self.endpoint.strip().rstrip("/").removesuffix("/openai/v1").rstrip("/")
+        return f"{raiz}/openai/v1/"
+
+
+class ConfiguracionModelos(BaseSettings):
+    """Despliegue de modelo asignado a cada nodo que invoca un modelo (RNF-06).
+
+    Cambiar el modelo de un nodo es editar su variable MODELO_* en .env.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="MODELO_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    n3_dialogo: str
+    n5_sintesis: str
+    n8_arquitectura: str
+    n10_generacion: str
+    n14_veredicto: str

@@ -51,6 +51,8 @@ extend-exclude = ["config/estilo_generado", "knowledge_base", "evaluacion"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N", "UP", "B", "ANN", "D"]
+# N818 exige el sufijo inglés «Error»; los nombres de dominio van en español (ErrorXxx).
+ignore = ["N818"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -60,8 +62,16 @@ convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Las pruebas de integración requieren los contenedores; se ejecutan con `pytest -m integracion`.
-addopts = ["-ra", "--import-mode=importlib", "--strict-markers", "-m", "not integracion"]
+# Las pruebas de integración requieren los contenedores (`pytest -m integracion`) y las de
+# nube hacen llamadas reales que cuestan dinero (`pytest -m nube`). Ninguna corre por defecto.
+addopts = [
+    "-ra",
+    "--import-mode=importlib",
+    "--strict-markers",
+    "-m",
+    "not integracion and not nube",
+]
 markers = [
     "integracion: requiere los servicios de docker compose y el archivo .env",
+    "nube: hace llamadas reales a Azure OpenAI, con costo; requiere el archivo .env",
 ]
