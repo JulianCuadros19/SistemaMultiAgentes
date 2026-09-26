@@ -138,13 +138,19 @@ Mantener esta sección actualizada al cerrar cada paso.
   `vector` creada por `db/init/` (ADR-0002). Se levanta con `docker compose up -d --wait`.
   Las pruebas de integración pasan con `pytest -m integracion`, también tras reiniciar el
   contenedor. Credenciales en `.env`.
-- **Paso actual: 3.** Validar Azure OpenAI: una llamada real responde y su costo queda
-  registrado.
+- **Paso 3: cerrado el 2026-09-26.** Capa `multiagente.llm` por la API OpenAI v1 con Chat
+  Completions (ADR-0003): esfuerzo de razonamiento y límite de salida obligatorios por
+  llamada, costo en `Decimal` con `config/tarifas_modelos.toml`. Mediciones reales en
+  `docs/mediciones/paso-03-azure-openai.jsonl`. Pruebas con costo: `pytest -m nube`.
+- **Paso actual: 4.** Contratos de datos: los esquemas validan los ejemplos de los Anexos A y B.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
-- **Azure OpenAI: operativo.** gpt-5-nano desplegado y probado. Riesgo de cuota resuelto.
-  Pendiente en el paso 3: registrar región y endpoint, conectar desde código y medir los
-  tokens reales de cada llamada, incluidos los de razonamiento.
-- **Modelo de costos: pendiente de recálculo** con los datos medidos en el paso 3. Las
-  estimaciones anteriores no contemplaban los tokens de razonamiento ni la unidad de
-  trabajo por módulo.
+- **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, despliegue
+  Global Standard de `gpt-5-nano` (versión 2025-08-07), procesado en South Central US.
+  Endpoint y clave solo en `.env`. Tarifas: entrada 0,05, caché 0,005 y salida 0,40 USD por
+  millón de tokens. Medido con el mismo mensaje: minimal 80 tokens de salida y 1,7 s; low
+  555 (448 de razonamiento) y 4,6 s; medium 1.340 (1.216 de razonamiento) y 8,9 s. Si el
+  límite es menor que el razonamiento, la respuesta llega vacía con motivo `length` y se
+  cobra igual.
+- **Modelo de costos: pendiente de recálculo.** Ya hay datos por llamada del paso 3; falta
+  estimar la unidad de trabajo por módulo cuando existan los nodos reales.
