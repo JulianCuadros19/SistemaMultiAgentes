@@ -188,7 +188,7 @@ El estado se persiste mediante puntos de control tras cada transición, lo que p
 | sesiones                   | Sesión de elicitación con su cliente, fase y estado.                           |
 | turnos_conversacion        | Historial completo del diálogo entre el cliente y el elicitador.               |
 | historias_usuario          | Historias producidas por el elicitador con su trazabilidad a la sesión.        |
-| requerimientos             | Requerimientos formales conforme al Anexo B, con estado de aprobación.         |
+| requerimientos             | Requerimientos formales conforme al Anexo A, con estado de aprobación.         |
 | decisiones_arquitectonicas | Arquitectura elegida, alternativas descartadas y justificación.                |
 | especificaciones_diseno    | Especificación estructurada de módulos, interfaces, dependencias y modelo de datos. |
 | artefactos_codigo          | Versiones de los módulos, pruebas y documentación generadas.                   |
