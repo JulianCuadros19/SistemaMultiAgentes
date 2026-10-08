@@ -4,8 +4,8 @@ titulo: Patrones de diseño aplicables
 fuente: Patrones de diseño consolidados en la industria
 tipo_fuente: practica_industria
 tags: [patrones, diseño, repositorio]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -80,6 +80,6 @@ consistencia, como una mutación que altera predio y propietario.
 
 ## Criterio general de aplicación
 
-Un patrón se declara en el contrato solo si un requerimiento concreto lo justifica. La
+Un patrón se declara en la especificación solo si un requerimiento concreto lo justifica. La
 aplicación de patrones sin necesidad es sobreingeniería y debe descartarse en el registro
 de decisión con su motivo.

@@ -10,7 +10,7 @@
 | id | Archivo | Título | Tipo de fuente |
 |---|---|---|---|
 | `arq-001` | `01-plantilla-decision-arquitectonica.md` | Plantilla del registro de decisión arquitectónica | practica_industria |
-| `arq-002` | `02-contrato-de-diseno.md` | Esquema del contrato de diseño | elaboracion_propia |
+| `arq-002` | `02-especificacion-de-diseno.md` | Esquema de la especificación de diseño | elaboracion_propia |
 | `arq-arq-01` | `catalogo/ARQ-01-arquitectura-en-capas.md` | Arquitectura en capas | practica_industria |
 | `arq-arq-02` | `catalogo/ARQ-02-arquitectura-hexagonal.md` | Arquitectura hexagonal o de puertos y adaptadores | practica_industria |
 | `arq-arq-03` | `catalogo/ARQ-03-pipeline-de-datos.md` | Pipeline de procesamiento por etapas | practica_industria |

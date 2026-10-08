@@ -34,8 +34,8 @@ respuestas simuladas, cada agente real encaja después sin sorpresas.
 | Paso | Qué se hace | Terminado cuando |
 |---|---|---|
 | 7 | Agente elicitador | Una conversación produce un requerimiento que pasa la verificación de calidad |
-| 8 | Agente arquitecto | El contrato generado pasa las tres validaciones del Anexo B |
-| 9 | Agente desarrollador | El código se importa sin error y cubre las interfaces del contrato |
+| 8 | Agente arquitecto | La especificación generada pasa las tres validaciones del Anexo B |
+| 9 | Agente desarrollador | El código se importa sin error y cubre las interfaces de la especificación |
 | 10 | Agente tester | Detecta defectos inyectados a propósito en código de prueba |
 | 11 | Integración de extremo a extremo | Un módulo completo sale aprobado por el tester |
 

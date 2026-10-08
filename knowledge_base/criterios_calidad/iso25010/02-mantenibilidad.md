@@ -4,8 +4,8 @@ titulo: Mantenibilidad
 fuente: ISO/IEC 25010:2023, característica de mantenibilidad
 tipo_fuente: estandar_internacional
 tags: [25010, mantenibilidad, reglas]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -35,11 +35,11 @@ coleccion: criterios_calidad
 - **Severidad:** Alta
 - **Aplica a:** código generado
 
-**Enunciado.** Toda interfaz pública declarada en el contrato de diseño debe anotar los tipos de sus parámetros y de su valor de retorno.
+**Enunciado.** Toda interfaz pública declarada en la especificación de diseño debe anotar los tipos de sus parámetros y de su valor de retorno.
 
-**Verificación.** Análisis estático con las reglas de anotación del linter (familia ANN) y contraste con las firmas del contrato.
+**Verificación.** Análisis estático con las reglas de anotación del linter (familia ANN) y contraste con las firmas de la especificación.
 
-**Evidencia esperada.** Comparación entre la firma declarada en el contrato y la firma implementada.
+**Evidencia esperada.** Comparación entre la firma declarada en la especificación y la firma implementada.
 
 
 ### REGLA CAL-MT-003 · Límite de complejidad ciclomática
@@ -70,14 +70,14 @@ coleccion: criterios_calidad
 **Evidencia esperada.** Listado de elementos no utilizados con su ubicación.
 
 
-### REGLA CAL-MT-005 · Modularidad conforme al contrato
+### REGLA CAL-MT-005 · Modularidad conforme a la especificación
 
 - **Característica:** Mantenibilidad › Modularidad
 - **Norma de referencia:** ISO/IEC 25010:2023
 - **Severidad:** Alta
 - **Aplica a:** código generado
 
-**Enunciado.** Cada módulo declarado en el contrato de diseño debe existir como archivo independiente en la ruta declarada, con la responsabilidad única que el contrato le asigna.
+**Enunciado.** Cada módulo declarado en la especificación de diseño debe existir como archivo independiente en la ruta declarada, con la responsabilidad única que la especificación le asigna.
 
 **Verificación.** Comprobar la existencia de cada ruta declarada y que no se hayan creado módulos no previstos.
 
@@ -91,7 +91,7 @@ coleccion: criterios_calidad
 - **Severidad:** Alta
 - **Aplica a:** código generado
 
-**Enunciado.** Ningún módulo debe importar otro módulo que no figure en su lista de dependencias permitidas dentro del contrato de diseño.
+**Enunciado.** Ningún módulo debe importar otro módulo que no figure en su lista de dependencias permitidas dentro de la especificación de diseño.
 
 **Verificación.** Extraer las importaciones de cada módulo mediante análisis del árbol sintáctico y contrastarlas con las dependencias permitidas.
 

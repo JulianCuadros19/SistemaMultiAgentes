@@ -1,19 +1,19 @@
 ---
 id: arq-002
-titulo: Esquema del contrato de diseño
-fuente: Elaboración propia
+titulo: Esquema de la especificación de diseño
+fuente: Formato del Anexo B del documento de tesis
 tipo_fuente: elaboracion_propia
-tags: [contrato, esquema, diseño, modulos]
-version: 1.0
-fecha: 2026-09-14
+tags: [especificacion, esquema, diseño, modulos, anexo_b]
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
 ---
 
-# Esquema del contrato de diseño
+# Esquema de la especificación de diseño
 
-El contrato de diseño es la salida principal del agente arquitecto y la entrada única del
+La especificación de diseño es la salida principal del agente arquitecto y la entrada única del
 agente desarrollador. Es un artefacto estructurado, validable contra esquema, no un
 documento en prosa. Su precisión determina la calidad del código generado, porque el
 desarrollador no dispone de ninguna otra fuente de información.
@@ -22,7 +22,7 @@ desarrollador no dispone de ninguna otra fuente de información.
 
 ```json
 {
-  "id_contrato": "CD-003",
+  "id_especificacion": "ED-003",
   "version": "0.1",
   "arquitectura_base": "ARQ-02",
   "requerimientos_cubiertos": ["RF-021", "RF-022", "RF-023"],
@@ -64,7 +64,7 @@ desarrollador no dispone de ninguna otra fuente de información.
 }
 ```
 
-## Reglas de validación del contrato
+## Reglas de validación de la especificación
 
 | Regla | Verificación |
 |---|---|
@@ -75,10 +75,10 @@ desarrollador no dispone de ninguna otra fuente de información.
 | Stack autorizado | Toda dependencia externa pertenece al catálogo tecnológico |
 | Rutas coherentes | La ruta del archivo corresponde a la capa declarada |
 
-## Por qué el contrato debe ser estructurado y no prosa
+## Por qué la especificación debe ser estructurada y no prosa
 
 El agente tester verifica la conformidad arquitectónica del código de forma determinística:
 comprueba que cada módulo declarado exista, que sus interfaces públicas coincidan con las
-firmas del contrato y que ningún módulo importe algo fuera de `dependencias_permitidas`.
-Esa verificación solo es posible si el contrato es legible por máquina. Un documento en
+firmas de la especificación y que ningún módulo importe algo fuera de `dependencias_permitidas`.
+Esa verificación solo es posible si la especificación es legible por máquina. Un documento en
 prosa obligaría a una evaluación subjetiva y haría el veredicto no reproducible.

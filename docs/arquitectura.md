@@ -40,9 +40,9 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 | **N5**   | Elicitador    | Síntesis: produce historias de usuario y requerimientos formales.                                                | LLM                     |
 | **N6**   | Elicitador    | Verificación de atributos de calidad y aprobación humana.                                                        | Humano                  |
 | **N7**   | Arquitecto    | Recuperación del catálogo de arquitecturas de referencia aplicables.                                             | Embeddings              |
-| **N8**   | Arquitecto    | Selección, justificación y parametrización: registro de decisión y contrato de diseño.                           | LLM                     |
+| **N8**   | Arquitecto    | Selección, justificación y parametrización: registro de decisión y especificación de diseño.                      | LLM                     |
 | **N9**   | Arquitecto    | Validación contra esquema, verificación de cobertura y aprobación humana.                                        | Determinística y humana |
-| **N10**  | Desarrollador | Generación del módulo: código, documentación y pruebas conforme al contrato.                                     | LLM                     |
+| **N10**  | Desarrollador | Generación del módulo: código, documentación y pruebas conforme a la especificación.                             | LLM                     |
 | **N11**  | Tester        | Ejecución del código y las pruebas en contenedor efímero sin red.                                                | Determinística          |
 | **N12**  | Tester        | Análisis estático de estilo y seguridad, y verificación de conformidad arquitectónica.                           | Determinística          |
 | **N13**  | Tester        | Recuperación de los criterios de calidad aplicables al módulo.                                                   | Embeddings              |
@@ -51,15 +51,15 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 
 *Fuente: Elaboración propia.*
 
-**Ausencia de nodo de recuperación en el desarrollador.** El agente desarrollador es el único que no dispone de nodo de recuperación de contexto. Su entrada —requerimientos formales y contrato de diseño— constituye una especificación completa, por lo que la recuperación añadiría latencia y riesgo de introducir fragmentos que contradigan el contrato. La consecuencia arquitectónica es deseable: la calidad del código queda atribuida exclusivamente a la calidad de los artefactos producidos aguas arriba.
+**Ausencia de nodo de recuperación en el desarrollador.** El agente desarrollador es el único que no dispone de nodo de recuperación de contexto. Su entrada —requerimientos formales y especificación de diseño— constituye una definición completa, por lo que la recuperación añadiría latencia y riesgo de introducir fragmentos que contradigan la especificación. La consecuencia arquitectónica es deseable: la calidad del código queda atribuida exclusivamente a la calidad de los artefactos producidos aguas arriba.
 
 **2.3 Descripción del flujo**
 
 El flujo se inicia con la apertura de sesión (N1) y la carga de contexto (N2). El ciclo conversacional se establece entre N3 y N4: el elicitador formula una pregunta, extrae la información de la respuesta y el control de suficiencia decide si continuar preguntando o avanzar. Cerrada la elicitación, N5 sintetiza los artefactos y N6 los somete a verificación de calidad y aprobación humana.
 
-Aprobados los requerimientos, el arquitecto recupera del catálogo las alternativas aplicables (N7), selecciona y parametriza la arquitectura (N8) y somete el contrato a validación de esquema, verificación de cobertura y aprobación humana (N9).
+Aprobados los requerimientos, el arquitecto recupera del catálogo las alternativas aplicables (N7), selecciona y parametriza la arquitectura (N8) y somete la especificación a validación de esquema, verificación de cobertura y aprobación humana (N9).
 
-Con el contrato aprobado, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14). El nodo de decisión (N15) cierra el flujo si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación.
+Con la especificación aprobada, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14). El nodo de decisión (N15) cierra el flujo si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación.
 
 **Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Ambos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
 
@@ -84,7 +84,7 @@ El sistema mantiene cuatro colecciones de conocimiento en una única instancia d
 
 Las convenciones de estilo de código no constituyen una colección de conocimiento. Se declaran como archivo de configuración versionado del sistema —longitud de línea, convenciones de nombres, orden de importaciones, obligatoriedad de documentación— y se refuerzan mediante un bloque fijo en el prompt del desarrollador. Su cumplimiento se verifica en el nodo N12 mediante herramientas de análisis estático, que fallan ante infracciones de severidad alta.
 
-Esta decisión es preferible a la recuperación por tres razones: el estilo pasa de ser una sugerencia probabilística a una restricción objetiva y medible; no consume tokens en ninguna invocación; y elimina la posibilidad de que un fragmento recuperado fuera de contexto contradiga el contrato de diseño.
+Esta decisión es preferible a la recuperación por tres razones: el estilo pasa de ser una sugerencia probabilística a una restricción objetiva y medible; no consume tokens en ninguna invocación; y elimina la posibilidad de que un fragmento recuperado fuera de contexto contradiga la especificación de diseño.
 
 **3.2 Ingesta, recuperación y embeddings**
 
@@ -110,7 +110,7 @@ Se adopta un modelo de embeddings de ejecución local. La justificación es trip
 
 **Entradas.** Conjunto de requerimientos aprobado y catálogo de arquitecturas de referencia.
 
-**Salidas.** Registro de decisión arquitectónica y contrato de diseño con módulos, interfaces, dependencias y modelo de datos.
+**Salidas.** Registro de decisión arquitectónica y especificación de diseño con módulos, interfaces, dependencias y modelo de datos.
 
 **Reglas del prompt.** Elegir únicamente del catálogo; justificar la decisión citando los requerimientos que la motivan; declarar al menos una alternativa descartada; no introducir dependencias fuera del catálogo tecnológico.
 
@@ -118,17 +118,17 @@ Se adopta un modelo de embeddings de ejecución local. La justificación es trip
 
 **Rol.** Programador Python senior que implementa una especificación.
 
-**Entradas.** Requerimientos aprobados y contrato de diseño. No recibe contexto recuperado.
+**Entradas.** Requerimientos aprobados y especificación de diseño. No recibe contexto recuperado.
 
 **Salidas.** Módulos de código, pruebas automatizadas, documentación de funciones públicas y documento de uso.
 
-**Reglas del prompt.** Implementar exactamente los módulos e interfaces declarados en el contrato; no importar dependencias no declaradas; producir una prueba por criterio de aceptación; ajustarse a la configuración de estilo del sistema.
+**Reglas del prompt.** Implementar exactamente los módulos e interfaces declarados en la especificación; no importar dependencias no declaradas; producir una prueba por criterio de aceptación; ajustarse a la configuración de estilo del sistema.
 
 **4.4 Agente tester**
 
 **Rol.** Verificador y auditor de calidad. No modifica código.
 
-**Entradas.** Código y pruebas, requerimientos, contrato de diseño, resultados de ejecución y criterios de calidad recuperados.
+**Entradas.** Código y pruebas, requerimientos, especificación de diseño, resultados de ejecución y criterios de calidad recuperados.
 
 **Salidas.** Veredicto por criterio, reporte de conformidad arquitectónica, hallazgos por severidad y retroalimentación estructurada.
 
@@ -169,7 +169,7 @@ Los agentes no se comunican entre sí mediante mensajes conversacionales. Toda l
 | sesion         | Identificador, cliente, fase actual, marca de tiempo y bandera de espera de entrada del usuario. | N1, N4, N6, N9, N15    |
 | conversacion   | Historial de turnos y registro estructurado de información capturada.                            | N3                     |
 | requerimientos | Historias de usuario y requerimientos formales con su estado de aprobación.                      | N5, N6                 |
-| arquitectura   | Registro de decisión y contrato de diseño validado contra esquema.                               | N8, N9                 |
+| arquitectura   | Registro de decisión y especificación de diseño validada contra esquema.                               | N8, N9                 |
 | codigo         | Versiones de los módulos, pruebas y documentación generadas.                                     | N10                    |
 | validacion     | Resultados de ejecución, hallazgos estáticos, conformidad arquitectónica y veredicto.            | N11, N12, N14          |
 | contexto       | Fragmentos recuperados por colección y contexto descartado.                                      | N2, N7, N13            |
@@ -190,7 +190,7 @@ El estado se persiste mediante puntos de control tras cada transición, lo que p
 | historias_usuario          | Historias producidas por el elicitador con su trazabilidad a la sesión.        |
 | requerimientos             | Requerimientos formales conforme al Anexo B, con estado de aprobación.         |
 | decisiones_arquitectonicas | Arquitectura elegida, alternativas descartadas y justificación.                |
-| contratos_diseno           | Contrato estructurado de módulos, interfaces, dependencias y modelo de datos.  |
+| especificaciones_diseno    | Especificación estructurada de módulos, interfaces, dependencias y modelo de datos. |
 | artefactos_codigo          | Versiones de los módulos, pruebas y documentación generadas.                   |
 | validaciones               | Veredictos por criterio, hallazgos y conformidad arquitectónica.               |
 | ejecuciones                | Traza por nodo con tokens, costo, latencia y versión de prompt.                |
@@ -239,7 +239,7 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 | Ciclo conversacional N3–N4 con control de suficiencia     | RF-01, RF-02, RF-03, RNF-08        |
 | Nodos N5 y N6 con verificación y aprobación humana        | RF-05, RF-06, RF-07, RF-08, RNF-09 |
 | Agente arquitecto con catálogo de referencia (N7, N8, N9) | RF-09 a RF-14, RNF-09              |
-| Contrato de diseño estructurado validable contra esquema  | RF-11, RF-12, RF-22                |
+| Especificación de diseño estructurada validable contra esquema | RF-11, RF-12, RF-22                |
 | Generación sin recuperación en el nodo N10                | RF-15, RF-29                       |
 | Configuración de estilo verificada en N12                 | RF-16, RF-23, RF-36                |
 | Verificación de conformidad arquitectónica en N12         | RF-17, RF-22                       |

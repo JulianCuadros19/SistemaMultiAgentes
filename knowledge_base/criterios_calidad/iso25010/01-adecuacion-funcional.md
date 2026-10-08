@@ -4,8 +4,8 @@ titulo: Adecuación funcional
 fuente: ISO/IEC 25010:2023, característica de adecuación funcional
 tipo_fuente: estandar_internacional
 tags: [25010, funcional, reglas]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -49,7 +49,7 @@ coleccion: criterios_calidad
 - **Severidad:** Alta
 - **Aplica a:** código generado
 
-**Enunciado.** Todo módulo declarado en el contrato debe poder importarse sin producir errores de sintaxis ni de importación.
+**Enunciado.** Todo módulo declarado en la especificación debe poder importarse sin producir errores de sintaxis ni de importación.
 
 **Verificación.** Intentar la importación de cada módulo en el entorno aislado.
 

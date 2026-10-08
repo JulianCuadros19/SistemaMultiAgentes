@@ -4,8 +4,8 @@ titulo: Principios de gestión de la calidad aplicados al proceso
 fuente: ISO 9001:2015, principios de gestión de la calidad
 tipo_fuente: estandar_internacional
 tags: [9001, proceso, mejora]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -25,13 +25,13 @@ criterio de aceptación se rechaza; un módulo modesto que los satisface todos s
 ## Decisiones basadas en evidencia
 
 Todo veredicto se sustenta en evidencia verificable: resultado de ejecución, salida del
-analizador estático o comparación estructural contra el contrato. Ninguna afirmación del
+analizador estático o comparación estructural contra la especificación de diseño. Ninguna afirmación del
 tester puede basarse en apreciación sin respaldo.
 
 ## Enfoque a procesos
 
-La validación es un proceso con entradas definidas (código, requerimientos, contrato,
-criterios), actividades definidas (ejecución, análisis, verificación estructural) y salidas
+La validación es un proceso con entradas definidas (código, requerimientos, especificación
+de diseño, criterios), actividades definidas (ejecución, análisis, verificación estructural) y salidas
 definidas (veredicto y hallazgos). Cada ejecución debe producir la misma salida ante las
 mismas entradas.
 

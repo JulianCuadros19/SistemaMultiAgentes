@@ -27,7 +27,7 @@ contradicción por tu cuenta, porque cada documento fue aprobado por el equipo t
 | Agente | Nodos | Consulta RAG | Produce |
 |---|---|---|---|
 | Elicitador | N1 a N6 | `elicitacion`, `dominio_negocio` | Historias de usuario y requerimientos formales |
-| Arquitecto | N7 a N9 | `arquitecturas_referencia` | Registro de decisión y contrato de diseño |
+| Arquitecto | N7 a N9 | `arquitecturas_referencia` | Registro de decisión y especificación de diseño |
 | Desarrollador | N10 | **Ninguna** | Código Python, documentación y pruebas |
 | Tester | N11 a N14 | `criterios_calidad` | Veredicto por criterio y reporte de defectos |
 | Orquestador | N15 | Ninguna | Decisión de enrutamiento |
@@ -41,9 +41,9 @@ Solo 5 de los 15 nodos invocan un modelo de lenguaje: N3, N5, N8, N10 y N14.
 Cada una tiene una razón. Si crees que alguna es un error, dilo y explica por qué,
 pero no la cambies en silencio.
 
-1. **El desarrollador no tiene RAG.** Su entrada, requerimientos más contrato de diseño,
-   ya es una especificación completa. Recuperar contexto añadiría latencia, costo y riesgo
-   de contradecir el contrato. No propongas agregarle recuperación.
+1. **El desarrollador no tiene RAG.** Su entrada, requerimientos más especificación de diseño,
+   ya es una definición completa. Recuperar contexto añadiría latencia, costo y riesgo
+   de contradecir la especificación. No propongas agregarle recuperación.
 2. **El estilo del código generado es configuración, no conocimiento.** Vive en
    `config/estilo_generado/` y lo verifica N12 con Ruff. Nunca se recupera vía RAG.
 3. **Hay dos configuraciones de estilo distintas.** `pyproject.toml` rige el código del
@@ -119,8 +119,8 @@ durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse
 
 - Nombres de dominio en español: agentes, nodos, esquemas, colecciones.
 - Tipado completo en toda interfaz pública. Docstring en toda función pública.
-- Esquemas de datos con Pydantic. Los contratos del Anexo A y del Anexo B de los documentos
-  fuente son la referencia para requerimiento formal y contrato de diseño.
+- Esquemas de datos con Pydantic. Los formatos del Anexo A y del Anexo B (`docs/anexos.md`)
+  son la referencia para el requerimiento formal y la especificación de diseño.
 
 ## Estado actual
 

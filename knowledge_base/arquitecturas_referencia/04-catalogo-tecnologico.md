@@ -4,8 +4,8 @@ titulo: Catálogo tecnológico autorizado
 fuente: Elaboración propia
 tipo_fuente: elaboracion_propia
 tags: [stack, librerias, dependencias]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -13,9 +13,9 @@ coleccion: arquitecturas_referencia
 
 # Catálogo tecnológico autorizado
 
-Conjunto cerrado de dependencias que el agente arquitecto puede declarar en el contrato de
-diseño. Cualquier dependencia fuera de este catálogo constituye una violación verificable
-del contrato.
+Conjunto cerrado de dependencias que el agente arquitecto puede declarar en la especificación
+de diseño. Cualquier dependencia fuera de este catálogo constituye una violación verificable
+de la especificación.
 
 ## Lenguaje y versión
 

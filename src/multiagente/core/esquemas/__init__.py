@@ -1,1 +1,1 @@
-"""Esquemas Pydantic de los contratos de datos de los Anexos A y B."""
+"""Esquemas Pydantic del requerimiento formal (Anexo A) y la especificación de diseño (Anexo B)."""

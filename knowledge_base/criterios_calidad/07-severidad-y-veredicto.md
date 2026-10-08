@@ -4,8 +4,8 @@ titulo: Escala de severidad y regla de veredicto
 fuente: Elaboración propia con base en ISO/IEC 25010:2023 e ISO/IEC/IEEE 29119
 tipo_fuente: elaboracion_propia
 tags: [severidad, veredicto, decision]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-08
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -19,7 +19,7 @@ Define cómo el agente tester traduce el conjunto de hallazgos en un veredicto �
 
 | Severidad | Definición | Efecto |
 |---|---|---|
-| Alta | El hallazgo impide que el código cumpla su propósito, compromete la seguridad o viola el contrato de diseño | Bloquea la aprobación |
+| Alta | El hallazgo impide que el código cumpla su propósito, compromete la seguridad o viola la especificación de diseño | Bloquea la aprobación |
 | Media | El hallazgo degrada la calidad de forma apreciable pero el código cumple funcionalmente | No bloquea; se reporta para corrección |
 | Baja | El hallazgo es de estilo o consistencia sin impacto funcional | Se reporta como observación |
 
