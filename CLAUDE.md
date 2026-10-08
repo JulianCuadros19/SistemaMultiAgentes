@@ -147,7 +147,17 @@ Mantener esta sección actualizada al cerrar cada paso.
   Completions (ADR-0003): esfuerzo de razonamiento y límite de salida obligatorios por
   llamada, costo en `Decimal` con `config/tarifas_modelos.toml`. Mediciones reales en
   `docs/mediciones/paso-03-azure-openai.jsonl`. Pruebas con costo: `pytest -m nube`.
-- **Paso actual: 4.** Contratos de datos: los esquemas validan los ejemplos de los Anexos A y B.
+- **Alineación con el documento de tesis: 2026-10-08** (ADR-0004). Anexos A y B transcritos
+  en `docs/anexos.md`; el PDF queda solo en local. «Contrato de diseño» pasa a ser
+  «especificación de diseño» (prefijo `ED-`). Flujo de 17 nodos con tres puntos de control
+  humano (N6, N9 y N17) y plan de pruebas del tester (N16); nuevo RF-38, total 38 RF.
+  Pendiente del equipo: actualizar el documento de tesis (RF-38, Tabla 23, Figura 7, Anexos B y C).
+- **Paso 4: cerrado el 2026-10-08.** Esquemas Pydantic en `multiagente.core.esquemas`
+  (ADR-0005): `BacklogHistorias` y `RequerimientoFormal` (Anexo A) y `EspecificacionDiseno`
+  (Anexo B, con la validación 1: estructura y ausencia de ciclos). Validan el backlog y el RF-27
+  del Anexo A y los ejemplos de las plantillas 03 y 02; 86 pruebas unitarias pasan.
+- **Paso actual: 5.** Grafo completo con nodos simulados: una sesión recorre los 17 nodos,
+  cierra ambos ciclos, ejercita los retornos de los tres puntos de control y se reanuda.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, despliegue
