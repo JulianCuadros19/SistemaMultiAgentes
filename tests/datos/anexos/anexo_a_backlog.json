@@ -1,0 +1,93 @@
+{
+  "_fuente": "Anexo A, Tabla 27 del documento de tesis (proyecto de referencia Eduka+IA). La columna No. se transcribe como HU-01 a HU-11.",
+  "historias": [
+    {
+      "id": "HU-01",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Cargar un PDF con los mapas conceptuales de mi clase e indicar el nombre del grupo y la franja horaria.",
+        "para": "Iniciar el proceso de evaluación de forma sencilla."
+      }
+    },
+    {
+      "id": "HU-02",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Ver el estado actual del proceso de evaluación mientras ocurre.",
+        "para": "Saber en qué etapa se encuentra sin necesidad de recargar la página."
+      }
+    },
+    {
+      "id": "HU-03",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Que el sistema identifique automáticamente a cada estudiante a partir de su mapa conceptual.",
+        "para": "No tener que ingresarlos manualmente."
+      }
+    },
+    {
+      "id": "HU-04",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Que el sistema analice cada mapa conceptual y detecte sus conceptos y palabras de enlace.",
+        "para": "Que la evaluación se base en la estructura real del mapa."
+      }
+    },
+    {
+      "id": "HU-05",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Ver los resultados de la evaluación de cada estudiante con su puntaje por criterio y la retroalimentación generada.",
+        "para": "Tomar decisiones informadas sobre el desempeño de mi clase."
+      }
+    },
+    {
+      "id": "HU-06",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Visualizar estadísticas generales de mis grupos en un dashboard.",
+        "para": "Tener una visión rápida del desempeño y estado de mis evaluaciones."
+      }
+    },
+    {
+      "id": "HU-07",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Visualizar los resultados generales de la evaluación de un grupo.",
+        "para": "Analizar el desempeño global de mis estudiantes."
+      }
+    },
+    {
+      "id": "HU-08",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Visualizar el detalle de la calificación por criterio de cada estudiante.",
+        "para": "Entender el desempeño individual en la rúbrica."
+      }
+    },
+    {
+      "id": "HU-09",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Cambiar mi contraseña mediante verificación OTP.",
+        "para": "Garantizar la seguridad de mi cuenta."
+      }
+    },
+    {
+      "id": "HU-10",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Visualizar y gestionar mis grupos de estudiantes dentro de la plataforma.",
+        "para": "Organizar las evaluaciones y consultar los resultados por grupo de manera eficiente."
+      }
+    },
+    {
+      "id": "HU-11",
+      "enunciado": {
+        "como": "Profesor",
+        "quiero": "Contar con una guía inicial paso a paso dentro de la aplicación.",
+        "para": "Entender cómo usar el sistema correctamente desde mi primer ingreso."
+      }
+    }
+  ]
+}

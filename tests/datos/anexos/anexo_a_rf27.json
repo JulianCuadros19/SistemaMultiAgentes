@@ -1,0 +1,82 @@
+{
+  "_fuente": "Tabla 24 del documento de tesis: RF-27 diligenciado en el formato del Anexo A. Los datos de entrada y de salida se transcriben de forma estructurada (ADR-0005).",
+  "id_requerimiento": "RF-27",
+  "version": "1.0",
+  "proyecto": "Sistema multiagente de IA para la empresa Realtix",
+  "tipo_solicitud": "nuevo",
+  "impacto": "alto",
+  "modulo": "Orquestador y flujo iterativo",
+  "riesgo": "Medio",
+  "autor": "Equipo del proyecto",
+  "area_funcional": "Orquestación del flujo de trabajo",
+  "funcional_responsable": "Equipo técnico de Realtix",
+  "titulo": {
+    "como": "analista del equipo técnico",
+    "quiero": "que el ciclo entre el agente desarrollador y el agente tester se cierre cuando el código apruebe todos los criterios o se detenga tras un número máximo de intentos",
+    "para": "evitar ciclos de corrección indefinidos y escalar a una persona los casos que el sistema no logre resolver"
+  },
+  "descripcion": {
+    "precondicion": "Existe un veredicto del agente tester para la versión vigente del módulo.",
+    "regla_negocio": "El número máximo de iteraciones es configurable, con un valor por defecto de tres. Al alcanzarlo, el caso se marca como «requiere intervención humana».",
+    "datos_entrada": [
+      {
+        "nombre": "veredicto_por_criterio",
+        "tipo": "lista",
+        "obligatorio": true
+      },
+      {
+        "nombre": "iteracion_actual",
+        "tipo": "entero",
+        "obligatorio": true
+      },
+      {
+        "nombre": "limite_iteraciones",
+        "tipo": "entero",
+        "obligatorio": true,
+        "restriccion": "configurable, valor por defecto 3"
+      }
+    ],
+    "datos_salida": [
+      {
+        "nombre": "decision_enrutamiento",
+        "tipo": "texto",
+        "formato": "cierra el flujo o devuelve el control al desarrollador con la retroalimentación"
+      },
+      {
+        "nombre": "estado_sesion",
+        "tipo": "texto",
+        "formato": "estado actualizado de la sesión"
+      }
+    ]
+  },
+  "criterios_aceptacion": [
+    {
+      "id": "ESC-01",
+      "nombre": "Cierre por aprobación",
+      "dado_que": "el módulo aprueba todos los criterios",
+      "cuando": "el nodo de decisión evalúa el veredicto",
+      "entonces": "cierra el flujo y marca el módulo como validado"
+    },
+    {
+      "id": "ESC-02",
+      "nombre": "Devolución para corrección",
+      "dado_que": "el módulo incumple al menos un criterio y no se ha alcanzado el límite",
+      "cuando": "el nodo de decisión evalúa el veredicto",
+      "entonces": "devuelve el control al desarrollador con la retroalimentación estructurada"
+    },
+    {
+      "id": "ESC-03",
+      "nombre": "Escalamiento por límite de iteraciones",
+      "dado_que": "el módulo falla tras el número máximo de iteraciones",
+      "cuando": "se alcanza el límite",
+      "entonces": "el caso se marca como «requiere intervención humana» y el flujo se detiene de forma controlada"
+    }
+  ],
+  "prioridad": "alta",
+  "requerimientos_relacionados": [
+    "RF-19",
+    "RF-21",
+    "RF-24",
+    "RF-26"
+  ]
+}
