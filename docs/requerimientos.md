@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo** | **Contenido**                                               |
 |-----------|-------------------------------------------------------------|
 | Producto  | Entregable del Objetivo Específico 1                        |
-| Versión   | 1.0                                                         |
+| Versión   | 1.1                                                         |
 | Fecha     | 14 de septiembre de 2026                                    |
 | Autores   | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director  | MsC. Juan Carlos Barrero Calixto                            |
@@ -59,7 +59,7 @@ Los actores humanos son el cliente o usuario de negocio, que sostiene la convers
 
 **4. REQUERIMIENTOS FUNCIONALES**
 
-Se especifican 37 requerimientos funcionales organizados en siete componentes. Cada requerimiento incluye un criterio de aceptación verificable redactado en formato Gherkin.
+Se especifican 38 requerimientos funcionales organizados en siete componentes. Cada requerimiento incluye un criterio de aceptación verificable redactado en formato Gherkin.
 
 **4.1 Agente elicitador**
 
@@ -76,7 +76,7 @@ Responsable del diálogo con el cliente y de la producción de historias de usua
 | **RF-05** | El agente elicitador debe sintetizar las historias de usuario a partir de la conversación, en el formato «Como \[rol\] quiero \[funcionalidad\] para \[beneficio\]», conforme a la plantilla de su base de conocimiento.                                                                                                                                         | Alta       | *DADA una elicitación cerrada, CUANDO el elicitador sintetiza, ENTONCES produce al menos una historia con los tres atributos diligenciados y un identificador único.*                               |
 | **RF-06** | El agente elicitador debe transformar cada historia de usuario en un requerimiento funcional formal conforme al formato del Anexo A: identificador, versión, proyecto, tipo de solicitud, impacto, módulo, riesgo, autor, área funcional, funcional responsable, título en forma de historia de usuario, precondición, regla de negocio, datos de entrada, datos de salida, criterios de aceptación en formato Gherkin, prioridad y requerimientos relacionados. | Alta       | *DADA una historia validada, CUANDO finaliza el elicitador, ENTONCES existe un requerimiento con el 100 % de los campos obligatorios diligenciados.*                                                |
 | **RF-07** | El sistema debe verificar automáticamente que cada requerimiento cumpla los atributos de calidad (completo, consistente, verificable, trazable y no ambiguo); los que no cumplan deben regresar al elicitador para corrección.                                                                                                                                   | Alta       | *DADO un requerimiento con campos vacíos o contradicciones, CUANDO pasa la verificación, ENTONCES es rechazado con la lista de defectos y reprocesado.*                                             |
-| **RF-08** | El sistema debe permitir la revisión y aprobación humana de las historias de usuario y de los requerimientos formales antes de habilitar el diseño de la arquitectura.                                                                                                                                                                                           | Alta       | *DADO un conjunto de requerimientos formalizado, CUANDO el analista lo aprueba, ENTONCES queda disponible para el agente arquitecto; si lo rechaza, regresa al elicitador con observaciones.*       |
+| **RF-08** | El sistema debe permitir la revisión y aprobación humana de las historias de usuario y de los requerimientos formales antes de habilitar el diseño de la arquitectura y la preparación de las pruebas de aceptación.                                                                                                                                                                                           | Alta       | *DADO un conjunto de requerimientos formalizado, CUANDO el analista lo aprueba, ENTONCES queda disponible para el agente arquitecto y para el agente tester; si lo rechaza, regresa al elicitador con observaciones.*       |
 
 *Fuente: Elaboración propia.*
 
@@ -122,7 +122,7 @@ Responsable de ejecutar, analizar y dictaminar sobre el código producido. No mo
 | **ID**    | **Requerimiento**                                                                                                                                                                                                                                                                                                                              | **Prior.** | **Criterio de aceptación**                                                                                                                                                                   |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **RF-20** | El sistema debe ejecutar el código generado y sus pruebas en un entorno aislado sin acceso a la red ni al sistema de archivos del anfitrión, capturando salida estándar, errores y resultados de las pruebas.                                                                                                                                  | Alta       | *DADO un módulo generado, CUANDO se ejecuta, ENTONCES la ejecución ocurre en el entorno aislado y el sistema captura el resultado completo sin afectar el anfitrión.*                        |
-| **RF-21** | El agente tester debe validar el cumplimiento funcional del código contra los criterios de aceptación de los requerimientos originales, marcando cada criterio como cumplido o no cumplido con su evidencia.                                                                                                                                   | Alta       | *DADO el resultado de las pruebas, CUANDO el tester evalúa, ENTONCES emite un veredicto por criterio de aceptación con la prueba asociada como evidencia.*                                   |
+| **RF-21** | El agente tester debe validar el cumplimiento funcional del código contra los criterios de aceptación de los requerimientos aprobados por el humano, marcando cada criterio como cumplido o no cumplido con su evidencia.                                                                                                                                   | Alta       | *DADO el resultado de las pruebas, CUANDO el tester evalúa, ENTONCES emite un veredicto por criterio de aceptación con la prueba asociada como evidencia.*                                   |
 | **RF-22** | El agente tester debe verificar la conformidad arquitectónica del código contra la especificación de diseño: existencia de los módulos declarados, correspondencia de las interfaces públicas y respeto de las dependencias permitidas.                                                                                                              | Alta       | *DADA una especificación de diseño y su código, CUANDO el tester verifica la conformidad, ENTONCES reporta por módulo si existe, si su interfaz coincide y si respeta las dependencias declaradas.* |
 | **RF-23** | El agente tester debe recuperar de su base de conocimiento los criterios de calidad aplicables al módulo y ejecutar la verificación estática —conformidad de estilo, detección de vulnerabilidades básicas y ausencia de errores de sintaxis— conforme a los criterios derivados de ISO/IEC 25010 e ISO/IEC 27001 (controles A.8.25 y A.8.28). | Alta       | *DADO el código generado, CUANDO el tester lo analiza, ENTONCES el reporte incluye los hallazgos clasificados por severidad y referenciados al criterio de calidad que los origina.*         |
 | **RF-24** | El agente tester debe emitir retroalimentación estructurada (defecto, ubicación, severidad, criterio o módulo afectado y sugerencia de corrección) dirigida al agente desarrollador cuando la validación no sea satisfactoria.                                                                                                                 | Alta       | *DADO un veredicto negativo, CUANDO el tester finaliza, ENTONCES existe un reporte estructurado legible por el desarrollador y por el revisor humano.*                                       |
@@ -141,6 +141,7 @@ Responsable de coordinar el grafo de estado, los ciclos y los puntos de control 
 | **RF-26** | El orquestador debe coordinar el flujo completo —elicitación, aprobación de requerimientos, diseño de arquitectura, aprobación del diseño, desarrollo, validación y decisión— mediante un grafo de estado con soporte de ciclos y transiciones condicionales.                                | Alta       | *DADA una sesión, CUANDO se ejecuta el flujo, ENTONCES cada transición del grafo queda registrada con su estado y marca de tiempo.*                                                               |
 | **RF-27** | El nodo de decisión debe cerrar el ciclo desarrollador–tester cuando el código apruebe todos los criterios, o devolverlo al desarrollador con la retroalimentación; el número máximo de iteraciones debe ser configurable (valor por defecto: 3), escalando al humano al alcanzar el límite. | Alta       | *DADO un módulo que falla tras el número máximo de iteraciones, CUANDO se alcanza el límite, ENTONCES el caso se marca «requiere intervención humana» y el flujo se detiene de forma controlada.* |
 | **RF-28** | El orquestador debe persistir el estado del flujo mediante puntos de control, permitiendo reanudar una ejecución interrumpida sin pérdida de información, incluido el estado de una conversación de elicitación en curso.                                                                    | Alta       | *DADA una ejecución interrumpida durante la elicitación, CUANDO se reinicia el sistema, ENTONCES el diálogo se reanuda desde el último turno registrado.*                                         |
+| **RF-38** | El sistema debe permitir la validación y aprobación humana final del módulo que el agente tester aprobó: la persona revisa el reporte de validación y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba o rechaza el módulo. Si lo rechaza, el módulo regresa al agente desarrollador con sus observaciones. | Alta | *DADO un módulo con veredicto aprobado del tester, CUANDO la persona lo revisa, ENTONCES puede ejecutar pruebas adicionales en el entorno aislado y registrar su aprobación, que cierra el flujo con el módulo validado, o su rechazo, que devuelve el módulo al desarrollador con observaciones.* |
 
 *Fuente: Elaboración propia.*
 
@@ -191,7 +192,7 @@ Los requerimientos no funcionales se clasifican según las características de c
 | **RNF-06** | Flexibilidad                     | La capa de acceso a modelos debe ser agnóstica al proveedor, permitiendo sustituir el modelo de cada agente por configuración y operar íntegramente con modelos locales.           | Alta       |
 | **RNF-07** | Compatibilidad                   | El sistema debe ejecutarse sobre Python 3.11 o superior y PostgreSQL 16 o superior, desplegable mediante contenedores en Linux, Windows y macOS.                                   | Alta       |
 | **RNF-08** | Capacidad de interacción         | La conversación de elicitación debe ser comprensible para un cliente sin formación técnica: una pregunta por turno, lenguaje de negocio y confirmación explícita antes de cerrar.  | Alta       |
-| **RNF-09** | Capacidad de interacción, control humano | El sistema debe detenerse obligatoriamente en dos puntos de control humano: aprobación de requerimientos y aprobación de la especificación de diseño.                                      | Alta       |
+| **RNF-09** | Capacidad de interacción, control humano | El sistema debe detenerse obligatoriamente en tres puntos de control humano: aprobación de requerimientos, aprobación de la especificación de diseño y validación final del módulo. Ante un rechazo, el flujo regresa al agente anterior con las observaciones.                                      | Alta       |
 | **RNF-10** | Adecuación funcional             | El costo operativo por módulo procesado debe ser monitoreado y limitado por un presupuesto configurable que detenga la ejecución al superarse.                                     | Alta       |
 
 *Fuente: Elaboración propia.*
@@ -200,7 +201,7 @@ Los requerimientos no funcionales se clasifican según las características de c
 
 - **Dominio.** El sistema opera sobre el dominio de gestión tributaria y catastral en el que Realtix presta servicios, por lo que las historias y requerimientos producidos deben emplear la terminología del sector registrada en la base de conocimiento del elicitador.
 
-- **Interfaz de entrada.** Interfaz conversacional para el cliente e interfaz de operación para el equipo técnico, ambas capaces de mostrar el estado del flujo y de gestionar los dos puntos de aprobación.
+- **Interfaz de entrada.** Interfaz conversacional para el cliente e interfaz de operación para el equipo técnico, ambas capaces de mostrar el estado del flujo y de gestionar los tres puntos de aprobación.
 
 - **Interfaz de salida.** Artefactos en formatos estándar: requerimientos y especificación de diseño en formato estructurado validado contra esquema y en documento legible; código en archivos .py; reportes en Markdown o PDF.
 
@@ -210,7 +211,7 @@ Los requerimientos no funcionales se clasifican según las características de c
 
 - El catálogo de arquitecturas de referencia y el catálogo tecnológico autorizado son insumos que se validan antes del desarrollo del agente arquitecto.
 
-- Se supone disponibilidad del equipo técnico de Realtix para los dos puntos de aprobación humana durante las pruebas.
+- Se supone disponibilidad del equipo técnico de Realtix para los tres puntos de aprobación humana durante las pruebas.
 
 - El número máximo de iteraciones del ciclo de corrección se fija en tres por defecto, configurable.
 
@@ -221,7 +222,7 @@ Los requerimientos no funcionales se clasifican según las características de c
 | **Objetivo específico**              | **Requerimientos asociados**   | **KPI**                                    |
 |--------------------------------------|--------------------------------|--------------------------------------------|
 | OE1 · Definir metas y requerimientos | Documento completo             | 100 % del documento aprobado               |
-| OE2 · Diseñar la arquitectura        | RF-26 a RF-32, RNF-05 a RNF-07 | 100 % del documento aprobado               |
+| OE2 · Diseñar la arquitectura        | RF-26 a RF-32, RF-38, RNF-05 a RNF-07 | 100 % del documento aprobado               |
 | OE3 · Desarrollar los agentes        | RF-01 a RF-25, RF-33 a RF-37   | 100 % del producto mínimo viable funcional |
 | OE4 · Evaluar el desempeño           | RF-25, RF-34                   | 90 % de aplicación de las pruebas          |
 
@@ -230,3 +231,10 @@ Los requerimientos no funcionales se clasifican según las características de c
 **9. CRITERIO DE APROBACIÓN DEL DOCUMENTO**
 
 El presente documento se considera aprobado cuando el equipo técnico de Realtix verifique que la totalidad de los requerimientos refleja las necesidades acordadas, que cada uno cuenta con un criterio de aceptación verificable y que el alcance y las exclusiones son correctos. La aprobación se registra mediante acta firmada y habilita el inicio del segundo objetivo específico.
+
+**HISTORIAL DE CAMBIOS**
+
+| **Versión** | **Fecha** | **Cambio** |
+|---|---|---|
+| 1.0 | 14 de septiembre de 2026 | Versión aprobada por el equipo técnico. |
+| 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): el requerimiento formal sigue el formato del Anexo A; el artefacto del arquitecto pasa a llamarse especificación de diseño; los RNF adoptan los nombres de ISO/IEC 25010:2023; se agrega el RF-38 (aprobación humana final), el RNF-09 pasa a tres puntos de control y los requerimientos aprobados se entregan también al agente tester. |

@@ -9,27 +9,27 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo**      | **Contenido**                                               |
 |----------------|-------------------------------------------------------------|
 | Producto       | Entregable del Objetivo Específico 2                        |
-| Versión        | 1.0                                                         |
+| Versión        | 1.1                                                         |
 | Fecha          | 14 de septiembre de 2026                                    |
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |
 | Empresa        | Realidad 5.0 S.A.S. — marca comercial Realtix               |
-| Base normativa | Documento de Requerimientos (37 RF, 10 RNF)                 |
+| Base normativa | Documento de Requerimientos (38 RF, 10 RNF)                 |
 | Estado         | Para revisión y aprobación del equipo técnico               |
 
 **1. PROPÓSITO Y ALCANCE**
 
-Este documento define la arquitectura técnica del sistema multiagente y constituye el entregable del segundo objetivo específico. Traduce los 37 requerimientos funcionales y 10 no funcionales en una estructura implementable: topología del grafo, roles y prompts de los agentes, contratos de estado, bases de conocimiento, modelo de datos y vista de despliegue.
+Este documento define la arquitectura técnica del sistema multiagente y constituye el entregable del segundo objetivo específico. Traduce los 38 requerimientos funcionales y 10 no funcionales en una estructura implementable: topología del grafo, roles y prompts de los agentes, contratos de estado, bases de conocimiento, modelo de datos y vista de despliegue.
 
 **2. VISTA LÓGICA: TOPOLOGÍA DEL GRAFO**
 
 **2.1 Principio de granularidad**
 
-El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una responsabilidad única y verificable, lo que permite instrumentar el costo y la latencia por etapa, reintentar una etapa sin repetir las anteriores y sustituir la implementación de un nodo sin afectar a los demás. La separación entre nodos determinísticos y nodos que invocan un modelo de lenguaje es deliberada: concentra el gasto en cinco de los quince nodos.
+El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una responsabilidad única y verificable, lo que permite instrumentar el costo y la latencia por etapa, reintentar una etapa sin repetir las anteriores y sustituir la implementación de un nodo sin afectar a los demás. La separación entre nodos determinísticos y nodos que invocan un modelo de lenguaje es deliberada: concentra el gasto en cinco de los diecisiete nodos.
 
 **2.2 Nodos del grafo**
 
-**Tabla 1. Descripción de los quince nodos**
+**Tabla 1. Descripción de los diecisiete nodos**
 
 | **Nodo** | **Agente**    | **Responsabilidad**                                                                                              | **Naturaleza**          |
 |----------|---------------|------------------------------------------------------------------------------------------------------------------|-------------------------|
@@ -47,7 +47,9 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 | **N12**  | Tester        | Análisis estático de estilo y seguridad, y verificación de conformidad arquitectónica.                           | Determinística          |
 | **N13**  | Tester        | Recuperación de los criterios de calidad aplicables al módulo.                                                   | Embeddings              |
 | **N14**  | Tester        | Veredicto por criterio y retroalimentación estructurada.                                                         | LLM                     |
-| **N15**  | Orquestador   | Decisión de enrutamiento: cierra el flujo o reabre el ciclo de corrección.                                       | Determinística          |
+| **N15**  | Orquestador   | Decisión de enrutamiento: remite el módulo a la validación humana final (N17) o reabre el ciclo de corrección.  | Determinística          |
+| **N16**  | Tester        | Plan de pruebas de aceptación: al aprobarse los requerimientos (N6), deriva un caso de prueba por cada escenario Gherkin aprobado. Corre en paralelo con N7 y es la base del veredicto de N14. | Determinística          |
+| **N17**  | Orquestador   | Validación y aprobación humana final: la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo o lo devuelve a N10 con observaciones. | Humano                  |
 
 *Fuente: Elaboración propia.*
 
@@ -55,13 +57,13 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 
 **2.3 Descripción del flujo**
 
-El flujo se inicia con la apertura de sesión (N1) y la carga de contexto (N2). El ciclo conversacional se establece entre N3 y N4: el elicitador formula una pregunta, extrae la información de la respuesta y el control de suficiencia decide si continuar preguntando o avanzar. Cerrada la elicitación, N5 sintetiza los artefactos y N6 los somete a verificación de calidad y aprobación humana.
+El flujo se inicia con la apertura de sesión (N1) y la carga de contexto (N2). El ciclo conversacional se establece entre N3 y N4: el elicitador formula una pregunta, extrae la información de la respuesta y el control de suficiencia decide si continuar preguntando o avanzar. Cerrada la elicitación, N5 sintetiza los artefactos y N6 los somete a verificación de calidad y aprobación humana. Si la persona los rechaza, el flujo regresa a N3 con sus observaciones.
 
-Aprobados los requerimientos, el arquitecto recupera del catálogo las alternativas aplicables (N7), selecciona y parametriza la arquitectura (N8) y somete la especificación a validación de esquema, verificación de cobertura y aprobación humana (N9).
+Aprobados los requerimientos, se entregan al arquitecto y al tester. El tester deriva de ellos el plan de pruebas de aceptación (N16), un caso por cada escenario aprobado, en paralelo con el trabajo del arquitecto. El arquitecto recupera del catálogo las alternativas aplicables (N7), selecciona y parametriza la arquitectura (N8) y somete la especificación a validación de esquema, verificación de cobertura y aprobación humana (N9). Si la persona la rechaza, el flujo regresa a N8 con sus observaciones.
 
-Con la especificación aprobada, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14). El nodo de decisión (N15) cierra el flujo si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación.
+Con la especificación aprobada, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14), un dictamen por cada caso del plan de pruebas de aceptación. El nodo de decisión (N15) remite el módulo a la validación humana final (N17) si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación. En N17, la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo que cierra el flujo, o lo devuelve a N10 con sus observaciones.
 
-**Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Ambos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
+**Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Además, cada uno de los tres puntos de control humano (N6, N9 y N17) puede devolver el flujo al agente anterior con observaciones. Ambos ciclos y estos retornos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
 
 **3. BASES DE CONOCIMIENTO**
 
@@ -128,7 +130,7 @@ Se adopta un modelo de embeddings de ejecución local. La justificación es trip
 
 **Rol.** Verificador y auditor de calidad. No modifica código.
 
-**Entradas.** Código y pruebas, requerimientos, especificación de diseño, resultados de ejecución y criterios de calidad recuperados.
+**Entradas.** Código y pruebas, requerimientos aprobados con su plan de pruebas de aceptación (N16), especificación de diseño, resultados de ejecución y criterios de calidad recuperados.
 
 **Salidas.** Veredicto por criterio, reporte de conformidad arquitectónica, hallazgos por severidad y retroalimentación estructurada.
 
@@ -140,7 +142,7 @@ Los prompts de sistema de cada agente y la configuración de estilo se versionan
 
 **5. ASIGNACIÓN DE MODELOS POR NODO**
 
-Se adopta el principio de asignación por complejidad cognitiva: a cada nodo se le asigna el modelo más económico capaz de resolver su tarea con suficiencia. Cinco de los quince nodos invocan un modelo de lenguaje.
+Se adopta el principio de asignación por complejidad cognitiva: a cada nodo se le asigna el modelo más económico capaz de resolver su tarea con suficiencia. Cinco de los diecisiete nodos invocan un modelo de lenguaje.
 
 **Tabla 3. Asignación de modelos**
 
@@ -166,12 +168,12 @@ Los agentes no se comunican entre sí mediante mensajes conversacionales. Toda l
 
 | **Partición**  | **Contenido**                                                                                    | **Nodos que escriben** |
 |----------------|--------------------------------------------------------------------------------------------------|------------------------|
-| sesion         | Identificador, cliente, fase actual, marca de tiempo y bandera de espera de entrada del usuario. | N1, N4, N6, N9, N15    |
+| sesion         | Identificador, cliente, fase actual, marca de tiempo y bandera de espera de entrada del usuario. | N1, N4, N6, N9, N15, N17 |
 | conversacion   | Historial de turnos y registro estructurado de información capturada.                            | N3                     |
 | requerimientos | Historias de usuario y requerimientos formales con su estado de aprobación.                      | N5, N6                 |
 | arquitectura   | Registro de decisión y especificación de diseño validada contra esquema.                               | N8, N9                 |
 | codigo         | Versiones de los módulos, pruebas y documentación generadas.                                     | N10                    |
-| validacion     | Resultados de ejecución, hallazgos estáticos, conformidad arquitectónica y veredicto.            | N11, N12, N14          |
+| validacion     | Plan de pruebas de aceptación, resultados de ejecución, hallazgos estáticos, conformidad arquitectónica y veredicto. | N11, N12, N14, N16 |
 | contexto       | Fragmentos recuperados por colección y contexto descartado.                                      | N2, N7, N13            |
 | control        | Número de iteración, límite configurado y costo acumulado.                                       | N15                    |
 
@@ -193,6 +195,7 @@ El estado se persiste mediante puntos de control tras cada transición, lo que p
 | especificaciones_diseno    | Especificación estructurada de módulos, interfaces, dependencias y modelo de datos. |
 | artefactos_codigo          | Versiones de los módulos, pruebas y documentación generadas.                   |
 | validaciones               | Veredictos por criterio, hallazgos y conformidad arquitectónica.               |
+| aprobaciones_humanas       | Decisión, observaciones, revisor y fecha de cada punto de control humano (N6, N9 y N17). |
 | ejecuciones                | Traza por nodo con tokens, costo, latencia y versión de prompt.                |
 | kb_documentos              | Documentos de las bases de conocimiento con su colección, fuente y versión.    |
 | kb_fragmentos              | Fragmentos vectorizados con su embedding, colección y referencia al documento. |
@@ -238,6 +241,8 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 |-----------------------------------------------------------|------------------------------------|
 | Ciclo conversacional N3–N4 con control de suficiencia     | RF-01, RF-02, RF-03, RNF-08        |
 | Nodos N5 y N6 con verificación y aprobación humana        | RF-05, RF-06, RF-07, RF-08, RNF-09 |
+| Plan de pruebas de aceptación del tester (N16)            | RF-08, RF-21                       |
+| Validación y aprobación humana final (N17)                | RF-38, RNF-09                      |
 | Agente arquitecto con catálogo de referencia (N7, N8, N9) | RF-09 a RF-14, RNF-09              |
 | Especificación de diseño estructurada validable contra esquema | RF-11, RF-12, RF-22                |
 | Generación sin recuperación en el nodo N10                | RF-15, RF-29                       |
@@ -262,7 +267,7 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 | El ciclo conversacional no converge y el cliente queda atrapado en preguntas.                      | Límite configurable de turnos en el control de suficiencia, con escalamiento al analista humano al alcanzarlo.                                                                         |
 | El agente arquitecto produce diseños inconsistentes entre ejecuciones.                             | El espacio de decisión se restringe a un catálogo curado; el agente selecciona y parametriza, no crea. La validación contra esquema y la verificación de cobertura acotan la varianza. |
 | Sin recuperación de contexto, el desarrollador produce código con formato de salida inconsistente. | El formato de salida se fija mediante ejemplos dentro del prompt de sistema y se valida estructuralmente antes de la ejecución en sandbox.                                             |
-| El incremento de agentes eleva la latencia y el costo por unidad procesada.                        | Cinco de quince nodos consumen tokens; el interruptor de presupuesto y los límites de tokens de salida contienen el gasto.                                                             |
+| El incremento de agentes eleva la latencia y el costo por unidad procesada.                        | Cinco de diecisiete nodos consumen tokens; el interruptor de presupuesto y los límites de tokens de salida contienen el gasto.                                                             |
 | El alcance de cuatro agentes excede el tiempo disponible del proyecto.                             | El catálogo cerrado de arquitecturas constituye el producto mínimo viable; el diseño arquitectónico libre se difiere a trabajos futuros.                                               |
 | Los modelos locales degradan la calidad respecto del modo remoto.                                  | El modo remoto se emplea para la medición de desempeño; el modo local se verifica funcionalmente y se documenta la diferencia observada.                                               |
 
@@ -271,3 +276,10 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 **12. CRITERIO DE APROBACIÓN**
 
 El presente documento se considera aprobado cuando el equipo técnico de Realtix verifique que la topología del grafo cubre la totalidad de los requerimientos funcionales, que las bases de conocimiento reflejan la información que cada agente necesita para cumplir su tarea, que el modelo de datos soporta la trazabilidad exigida y que la vista de despliegue garantiza la operación sin dependencia de proveedores de nube. La aprobación se registra mediante acta firmada y habilita el inicio del tercer objetivo específico.
+
+**HISTORIAL DE CAMBIOS**
+
+| **Versión** | **Fecha** | **Cambio** |
+|---|---|---|
+| 1.0 | 14 de septiembre de 2026 | Versión aprobada por el equipo técnico. |
+| 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): especificación de diseño en lugar de contrato; nodo N16 (plan de pruebas de aceptación del tester) y nodo N17 (validación y aprobación humana final); retornos con observaciones desde los tres puntos de control; entidad `aprobaciones_humanas`. |

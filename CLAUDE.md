@@ -13,8 +13,8 @@ desde una conversación con el cliente hasta código Python validado.
 
 Léelos antes de proponer cualquier cambio de diseño. Son la fuente de verdad.
 
-- `docs/requerimientos.md` · 37 requerimientos funcionales y 10 no funcionales. Define el QUÉ.
-- `docs/arquitectura.md` · 15 nodos, 4 colecciones, modelo de datos, despliegue. Define el CÓMO.
+- `docs/requerimientos.md` · 38 requerimientos funcionales y 10 no funcionales. Define el QUÉ.
+- `docs/arquitectura.md` · 17 nodos, 4 colecciones, modelo de datos, despliegue. Define el CÓMO.
 - `docs/plan_de_trabajo.md` · pasos 0 a 15, cada uno con su condición de terminado.
 - `docs/anexos.md` · Anexos A y B del documento de tesis: formato del requerimiento formal y
   de la especificación de diseño. El PDF original queda solo en local, en `docs/anexos/`.
@@ -29,12 +29,15 @@ contradicción por tu cuenta, porque cada documento fue aprobado por el equipo t
 | Elicitador | N1 a N6 | `elicitacion`, `dominio_negocio` | Historias de usuario y requerimientos formales |
 | Arquitecto | N7 a N9 | `arquitecturas_referencia` | Registro de decisión y especificación de diseño |
 | Desarrollador | N10 | **Ninguna** | Código Python, documentación y pruebas |
-| Tester | N11 a N14 | `criterios_calidad` | Veredicto por criterio y reporte de defectos |
-| Orquestador | N15 | Ninguna | Decisión de enrutamiento |
+| Tester | N11 a N14 y N16 | `criterios_calidad` | Plan de pruebas de aceptación, veredicto por criterio y reporte de defectos |
+| Orquestador | N15 y N17 | Ninguna | Decisión de enrutamiento y validación humana final |
 
 Dos ciclos en el grafo: el conversacional entre N3 y N4, y el de corrección entre N10 y N15.
-Dos puntos de control humano obligatorios: N6 aprueba requerimientos, N9 aprueba el diseño.
-Solo 5 de los 15 nodos invocan un modelo de lenguaje: N3, N5, N8, N10 y N14.
+Tres puntos de control humano obligatorios: N6 aprueba requerimientos, N9 aprueba el diseño y
+N17 valida el módulo final, con pruebas propias en el entorno aislado. Cada rechazo regresa al
+agente anterior con observaciones. Al aprobarse los requerimientos, el tester los recibe y
+deriva su plan de pruebas de aceptación (N16).
+Solo 5 de los 17 nodos invocan un modelo de lenguaje: N3, N5, N8, N10 y N14.
 
 ## Decisiones que NO deben revertirse
 

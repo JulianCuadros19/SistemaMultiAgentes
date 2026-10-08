@@ -17,7 +17,7 @@ cumplirla. Al cerrar un paso, se actualiza la sección «Estado actual» de `CLA
 
 | Paso | Qué se hace | Terminado cuando |
 |---|---|---|
-| 5 | Grafo completo con nodos simulados | Una sesión recorre los 15 nodos, cierra ambos ciclos y se reanuda tras interrumpirla |
+| 5 | Grafo completo con nodos simulados | Una sesión recorre los 17 nodos, cierra ambos ciclos, ejercita los retornos de los tres puntos de control humano y se reanuda tras interrumpirla |
 
 Este es el paso más importante del plan. El riesgo principal de un sistema multiagente está
 en el estado, las transiciones y los ciclos, no en los agentes. Si el esqueleto funciona con
