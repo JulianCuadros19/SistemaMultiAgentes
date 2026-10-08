@@ -1,7 +1,7 @@
 """Configuración del sistema leída de variables de entorno o del archivo .env."""
 
 from psycopg.conninfo import make_conninfo
-from pydantic import SecretStr
+from pydantic import PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -79,3 +79,16 @@ class ConfiguracionModelos(BaseSettings):
     n8_arquitectura: str
     n10_generacion: str
     n14_veredicto: str
+
+
+class ConfiguracionOrquestador(BaseSettings):
+    """Límites de los ciclos del grafo (MAX_ITERACIONES_CORRECCION y MAX_TURNOS_ELICITACION)."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    max_iteraciones_correccion: PositiveInt = 3
+    max_turnos_elicitacion: PositiveInt = 15
