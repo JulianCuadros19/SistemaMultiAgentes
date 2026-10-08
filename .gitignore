@@ -32,3 +32,6 @@ desktop.ini
 .vscode/
 .idea/
 *Zone.Identifier
+
+# Documento de tesis en PDF: solo local; su transcripción está en docs/anexos.md
+docs/anexos/

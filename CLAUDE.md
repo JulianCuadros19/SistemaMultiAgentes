@@ -16,6 +16,8 @@ Léelos antes de proponer cualquier cambio de diseño. Son la fuente de verdad.
 - `docs/requerimientos.md` · 37 requerimientos funcionales y 10 no funcionales. Define el QUÉ.
 - `docs/arquitectura.md` · 15 nodos, 4 colecciones, modelo de datos, despliegue. Define el CÓMO.
 - `docs/plan_de_trabajo.md` · pasos 0 a 15, cada uno con su condición de terminado.
+- `docs/anexos.md` · Anexos A y B del documento de tesis: formato del requerimiento formal y
+  de la especificación de diseño. El PDF original queda solo en local, en `docs/anexos/`.
 
 Si una tarea contradice estos documentos, **detente y pregunta**. No resuelvas la
 contradicción por tu cuenta, porque cada documento fue aprobado por el equipo técnico.
