@@ -45,12 +45,40 @@ from multiagente.orquestador.estado import (
     Validacion,
     VersionCodigo,
 )
-from multiagente.orquestador.grafo import construir_grafo
+from multiagente.orquestador.grafo import Nodo, construir_grafo
 from multiagente.persistencia.puntos_control import abrir_checkpointer, identificadores_de_sesion
 from multiagente.sandbox.ejecutor import EntornoAislado
 
 PUNTOS_DE_CONTROL = tuple(punto.value for punto in PuntoControl)
 """Pausas en que decide una persona del equipo: N6, N9 y N17."""
+
+NOMBRES_DE_NODO = {
+    Nodo.N1: "N1 · apertura de la sesión",
+    Nodo.N2: "N2 · contexto de elicitación",
+    Nodo.N3: "N3 · diálogo con el cliente",
+    Nodo.N4: "N4 · control de suficiencia",
+    Nodo.N5: "N5 · síntesis de requerimientos",
+    Nodo.N6: "N6 · aprobación de requerimientos",
+    Nodo.N7: "N7 · catálogo de arquitecturas",
+    Nodo.N8: "N8 · diseño de la arquitectura",
+    Nodo.N9: "N9 · aprobación de la especificación",
+    Nodo.N10: "N10 · generación del módulo",
+    Nodo.N11: "N11 · ejecución en el entorno aislado",
+    Nodo.N12: "N12 · análisis estático",
+    Nodo.N13: "N13 · criterios de calidad",
+    Nodo.N14: "N14 · veredicto del tester",
+    Nodo.N15: "N15 · decisión del ciclo de corrección",
+    Nodo.N16: "N16 · plan de pruebas de aceptación",
+    Nodo.N17: "N17 · aprobación final",
+}
+"""Nombre legible de cada nodo, para mostrar dónde está o dónde se detuvo una sesión."""
+
+ESPERAS = {
+    "dialogo": "Espera la respuesta del cliente",
+    "requerimientos": "Espera la aprobación de los requerimientos (N6)",
+    "especificacion": "Espera la aprobación de la especificación de diseño (N9)",
+    "final": "Espera la aprobación final del módulo (N17)",
+}
 
 
 class ErrorOperacion(ValueError):
@@ -87,6 +115,19 @@ class VistaSesion(BaseModel):
     def detenida(self) -> bool:
         """Indica si la sesión espera que alguien la reanude, sin pausa humana pendiente."""
         return self.pausa is None and bool(self.pendientes)
+
+    def describir(self) -> str:
+        """Estado de la sesión en lenguaje de negocio, para listas y encabezados."""
+        if self.pausa is not None:
+            return ESPERAS[self.pausa.punto]
+        if self.pendientes:
+            nodos = ", ".join(NOMBRES_DE_NODO.get(n, n) for n in self.pendientes)
+            return f"Detenida antes de {nodos}: hay que reanudarla"
+        if self.fase is Fase.VALIDADO:
+            return "Módulo validado"
+        if self.fase is Fase.REQUIERE_INTERVENCION:
+            return "Requiere intervención humana: se agotaron las iteraciones de corrección"
+        return f"Terminada en la fase {self.fase}"
 
 
 class Operador:
@@ -130,24 +171,28 @@ class Operador:
 
     # Flujo ----------------------------------------------------------------------------------
 
-    def iniciar(self, cliente: str, proyecto: str, necesidad: str) -> str:
+    def iniciar(
+        self, cliente: str, proyecto: str, necesidad: str, id_sesion: str | None = None
+    ) -> str:
         """Abre una sesión con la necesidad del cliente y la lleva hasta la primera pregunta.
 
         Args:
             cliente: Nombre del cliente.
             proyecto: Proyecto al que pertenecen los requerimientos.
             necesidad: Primera intervención del cliente.
+            id_sesion: Identificador a usar; si se omite, se genera. Darlo permite a la interfaz
+                conocer la sesión aunque un nodo falle antes de la primera pregunta.
 
         Returns:
-            El identificador de la sesión. Si un nodo falla, la sesión queda detenida y se
-            reanuda con `reanudar`.
+            El identificador de la sesión. Si un nodo falla, la excepción se propaga y la sesión
+            queda detenida, para reanudarla con `reanudar`.
 
         Raises:
             ErrorOperacion: Si falta algún dato.
         """
         if not all(texto.strip() for texto in (cliente, proyecto, necesidad)):
             raise ErrorOperacion("El cliente, el proyecto y la necesidad son obligatorios.")
-        id_sesion = str(uuid.uuid4())
+        id_sesion = id_sesion or str(uuid.uuid4())
         with self._en_sesion(id_sesion):
             iniciar_sesion(self.app, cliente.strip(), proyecto.strip(), necesidad, id_sesion)
         return id_sesion

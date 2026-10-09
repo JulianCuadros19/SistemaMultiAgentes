@@ -12,6 +12,8 @@ import pytest
 from openai.types.chat import ChatCompletion
 from pydantic import BaseModel
 
+from multiagente.sandbox.ejecutor import PruebaReportada, ResultadoEjecucion, ResultadoPruebas
+
 
 class VectorizadorDePrueba:
     """Vectorizador determinista de bolsa de palabras, para probar sin el modelo real.
@@ -133,3 +135,45 @@ def completar_respuesta() -> Callable[..., ChatCompletion]:
 def cliente_falso() -> Callable[..., ClienteModeloFalso]:
     """Fábrica de clientes OpenAI falsos con respuestas preparadas."""
     return ClienteModeloFalso
+
+
+class EntornoAisladoFalso:
+    """Entorno aislado falso para las pruebas propias de N17, sin Docker.
+
+    Cada función `test_*` de los archivos `tests/` pasa, salvo las que terminan en `_falla`.
+    Guarda los archivos de cada corrida.
+    """
+
+    def __init__(self) -> None:
+        self.corridas: list[dict[str, str]] = []
+
+    def probar(self, archivos, tiempo_limite_s=None) -> ResultadoPruebas:
+        self.corridas.append(dict(archivos))
+        pruebas = tuple(
+            PruebaReportada(
+                archivo=ruta,
+                nombre=linea.removeprefix("def ").split("(")[0],
+                resultado="fallo" if "_falla(" in linea else "paso",
+                duracion_ms=3,
+                mensaje="AssertionError: falta el año" if "_falla(" in linea else "",
+            )
+            for ruta, contenido in archivos.items()
+            if ruta.startswith("tests/")
+            for linea in contenido.splitlines()
+            if linea.startswith("def test_")
+        )
+        ejecucion = ResultadoEjecucion(
+            codigo_salida=0, salida="", errores="", vencido=False, duracion_ms=40
+        )
+        return ResultadoPruebas(
+            pruebas=pruebas,
+            errores_recoleccion=(),
+            codigo_pytest=0,
+            salida_pytest="",
+            ejecucion=ejecucion,
+        )
+
+
+@pytest.fixture
+def entorno_falso() -> EntornoAisladoFalso:
+    return EntornoAisladoFalso()

@@ -20,52 +20,18 @@ from multiagente.orquestador.simulacion import (
     guion_completo,
 )
 from multiagente.persistencia.puntos_control import serializador
-from multiagente.sandbox.ejecutor import PruebaReportada, ResultadoEjecucion, ResultadoPruebas
 
 PRUEBA_QUE_PASA = "def test_radicado_con_anio():\n    assert True\n"
 PRUEBA_QUE_FALLA = "def test_radicado_falla():\n    assert False, 'falta el año'\n"
 
 
-class EntornoFalso:
-    """Entorno aislado falso: una prueba falla si su nombre termina en `_falla`."""
-
-    def __init__(self) -> None:
-        self.corridas: list[dict[str, str]] = []
-
-    def probar(self, archivos, tiempo_limite_s=None) -> ResultadoPruebas:
-        self.corridas.append(dict(archivos))
-        pruebas = tuple(
-            PruebaReportada(
-                archivo=ruta,
-                nombre=linea.removeprefix("def ").split("(")[0],
-                resultado="fallo" if "_falla(" in linea else "paso",
-                duracion_ms=3,
-                mensaje="AssertionError: falta el año" if "_falla(" in linea else "",
-            )
-            for ruta, contenido in archivos.items()
-            if ruta.startswith("tests/")
-            for linea in contenido.splitlines()
-            if linea.startswith("def test_")
-        )
-        ejecucion = ResultadoEjecucion(
-            codigo_salida=0, salida="", errores="", vencido=False, duracion_ms=40
-        )
-        return ResultadoPruebas(
-            pruebas=pruebas,
-            errores_recoleccion=(),
-            codigo_pytest=0,
-            salida_pytest="",
-            ejecucion=ejecucion,
-        )
-
-
-def operador(simulacion: ServiciosSimulados | Servicios, tmp_path, entorno=None) -> Operador:
+def operador(simulacion: ServiciosSimulados | Servicios, tmp_path, entorno) -> Operador:
     servicios = simulacion if isinstance(simulacion, Servicios) else simulacion.como_servicios()
     app = construir_grafo(servicios, ConfiguracionOrquestador(_env_file=None)).compile(
         checkpointer=InMemorySaver(serde=serializador())
     )
     registro = RegistroPorSesion(tmp_path / "traza.jsonl")
-    return Operador(app, entorno or EntornoFalso(), registro)
+    return Operador(app, entorno, registro)
 
 
 def hasta(operador: Operador, id_sesion: str, punto: str, respuestas: list[str]) -> None:
@@ -77,8 +43,8 @@ def hasta(operador: Operador, id_sesion: str, punto: str, respuestas: list[str])
             operador.decidir(id_sesion, Decision.APROBADO, "Equipo")
 
 
-def test_flujo_completo_con_pruebas_propias_en_la_aprobacion_final(tmp_path):
-    entorno = EntornoFalso()
+def test_flujo_completo_con_pruebas_propias_en_la_aprobacion_final(tmp_path, entorno_falso):
+    entorno = entorno_falso
     op = operador(ServiciosSimulados(fallos_veredicto=0), tmp_path, entorno)
     guion = guion_completo()
     id_sesion = op.iniciar("Oficina de catastro", guion.proyecto, guion.necesidad)
@@ -112,8 +78,8 @@ def test_flujo_completo_con_pruebas_propias_en_la_aprobacion_final(tmp_path):
     assert set(op.exportar(id_sesion)) >= {"LEEME.md", "requerimientos.json", "validacion.md"}
 
 
-def test_acusa_cuando_la_respuesta_confirma_el_resumen(tmp_path):
-    op = operador(ServiciosSimulados(), tmp_path)
+def test_acusa_cuando_la_respuesta_confirma_el_resumen(tmp_path, entorno_falso):
+    op = operador(ServiciosSimulados(), tmp_path, entorno_falso)
     guion = guion_completo()
     id_sesion = op.iniciar("Oficina", guion.proyecto, guion.necesidad)
     confirmaciones = []
@@ -124,8 +90,10 @@ def test_acusa_cuando_la_respuesta_confirma_el_resumen(tmp_path):
     assert confirmaciones[-1] and not any(confirmaciones[:-1])
 
 
-def test_reanuda_una_sesion_detenida_por_una_falla(tmp_path):
-    op = operador(ServiciosSimulados(fallos_veredicto=0, fallos_ejecucion=1), tmp_path)
+def test_reanuda_una_sesion_detenida_por_una_falla(tmp_path, entorno_falso):
+    op = operador(
+        ServiciosSimulados(fallos_veredicto=0, fallos_ejecucion=1), tmp_path, entorno_falso
+    )
     guion = guion_completo()
     id_sesion = op.iniciar("Oficina", guion.proyecto, guion.necesidad)
     hasta(op, id_sesion, "especificacion", guion.respuestas_cliente)
@@ -144,7 +112,7 @@ def test_reanuda_una_sesion_detenida_por_una_falla(tmp_path):
         op.reanudar(id_sesion)
 
 
-def test_rechaza_operaciones_que_no_corresponden(tmp_path):
+def test_rechaza_operaciones_que_no_corresponden(tmp_path, entorno_falso):
     simulacion = ServiciosSimulados(fallos_veredicto=0)
     version = {"src/simulado/modulo.py": "x = 1\n", "tests/test_modulo.py": "def test_x(): ...\n"}
     servicios = Servicios(
@@ -153,7 +121,7 @@ def test_rechaza_operaciones_que_no_corresponden(tmp_path):
         desarrollador=DesarrolladorFijo(versiones=[version]),
         tester=simulacion,
     )
-    op = operador(servicios, tmp_path)
+    op = operador(servicios, tmp_path, entorno_falso)
     guion = guion_completo()
     with pytest.raises(ErrorOperacion, match="obligatorios"):
         op.iniciar("Oficina", guion.proyecto, "   ")
@@ -178,8 +146,8 @@ def test_rechaza_operaciones_que_no_corresponden(tmp_path):
         op.probar_propias(id_sesion, {"tests/test_modulo.py": PRUEBA_QUE_PASA})
 
 
-def test_lista_las_sesiones_de_la_mas_reciente_a_la_mas_antigua(tmp_path):
-    op = operador(ServiciosSimulados(), tmp_path)
+def test_lista_las_sesiones_de_la_mas_reciente_a_la_mas_antigua(tmp_path, entorno_falso):
+    op = operador(ServiciosSimulados(), tmp_path, entorno_falso)
     primera = op.iniciar("Cliente A", "Proyecto", "Registrar mutaciones")
     segunda = op.iniciar("Cliente B", "Proyecto", "Liquidar el impuesto")
     assert [vista.id_sesion for vista in op.sesiones()] == [segunda, primera]
@@ -203,9 +171,9 @@ class SimulacionQueObservaLaSesion(ServiciosSimulados):
         return super().recuperar_catalogo(requerimientos)
 
 
-def test_cada_llamada_queda_en_la_traza_con_su_sesion(tmp_path):
+def test_cada_llamada_queda_en_la_traza_con_su_sesion(tmp_path, entorno_falso):
     simulacion = SimulacionQueObservaLaSesion()
-    op = operador(simulacion, tmp_path)
+    op = operador(simulacion, tmp_path, entorno_falso)
     guion = guion_completo()
     id_sesion = op.iniciar("Oficina", guion.proyecto, guion.necesidad)
     hasta(op, id_sesion, "especificacion", guion.respuestas_cliente)

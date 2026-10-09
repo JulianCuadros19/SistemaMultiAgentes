@@ -8,17 +8,18 @@ rechazo vuelve al agente anterior con sus observaciones. Trabajan los cuatro age
 - desarrollador: Azure OpenAI en N10, sin recuperación;
 - tester: entorno aislado en N11, análisis en N12, BGE-M3 en N13 y el juez en N14.
 
-La sesión se guarda en PostgreSQL: `/salir` la deja en pausa y --sesion la reanuda en otro
-proceso, también tras una falla (RF-28). Con --salida, cada versión del módulo y su reporte se
-escriben en `<salida>/<sesión>/v<n>/`, para revisar el código antes de decidir en N17.
+El bucle es el de la consola del sistema (`multiagente`, paso 12); este script agrega el cliente
+simulado, las decisiones guionizadas y la medición. La sesión se guarda en PostgreSQL: `/salir`
+la deja en pausa y --sesion la reanuda en otro proceso, también tras una falla (RF-28). Con
+--salida, cada versión del módulo y su reporte se escriben en `<salida>/<sesión>/v<n>/`.
 
 Con --simulado, un modelo hace de cliente a partir de un caso sintético. --aprobar aprueba donde
 se admite, y --rechazar PUNTO OBSERVACION rechaza una vez en ese punto (requerimientos,
 especificacion o final). Sin decisión, la sesión queda en pausa en el punto de control.
 
-Cada llamada al modelo se agrega a docs/mediciones/paso-11-extremo-a-extremo.jsonl, sin el
-contenido de los mensajes. Requiere `docker compose up -d --wait`, el corpus ingerido, la imagen
-del entorno aislado y el archivo .env. Tiene costo.
+Cada llamada al modelo se agrega a docs/mediciones/paso-11-extremo-a-extremo.jsonl con su sesión,
+sin el contenido de los mensajes. Requiere `docker compose up -d --wait`, el corpus ingerido, la
+imagen del entorno aislado y el archivo .env. Tiene costo.
 
 Uso:
     python scripts/producir_modulo.py --salida evaluacion/resultados
@@ -31,55 +32,37 @@ import argparse
 import json
 import logging
 import statistics
-import time
-import uuid
 from collections import Counter, defaultdict
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
 
-import psycopg
-from langgraph.graph.state import CompiledStateGraph
-
-from multiagente.agentes.servicios import crear_servicios
 from multiagente.core.configuracion import (
     ConfiguracionAzureOpenAI,
-    ConfiguracionBaseDatos,
+    ConfiguracionInterfaces,
     ConfiguracionModelos,
 )
 from multiagente.interfaces.cliente_simulado import ClienteSimulado, cargar_caso
 from multiagente.interfaces.consola import (
-    mostrar_especificacion,
-    mostrar_requerimientos,
-    mostrar_validacion,
+    REVISORES,
+    DecideRevisor,
+    DecisionHumana,
+    RespondeCliente,
+    RevisorPorTeclado,
+    Tiempos,
+    abrir_sesion,
+    cliente_por_teclado,
+    escribir_version,
+    operar,
+    reanudar_por_teclado,
 )
+from multiagente.interfaces.operacion import ErrorOperacion, Operador, VistaSesion, abrir_operador
 from multiagente.llm.cliente import crear_cliente
-from multiagente.llm.traza import RegistroJsonl, RegistroLlamada
-from multiagente.orquestador.ejecucion import (
-    Avance,
-    avanzar,
-    configuracion_hilo,
-    iniciar_sesion,
-    pausa_pendiente,
-    validaciones,
-)
-from multiagente.orquestador.estado import Severidad, VersionCodigo
-from multiagente.orquestador.grafo import construir_grafo
-from multiagente.orquestador.simulacion import aprobar, rechazar
-from multiagente.persistencia.puntos_control import abrir_checkpointer
+from multiagente.llm.traza import RegistroLlamada, RegistroPorSesion
+from multiagente.orquestador.estado import Decision, Severidad
 
 RAIZ = Path(__file__).resolve().parents[1]
 ARCHIVO_MEDICIONES = RAIZ / "docs" / "mediciones" / "paso-11-extremo-a-extremo.jsonl"
-SALIR = "/salir"
-REVISORES = {"requerimientos": "Analista", "especificacion": "Arquitecto", "final": "Revisor"}
-PRESENTACION = {
-    "requerimientos": mostrar_requerimientos,
-    "especificacion": mostrar_especificacion,
-    "final": mostrar_validacion,
-}
-REPORTE = "REPORTE_VALIDACION.md"
 
 
 @dataclass
@@ -90,119 +73,41 @@ class Guion:
     aprobar: bool = False
 
 
-@dataclass
-class Tiempos:
-    """Tiempo del sistema en este proceso, sin la espera humana ni el cliente simulado.
+def responder_simulado(simulado: ClienteSimulado, registro: RegistroPorSesion) -> RespondeCliente:
+    """El cliente simulado responde la pregunta pendiente; su llamada queda con la sesión."""
 
-    Attributes:
-        sistema: Duración total de los avances del grafo.
-        turnos: Respuestas del cliente que terminan en la siguiente pregunta (RNF-01).
-        cierres: Respuestas que cierran la elicitación: incluyen la síntesis y su verificación
-            (N5 y N6), no una pregunta.
-    """
+    def responder(operador: Operador, vista: VistaSesion) -> str:
+        conversacion = operador.estado(vista.id_sesion)["conversacion"]
+        with registro.en_sesion(vista.id_sesion):
+            respuesta = simulado.responder(conversacion, vista.pausa.datos["pregunta"])
+        print(f"Cliente> {respuesta}")
+        return respuesta
 
-    sistema: float = 0.0
-    turnos: list[float] = field(default_factory=list)
-    cierres: list[float] = field(default_factory=list)
-
-    def medir(self, accion: Callable[[], Avance], turno: bool = False) -> Avance:
-        """Ejecuta un avance del grafo, suma su duración y, si responde al cliente, la registra."""
-        inicio = time.perf_counter()
-        avance = accion()
-        segundos = time.perf_counter() - inicio
-        self.sistema += segundos
-        if turno:
-            pregunta = avance.pausa is not None and avance.pausa.punto == "dialogo"
-            (self.turnos if pregunta else self.cierres).append(segundos)
-        return avance
+    return responder
 
 
-def decidir(punto: str, datos: dict[str, Any], guion: Guion | None) -> dict[str, str] | None:
-    """Pide la decisión a la persona o la toma del guion; None deja la sesión en pausa."""
-    revisor = REVISORES[punto]
-    if guion is not None:
+def revisor_simulado(guion: Guion, salida: Path | None) -> DecideRevisor:
+    """Decide con el guion; en N17 escribe antes la versión si se pidió --salida."""
+
+    def decidir(operador: Operador, vista: VistaSesion) -> DecisionHumana | None:
+        punto, datos = vista.pausa.punto, vista.pausa.datos
+        revisor = REVISORES[punto]
+        if punto == "final" and salida:
+            estado = operador.estado(vista.id_sesion)
+            destino = escribir_version(
+                salida / vista.id_sesion, estado["codigo"].vigente, estado["validacion"].reporte
+            )
+            print(f"\nCódigo y reporte escritos en {destino}")
         if punto in guion.rechazos:
             observaciones = guion.rechazos.pop(punto)
             print(f"\nDecisión simulada ({revisor}): rechazar · {observaciones}")
-            return rechazar(observaciones, revisor)
+            return DecisionHumana(Decision.RECHAZADO, revisor, observaciones)
         if guion.aprobar and not (datos.get("defectos") or datos.get("errores")):
             print(f"\nDecisión simulada ({revisor}): aprobar")
-            return aprobar(revisor)
+            return DecisionHumana(Decision.APROBADO, revisor)
         return None
-    eleccion = input("\n[a]probar, [r]echazar o [s]alir: ").strip().lower()
-    if not eleccion.startswith(("a", "r")):
-        return None
-    # Las observaciones van antes que el nombre: en la primera corrida con una persona, la
-    # pregunta por el revisor justo después de elegir se tomó por un pedido de comentarios.
-    observaciones = (
-        input("Observaciones para el agente (qué debe cambiar): ").strip()
-        if eleccion.startswith("r")
-        else None
-    )
-    nombre = input(f"Su nombre, como revisor (Enter: «{revisor}»): ").strip() or revisor
-    return aprobar(nombre) if observaciones is None else rechazar(observaciones, nombre)
 
-
-def guardar(carpeta: Path, version: VersionCodigo, reporte: str | None) -> Path:
-    """Escribe los archivos de una versión y su reporte de validación en `carpeta/v<n>/`."""
-    destino = carpeta / f"v{version.numero}"
-    for ruta, contenido in version.archivos.items():
-        archivo = destino / ruta
-        archivo.parent.mkdir(parents=True, exist_ok=True)
-        archivo.write_text(contenido, encoding="utf-8")
-    if reporte:
-        (destino / REPORTE).write_text(reporte, encoding="utf-8")
-    return destino
-
-
-def recorrido(avance: Avance) -> str:
-    """Nodos ejecutados en un avance, abreviados como N10 → N11."""
-    return " → ".join(nodo.split("_")[0].upper() for nodo in avance.nodos)
-
-
-def operar(
-    app: CompiledStateGraph,
-    id_sesion: str,
-    avance: Avance,
-    simulado: ClienteSimulado | None,
-    guion: Guion | None,
-    tiempos: Tiempos,
-    salida: Path | None,
-) -> None:
-    """Responde cada pausa hasta que la sesión termina o la persona la deja en pausa."""
-    while avance.pausa is not None:
-        pausa = avance.pausa
-        if pausa.datos.get("aviso"):
-            print(f"(Aviso: {pausa.datos['aviso']})")
-        if pausa.punto == "dialogo":
-            for observacion in pausa.datos["observaciones_revisor"]:
-                print(f"(Observación del revisor: {observacion})")
-            ultimo = f"   [{tiempos.turnos[-1]:.1f} s]" if tiempos.turnos else ""
-            print(f"Elicitador> {pausa.datos['pregunta']}{ultimo}")
-            if simulado:
-                estado = app.get_state(configuracion_hilo(id_sesion)).values
-                respuesta = simulado.responder(estado["conversacion"], pausa.datos["pregunta"])
-                print(f"Cliente> {respuesta}")
-            else:
-                respuesta = input("Cliente> ").strip()
-            if respuesta == SALIR:
-                print(f"Sesión en pausa. Reanúdala con --sesion {id_sesion}")
-                return
-            avance = tiempos.medir(lambda r=respuesta: avanzar(app, id_sesion, r), turno=True)
-            continue
-
-        PRESENTACION[pausa.punto](pausa.datos)
-        if pausa.punto == "final" and salida:
-            estado = app.get_state(configuracion_hilo(id_sesion)).values
-            destino = guardar(salida, estado["codigo"].vigente, estado["validacion"].reporte)
-            print(f"\nCódigo y reporte escritos en {destino}")
-        decision = decidir(pausa.punto, pausa.datos, guion)
-        if decision is None:
-            print(f"Sesión en pausa en «{pausa.punto}». Reanúdala con --sesion {id_sesion}")
-            return
-        print("(Procesando…)")
-        avance = tiempos.medir(lambda d=decision: avanzar(app, id_sesion, d))
-        print(f"{recorrido(avance)} · fase {avance.fase}")
+    return decidir
 
 
 def llamadas_de_la_sesion(id_sesion: str) -> list[RegistroLlamada]:
@@ -217,11 +122,15 @@ def llamadas_de_la_sesion(id_sesion: str) -> list[RegistroLlamada]:
     return llamadas
 
 
-def resumir(app: CompiledStateGraph, id_sesion: str, tiempos: Tiempos, salida: Path | None) -> None:
+def resumir(operador: Operador, id_sesion: str, tiempos: Tiempos, salida: Path | None) -> None:
     """Imprime versiones, iteraciones, tiempo y costo por nodo del módulo."""
-    estado = app.get_state(configuracion_hilo(id_sesion)).values
     print(f"\n=== Resumen de la sesión {id_sesion} ===")
-    for version, validacion in validaciones(app, id_sesion):
+    try:
+        estado = operador.estado(id_sesion)
+        historial = operador.historial(id_sesion)
+    except ErrorOperacion:
+        estado, historial = None, []
+    for version, validacion in historial:
         por_severidad = Counter(h.severidad for h in validacion.hallazgos)
         bloqueantes = Counter(
             h.regla for h in validacion.hallazgos if h.severidad is not Severidad.BAJA
@@ -234,8 +143,8 @@ def resumir(app: CompiledStateGraph, id_sesion: str, tiempos: Tiempos, salida: P
             f"baja {baja}{' · ' + str(dict(bloqueantes)) if bloqueantes else ''}"
         )
         if salida:
-            guardar(salida, version, validacion.reporte)
-    if "sesion" in estado:
+            escribir_version(salida / id_sesion, version, validacion.reporte)
+    if estado is not None:
         print(
             f"Fase: {estado['sesion'].fase} · versiones {len(estado['codigo'].versiones)} · "
             f"iteraciones {estado['control'].iteracion} de {estado['control'].limite_iteraciones}"
@@ -302,38 +211,30 @@ def main() -> None:
         parser.error(f"Puntos de control desconocidos: {ajenos}; use {sorted(REVISORES)}")
     logging.basicConfig(level=logging.WARNING, format="(aviso) %(message)s")
 
-    id_sesion = argumentos.sesion or str(uuid.uuid4())
-    registro = RegistroJsonl(ARCHIVO_MEDICIONES, sesion=id_sesion)
-    cliente_modelo = crear_cliente(ConfiguracionAzureOpenAI())
+    configuracion = ConfiguracionInterfaces(traza_llamadas=ARCHIVO_MEDICIONES)
+    if argumentos.salida:
+        configuracion = configuracion.model_copy(update={"carpeta_trabajo": argumentos.salida})
     caso = cargar_caso(argumentos.simulado) if argumentos.simulado else None
-    simulado = (
-        ClienteSimulado(
-            cliente_modelo, ConfiguracionModelos().despliegue_cliente_simulado, caso, registro
-        )
-        if caso
-        else None
-    )
-    guion = Guion(rechazos, argumentos.aprobar) if caso else None
-    salida = argumentos.salida / id_sesion if argumentos.salida else None
     tiempos = Tiempos()
-    cadena = ConfiguracionBaseDatos().cadena_conexion()
-    with psycopg.connect(cadena, autocommit=True) as conexion, abrir_checkpointer() as puntos:
-        servicios = crear_servicios(conexion, registro, cliente_modelo)
-        app = construir_grafo(servicios).compile(checkpointer=puntos)
+    with abrir_operador(configuracion) as operador:
+        if caso:
+            simulado = ClienteSimulado(
+                crear_cliente(ConfiguracionAzureOpenAI()),
+                ConfiguracionModelos().despliegue_cliente_simulado,
+                caso,
+                operador.registro,
+            )
+            responder = responder_simulado(simulado, operador.registro)
+            decidir = revisor_simulado(Guion(rechazos, argumentos.aprobar), argumentos.salida)
+            reanudar = reanudar_por_teclado(lambda indicacion: "s")
+        else:
+            responder = cliente_por_teclado()
+            decidir = RevisorPorTeclado(configuracion.carpeta_trabajo)
+            reanudar = reanudar_por_teclado()
 
         if argumentos.sesion:
-            pausa = pausa_pendiente(app, id_sesion)
-            pendientes = app.get_state(configuracion_hilo(id_sesion)).next
-            if pausa is not None:
-                avance = Avance(nodos=(), pausa=pausa, fase=None)
-                print(f"Sesión {id_sesion} reanudada en «{pausa.punto}».")
-            elif pendientes:
-                print(f"Sesión {id_sesion} reanudada tras una falla en {pendientes}.")
-                avance = tiempos.medir(lambda: avanzar(app, id_sesion))
-            else:
-                print(f"La sesión {id_sesion} terminó o no existe.")
-                resumir(app, id_sesion, tiempos, salida)
-                return
+            id_sesion = argumentos.sesion
+            print(f"Sesión {id_sesion} reanudada.")
         else:
             if caso:
                 cliente, proyecto, necesidad = caso.cliente, caso.proyecto, caso.necesidad
@@ -341,19 +242,11 @@ def main() -> None:
                 cliente = input("Cliente: ").strip()
                 proyecto = input("Proyecto: ").strip()
                 necesidad = input("¿Qué necesita? ").strip()
-            print(f"Sesión {id_sesion}\nCliente> {necesidad}")
-            avance = tiempos.medir(
-                lambda: iniciar_sesion(app, cliente, proyecto, necesidad, id_sesion)[1], turno=True
-            )
-
+            id_sesion = abrir_sesion(operador, cliente, proyecto, necesidad, tiempos)
         try:
-            operar(app, id_sesion, avance, simulado, guion, tiempos, salida)
-        except Exception:
-            pendientes = app.get_state(configuracion_hilo(id_sesion)).next
-            print(f"\nFallo en {pendientes}. Reanuda la sesión con --sesion {id_sesion}")
-            raise
+            operar(operador, id_sesion, responder, decidir, reanudar, tiempos)
         finally:
-            resumir(app, id_sesion, tiempos, salida)
+            resumir(operador, id_sesion, tiempos, argumentos.salida)
 
 
 if __name__ == "__main__":
