@@ -80,14 +80,16 @@ class RegistroEnMemoria:
 class RegistroJsonl(RegistroEnMemoria):
     """Acumula los registros en memoria y agrega cada uno como línea de un archivo JSONL."""
 
-    def __init__(self, ruta: Path) -> None:
+    def __init__(self, ruta: Path, sesion: str | None = None) -> None:
         """Crea el registro sobre un archivo; la carpeta se crea si no existe.
 
         Args:
             ruta: Archivo JSONL al que se agregan las líneas.
+            sesion: Identificador de la sesión, que se agrega a cada línea si se indica.
         """
         super().__init__()
         self.ruta = ruta
+        self.sesion = sesion
         ruta.parent.mkdir(parents=True, exist_ok=True)
 
     def registrar(self, llamada: RegistroLlamada) -> None:
@@ -97,5 +99,9 @@ class RegistroJsonl(RegistroEnMemoria):
             llamada: Registro de la llamada.
         """
         super().registrar(llamada)
+        linea = llamada.como_json()
+        if self.sesion is not None:
+            datos = json.loads(linea)
+            linea = json.dumps({"sesion": self.sesion, **datos}, ensure_ascii=False)
         with self.ruta.open("a", encoding="utf-8") as archivo:
-            archivo.write(llamada.como_json() + "\n")
+            archivo.write(linea + "\n")

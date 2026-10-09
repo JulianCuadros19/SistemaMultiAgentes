@@ -45,8 +45,36 @@ class ErrorPrompt(ValueError):
     """Un prompt no existe o no tiene la forma esperada."""
 
 
+def leer_prompt(archivo: Path) -> Prompt:
+    """Lee un prompt versionado desde un archivo y valida su cabecera.
+
+    Args:
+        archivo: Archivo Markdown con cabecera YAML.
+
+    Returns:
+        El prompt con sus metadatos, su texto y la huella SHA-256 del archivo completo.
+
+    Raises:
+        ErrorPrompt: Si el archivo no existe o si su cabecera es inválida.
+    """
+    if not archivo.is_file():
+        raise ErrorPrompt(f"{archivo.name}: no existe")
+    texto = archivo.read_text(encoding="utf-8")
+    try:
+        cabecera, cuerpo = separar_cabecera(texto)
+        return Prompt(
+            metadatos=MetadatosPrompt.model_validate(cabecera),
+            texto=cuerpo,
+            huella=hashlib.sha256(texto.encode("utf-8")).hexdigest(),
+        )
+    except ErrorCabecera as error:
+        raise ErrorPrompt(f"{archivo.name}: {error}") from error
+    except ValidationError as error:
+        raise ErrorPrompt(f"{archivo.name}: prompt inválido: {error}") from error
+
+
 def cargar_prompt(agente: str, nombre: str, raiz: Path = RAIZ_PROMPTS) -> Prompt:
-    """Lee un prompt versionado y valida su cabecera.
+    """Lee el prompt versionado de un agente.
 
     Args:
         agente: Carpeta del agente dentro de `prompts/`.
@@ -60,23 +88,9 @@ def cargar_prompt(agente: str, nombre: str, raiz: Path = RAIZ_PROMPTS) -> Prompt
         ErrorPrompt: Si el archivo no existe, si su cabecera es inválida o si declara otro
             agente.
     """
-    archivo = raiz / agente / f"{nombre}.md"
-    ruta = f"{agente}/{nombre}.md"
-    if not archivo.is_file():
-        raise ErrorPrompt(f"{ruta}: no existe")
-    texto = archivo.read_text(encoding="utf-8")
-    try:
-        cabecera, cuerpo = separar_cabecera(texto)
-        metadatos = MetadatosPrompt.model_validate(cabecera)
-        prompt = Prompt(
-            metadatos=metadatos,
-            texto=cuerpo,
-            huella=hashlib.sha256(texto.encode("utf-8")).hexdigest(),
+    prompt = leer_prompt(raiz / agente / f"{nombre}.md")
+    if prompt.metadatos.agente != agente:
+        raise ErrorPrompt(
+            f"{nombre}.md: declara el agente {prompt.metadatos.agente} pero está en {agente}"
         )
-    except ErrorCabecera as error:
-        raise ErrorPrompt(f"{ruta}: {error}") from error
-    except ValidationError as error:
-        raise ErrorPrompt(f"{ruta}: prompt inválido: {error}") from error
-    if metadatos.agente != agente:
-        raise ErrorPrompt(f"{ruta}: declara el agente {metadatos.agente} pero está en {agente}")
     return prompt
