@@ -254,6 +254,14 @@ class Predio:
         (reemplazar("src/aplicacion/avaluo.py", "]) -> Decimal", "]) -> float"), "retorna float"),
         (
             reemplazar(
+                "src/aplicacion/avaluo.py",
+                "valor_m2: Optional[Decimal]) -> Decimal",
+                "valor_m2: Optional[Decimal], vigencia: int) -> Decimal",
+            ),
+            "implementa",
+        ),
+        (
+            reemplazar(
                 "src/dominio/predio.py",
                 "    numero_predial: str\n    area_terreno: Decimal\n",
                 "    area_terreno: Decimal\n    numero_predial: str\n",
@@ -345,6 +353,17 @@ def test_detecta_cada_falla_inyectada(cambio, esperado):
             "src/aplicacion/avaluo.py",
             "from dominio.predio import Predio",
             "from dominio import predio\nfrom dominio.predio import Predio",
+        ),
+        # Al final se admiten parámetros y campos con valor por defecto.
+        reemplazar(
+            "src/aplicacion/avaluo.py",
+            "valor_m2: Optional[Decimal]) -> Decimal",
+            "valor_m2: Optional[Decimal], redondear: bool = True) -> Decimal",
+        ),
+        reemplazar(
+            "src/dominio/predio.py",
+            "    area_terreno: Decimal\n",
+            "    area_terreno: Decimal\n    _vigencia: int | None = None\n",
         ),
         # Las pruebas pueden tener fixtures compartidas y pruebas adicionales.
         agregar("tests/conftest.py", "import pytest\n"),

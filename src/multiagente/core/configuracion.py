@@ -115,7 +115,8 @@ class ConfiguracionRazonamiento(BaseSettings):
     max_tokens_n8_arquitectura: PositiveInt = 16000
     tiempo_espera_n8_arquitectura: PositiveInt = 300
     """Segundos de espera de cada llamada de N8; la parametrización supera los 60 s."""
-    esfuerzo_n10_generacion: EsfuerzoRazonamiento = "low"
+    esfuerzo_n10_generacion: EsfuerzoRazonamiento = "medium"
+    """Con `low`, gpt-6.1-sol degeneraba archivos de prueba y casi siempre exigía reintento."""
     max_tokens_n10_generacion: PositiveInt = 32000
     tiempo_espera_n10_generacion: PositiveInt = 600
     """Segundos de espera de la llamada de N10, que produce el módulo completo con sus pruebas."""

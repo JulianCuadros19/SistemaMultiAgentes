@@ -5,7 +5,8 @@ verificarse leyendo el árbol sintáctico (arquitectura, §11):
 
 - RF-15: un archivo Python sintácticamente válido para Python 3.11 por cada módulo declarado,
   sin módulos no previstos, que expone las interfaces públicas de la especificación con firmas
-  compatibles y define o importa las excepciones declaradas.
+  compatibles (los parámetros declarados, en orden y con sus tipos; al final solo se admiten
+  parámetros con valor por defecto) y define o importa las excepciones declaradas.
 - RF-17: cada módulo importa solo la biblioteca estándar, las dependencias externas declaradas y
   los módulos de sus `dependencias_permitidas`, siempre con importaciones absolutas.
 - RF-18: toda función, clase y método público documentado, y al menos una prueba por cada
@@ -157,12 +158,23 @@ def _parametros(funcion: Funcion, omitir_primero: bool = False) -> list[_Paramet
 
 
 def _compatibles(declarados: list[_Parametro], implementados: list[_Parametro]) -> bool:
-    if len(declarados) != len(implementados):
+    """Una llamada con la firma declarada funciona con la implementada (CAL-AR-002).
+
+    Los parámetros declarados deben estar en el mismo orden, con el mismo nombre, clase y tipo,
+    y conservar su valor por defecto. Al final se admiten parámetros adicionales solo si tienen
+    valor por defecto, como un campo privado opcional de una dataclass.
+    """
+    comunes, adicionales = implementados[: len(declarados)], implementados[len(declarados) :]
+    if len(comunes) != len(declarados):
         return False
-    return all(
+    iguales = all(
         (d.clase, d.nombre, d.tipo) == (i.clase, i.nombre, i.tipo)
         and (i.con_defecto or not d.con_defecto)
-        for d, i in zip(declarados, implementados, strict=True)
+        for d, i in zip(declarados, comunes, strict=True)
+    )
+    return iguales and all(
+        parametro.con_defecto and parametro.clase in ("pos", "solo_nombre")
+        for parametro in adicionales
     )
 
 
