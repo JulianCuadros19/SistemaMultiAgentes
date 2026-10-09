@@ -74,9 +74,11 @@ NOMBRES_DE_NODO = {
 """Nombre legible de cada nodo, para mostrar dónde está o dónde se detuvo una sesión."""
 
 ACUSE_CONFIRMACION = (
-    "Gracias. Con lo conversado estoy redactando los requerimientos; tarda unos segundos…"
+    "Gracias. Reviso su respuesta al resumen: si lo confirma, redacto los requerimientos con lo "
+    "conversado, lo que tarda unos segundos…"
 )
-"""Acuse de la respuesta que confirma el resumen: la síntesis que sigue tarda de 6 a 16 s."""
+"""Acuse de la respuesta al resumen. Vale si el cliente lo confirma, porque la síntesis que sigue
+tarda de 6 a 16 s, y si lo corrige, porque el elicitador vuelve a resumir."""
 
 ESPERAS = {
     "dialogo": "Espera la respuesta del cliente",

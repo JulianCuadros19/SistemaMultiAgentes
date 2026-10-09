@@ -29,6 +29,25 @@ evaluacion/          casos de referencia y resultados del objetivo 4
 docs/                requerimientos, arquitectura, plan y decisiones
 ```
 
+## Operar el sistema
+
+Desde Ubuntu, con el entorno virtual activo (`source .venv/bin/activate`), los servicios arriba
+(`docker compose up -d --wait`), la imagen del entorno aislado
+(`docker compose --profile sandbox build sandbox`), el corpus ingerido
+(`python scripts/ingestar_conocimiento.py`) y el archivo `.env`:
+
+```
+multiagente web                  # interfaz web en http://127.0.0.1:8000/
+multiagente nueva                # sesión nueva por consola
+multiagente sesiones             # sesiones guardadas
+multiagente continuar ID         # retoma una sesión en pausa o detenida
+multiagente ver ID               # trazabilidad de la sesión
+multiagente exportar ID CARPETA  # entregables del módulo validado
+```
+
+En la web, el equipo opera desde el panel y el cliente conversa en su propia vista
+(`/conversacion/ID`). La web solo responde en la máquina local.
+
 ## Documentación
 
 - [Requerimientos](docs/requerimientos.md)
