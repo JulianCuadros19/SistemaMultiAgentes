@@ -32,14 +32,17 @@ from multiagente.orquestador.estado import (
     CasoPrueba,
     Contexto,
     Conversacion,
+    EjecucionPruebas,
     FragmentoContexto,
     RegistroCaptura,
     Requerimientos,
     Validacion,
+    Veredicto,
     VeredictoCaso,
     VersionCodigo,
 )
 from multiagente.orquestador.servicios import (
+    AnalisisEstatico,
     Dialogo,
     Dictamen,
     Diseno,
@@ -308,26 +311,37 @@ class ServiciosSimulados:
 
     # Tester -------------------------------------------------------------------------------
 
-    def ejecutar(self, version: VersionCodigo) -> str:
+    def ejecutar(
+        self, version: VersionCodigo, especificacion: EspecificacionDiseno
+    ) -> EjecucionPruebas:
         """Simula la ejecución; falla con `ErrorSimulado` las primeras veces configuradas (N11)."""
         if self._contar("ejecutar") <= self.fallos_ejecucion:
             raise ErrorSimulado("Caída simulada durante la ejecución en el entorno aislado")
-        return f"Versión {version.numero}: pruebas ejecutadas (simulado)"
+        return EjecucionPruebas(salida=f"Versión {version.numero}: pruebas ejecutadas (simulado)")
 
-    def analizar(self, version: VersionCodigo, especificacion: EspecificacionDiseno) -> list[str]:
+    def analizar(
+        self,
+        version: VersionCodigo,
+        especificacion: EspecificacionDiseno,
+        requerimientos: Requerimientos,
+    ) -> AnalisisEstatico:
         """Simula un análisis estático sin hallazgos (N12)."""
         self._contar("analizar")
-        return []
+        return AnalisisEstatico()
 
-    def recuperar_criterios(self, version: VersionCodigo) -> Contexto:
+    def recuperar_criterios(self, validacion: Validacion) -> Contexto:
         """Simula la recuperación de criterios de calidad (N13)."""
         self._contar("recuperar_criterios")
         return Contexto(
-            fragmentos={"criterios_calidad": (_fragmento("cal-001", "CAL-AF-001 (simulado)"),)}
+            fragmentos={"criterios_calidad": (_fragmento("cal-fs", "CAL-FS-001 (simulado)"),)}
         )
 
     def dictaminar(
-        self, plan: tuple[CasoPrueba, ...], validacion: Validacion, contexto: Contexto
+        self,
+        plan: tuple[CasoPrueba, ...],
+        validacion: Validacion,
+        contexto: Contexto,
+        version: VersionCodigo,
     ) -> Dictamen:
         """Marca todos los casos como no cumplidos en los primeros dictámenes configurados (N14)."""
         cumple = self._contar("dictaminar") > self.fallos_veredicto
@@ -336,7 +350,14 @@ class ServiciosSimulados:
             for caso in plan
         )
         retroalimentacion = () if cumple else tuple(f"{caso.id}: no cumple" for caso in plan)
-        return Dictamen(veredictos=veredictos, retroalimentacion=retroalimentacion)
+        veredicto = Veredicto.APROBADO if cumple else Veredicto.RECHAZADO
+        return Dictamen(
+            veredictos=veredictos,
+            hallazgos=validacion.hallazgos,
+            veredicto=veredicto,
+            retroalimentacion=retroalimentacion,
+            reporte=f"# Reporte simulado de la versión {version.numero}: {veredicto.value}",
+        )
 
 
 @dataclass

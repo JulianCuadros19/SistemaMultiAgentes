@@ -282,27 +282,146 @@ class CasoPrueba(ModeloEstricto):
 
 
 class VeredictoCaso(ModeloEstricto):
-    """Dictamen del tester sobre un caso del plan de pruebas, con su evidencia (RF-21)."""
+    """Dictamen del tester sobre un caso del plan de pruebas, con su evidencia (RF-21).
+
+    Attributes:
+        id_caso: Caso del plan de pruebas (N16).
+        cumple: Si el caso se cumple.
+        evidencia: Por qué se cumple o no: resultado de sus pruebas y juicio sobre ellas.
+        pruebas: Pruebas que sirven de evidencia, como `tests/test_x.py::test_rf_01_esc_01`.
+    """
 
     id_caso: TextoObligatorio
     cumple: bool
     evidencia: TextoObligatorio
+    pruebas: tuple[TextoObligatorio, ...] = ()
+
+
+class Severidad(StrEnum):
+    """Severidad de un hallazgo según la escala del tester (cal-sv)."""
+
+    ALTA = "alta"
+    MEDIA = "media"
+    BAJA = "baja"
+
+
+class Veredicto(StrEnum):
+    """Veredicto único del tester sobre una versión del módulo (cal-sv)."""
+
+    APROBADO = "aprobado"
+    RECHAZADO = "rechazado"
+
+
+class ResultadoPrueba(StrEnum):
+    """Resultado de una prueba ejecutada en el entorno aislado."""
+
+    PASO = "paso"
+    FALLO = "fallo"
+    ERROR = "error"
+    OMITIDA = "omitida"
+
+
+class PruebaEjecutada(ModeloEstricto):
+    """Prueba de la versión ejecutada en el entorno aislado (N11)."""
+
+    archivo: TextoObligatorio
+    nombre: TextoObligatorio
+    resultado: ResultadoPrueba
+    duracion_ms: NonNegativeInt = 0
+    mensaje: str = ""
+
+    @property
+    def identificador(self) -> str:
+        """Archivo y nombre, p. ej. `tests/test_avaluo.py::test_rf_01_esc_01`."""
+        return f"{self.archivo}::{self.nombre}"
+
+
+class EjecucionPruebas(ModeloEstricto):
+    """Resultado de ejecutar la versión y sus pruebas en el entorno aislado (N11, RF-20).
+
+    Attributes:
+        errores_importacion: Traza de cada módulo declarado que no se pudo importar.
+        pruebas: Cada prueba ejecutada con su resultado.
+        errores_recoleccion: Archivos de prueba que no se pudieron recolectar, con su error.
+        vencido: Si alguna ejecución alcanzó el tiempo límite.
+        duracion_ms: Duración total de las ejecuciones en el entorno aislado.
+        salida: Final de la salida de pytest.
+    """
+
+    errores_importacion: dict[str, str] = Field(default_factory=dict)
+    pruebas: tuple[PruebaEjecutada, ...] = ()
+    errores_recoleccion: tuple[TextoObligatorio, ...] = ()
+    vencido: bool = False
+    duracion_ms: NonNegativeInt = 0
+    salida: str = ""
+
+
+class Hallazgo(ModeloEstricto):
+    """Incumplimiento de una regla de calidad, con su evidencia (RF-23, RF-24).
+
+    Attributes:
+        regla: Regla de calidad que lo origina, p. ej. `CAL-MT-001`.
+        severidad: Severidad de la regla en la base de conocimiento.
+        ubicacion: Archivo y línea, módulo o caso afectado.
+        descripcion: Qué se encontró.
+        sugerencia: Cómo corregirlo, para el desarrollador.
+        origen: Comprobación que lo detectó, p. ej. `ruff:S307`, `conformidad` o `ejecucion`.
+    """
+
+    regla: TextoObligatorio
+    severidad: Severidad
+    ubicacion: TextoObligatorio
+    descripcion: TextoObligatorio
+    sugerencia: TextoObligatorio
+    origen: TextoObligatorio
+
+
+class ConformidadModulo(ModeloEstricto):
+    """Conformidad arquitectónica de un módulo declarado (RF-22)."""
+
+    modulo: TextoObligatorio
+    ruta: TextoObligatorio
+    existe: bool
+    interfaces_conformes: tuple[TextoObligatorio, ...] = ()
+    interfaces_divergentes: tuple[TextoObligatorio, ...] = ()
+    dependencias_no_autorizadas: tuple[TextoObligatorio, ...] = ()
 
 
 class Validacion(Particion):
-    """Plan de pruebas, resultados de la validación y retroalimentación al desarrollador."""
+    """Plan de pruebas, resultados de la validación y retroalimentación al desarrollador.
+
+    Attributes:
+        plan_pruebas: Casos de prueba de aceptación (N16).
+        ejecucion: Resultado de la ejecución en el entorno aislado (N11).
+        hallazgos: Hallazgos por regla: los del análisis estático (N12) y, tras N14, también
+            los de la ejecución y los casos.
+        conformidad: Conformidad de cada módulo declarado (N12).
+        no_evaluadas: Reglas de calidad que no tienen comprobación automática.
+        veredictos: Dictamen por caso del plan (N14).
+        veredicto: Veredicto único según la regla de cal-sv (N14).
+        retroalimentacion: Defectos que debe atender el desarrollador, uno por línea.
+        reporte: Reporte de validación en Markdown, para la persona (RF-24).
+    """
 
     plan_pruebas: tuple[CasoPrueba, ...] = ()
-    ejecucion: TextoObligatorio | None = None
-    hallazgos: tuple[TextoObligatorio, ...] = ()
+    ejecucion: EjecucionPruebas | None = None
+    hallazgos: tuple[Hallazgo, ...] = ()
+    conformidad: tuple[ConformidadModulo, ...] = ()
+    no_evaluadas: tuple[TextoObligatorio, ...] = ()
     veredictos: tuple[VeredictoCaso, ...] = ()
+    veredicto: Veredicto | None = None
     retroalimentacion: tuple[TextoObligatorio, ...] = ()
+    reporte: TextoObligatorio | None = None
 
     @property
     def aprobado(self) -> bool:
-        """Indica si todos los casos del plan tienen veredicto y todos cumplen."""
+        """Indica si el veredicto es aprobado y todos los casos del plan cumplen."""
         cumplidos = {veredicto.id_caso for veredicto in self.veredictos if veredicto.cumple}
-        return bool(self.plan_pruebas) and all(caso.id in cumplidos for caso in self.plan_pruebas)
+        return (
+            self.veredicto is Veredicto.APROBADO
+            and bool(self.plan_pruebas)
+            and all(caso.id in cumplidos for caso in self.plan_pruebas)
+        )
 
 
 class FragmentoContexto(ModeloEstricto):

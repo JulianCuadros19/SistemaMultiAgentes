@@ -18,20 +18,27 @@ from multiagente.orquestador.estado import (
     Arquitectura,
     CasoPrueba,
     Codigo,
+    ConformidadModulo,
     Contexto,
     Control,
     Conversacion,
     Decision,
+    EjecucionPruebas,
     Emisor,
     Fase,
     FragmentoContexto,
+    Hallazgo,
+    PruebaEjecutada,
     PuntoControl,
     RegistroCaptura,
     Requerimientos,
     RespuestaHumana,
+    ResultadoPrueba,
     Sesion,
+    Severidad,
     Turno,
     Validacion,
+    Veredicto,
     VeredictoCaso,
     VersionCodigo,
 )
@@ -121,7 +128,16 @@ def test_respuesta_nueva_distingue_lo_ya_procesado():
     ],
 )
 def test_validacion_aprobada_solo_si_todos_los_casos_cumplen(plan, veredictos, esperado):
-    assert Validacion(plan_pruebas=plan, veredictos=veredictos).aprobado is esperado
+    validacion = Validacion(plan_pruebas=plan, veredictos=veredictos, veredicto=Veredicto.APROBADO)
+    assert validacion.aprobado is esperado
+
+
+def test_validacion_no_aprobada_sin_veredicto_aprobado():
+    # Con un hallazgo Alta el veredicto es rechazado aunque todos los casos cumplan (cal-sv).
+    plan, veredictos = (caso(1),), (veredicto(1, True),)
+    assert not Validacion(plan_pruebas=plan, veredictos=veredictos).aprobado
+    rechazada = Validacion(plan_pruebas=plan, veredictos=veredictos, veredicto=Veredicto.RECHAZADO)
+    assert not rechazada.aprobado
 
 
 def test_particiones_inmutables():
@@ -220,7 +236,41 @@ def estado_completo() -> list:
             correcciones=1,
         ),
         Codigo(versiones=(VersionCodigo(numero=1, archivos={"src/a.py": "x = 1\n"}),)),
-        Validacion(plan_pruebas=(caso(1),), veredictos=(veredicto(1, True),)),
+        Validacion(
+            plan_pruebas=(caso(1),),
+            ejecucion=EjecucionPruebas(
+                errores_importacion={"dominio.predio": "SyntaxError"},
+                pruebas=(
+                    PruebaEjecutada(
+                        archivo="tests/test_a.py",
+                        nombre="test_rf_01_esc_01",
+                        resultado=ResultadoPrueba.FALLO,
+                        mensaje="AssertionError",
+                    ),
+                ),
+                duracion_ms=700,
+            ),
+            hallazgos=(
+                Hallazgo(
+                    regla="CAL-SG-002",
+                    severidad=Severidad.ALTA,
+                    ubicacion="src/dominio/predio.py:3",
+                    descripcion="Uso de eval",
+                    sugerencia="Elimina eval",
+                    origen="ruff:S307",
+                ),
+            ),
+            conformidad=(
+                ConformidadModulo(
+                    modulo="dominio.predio", ruta="src/dominio/predio.py", existe=True
+                ),
+            ),
+            no_evaluadas=("CAL-SG-005",),
+            veredictos=(veredicto(1, True),),
+            veredicto=Veredicto.RECHAZADO,
+            retroalimentacion=("[CAL-SG-002 · alta] src/dominio/predio.py:3 · Uso de eval",),
+            reporte="# Reporte",
+        ),
         Contexto(fragmentos={"criterios_calidad": (fragmento("cal-002", "CAL-MT-001"),)}),
         Control(
             limite_iteraciones=3,
@@ -246,7 +296,8 @@ def test_particiones_sobreviven_al_serializador(caplog):
 
 def test_lista_blanca_incluye_particiones_y_enumeraciones():
     permitidos = set(tipos_permitidos())
-    for clase in (*PARTICIONES, Fase, PuntoControl, Decision, Emisor, TipoInterfaz):
+    enumeraciones = (Fase, PuntoControl, Decision, Emisor, TipoInterfaz)
+    for clase in (*PARTICIONES, *enumeraciones, Severidad, Veredicto, ResultadoPrueba):
         assert (clase.__module__, clase.__name__) in permitidos
 
 

@@ -16,11 +16,15 @@ from multiagente.core.esquemas.requerimiento import HistoriaUsuario, Requerimien
 from multiagente.orquestador.estado import (
     Arquitectura,
     CasoPrueba,
+    ConformidadModulo,
     Contexto,
     Conversacion,
+    EjecucionPruebas,
+    Hallazgo,
     RegistroCaptura,
     Requerimientos,
     Validacion,
+    Veredicto,
     VeredictoCaso,
     VersionCodigo,
 )
@@ -82,11 +86,31 @@ class Diseno(ModeloEstricto):
     especificacion: EspecificacionDiseno
 
 
+class AnalisisEstatico(ModeloEstricto):
+    """Hallazgos del análisis estático y conformidad arquitectónica de una versión (N12)."""
+
+    hallazgos: tuple[Hallazgo, ...] = ()
+    conformidad: tuple[ConformidadModulo, ...] = ()
+    no_evaluadas: tuple[TextoObligatorio, ...] = ()
+
+
 class Dictamen(ModeloEstricto):
-    """Veredicto por caso y retroalimentación al desarrollador (N14)."""
+    """Veredicto del tester sobre una versión (N14).
+
+    Attributes:
+        veredictos: Dictamen de cada caso del plan de pruebas, con su evidencia (RF-21).
+        hallazgos: Todos los hallazgos de la versión: los del análisis estático y los de la
+            ejecución y los casos.
+        veredicto: Veredicto único según la regla de cal-sv.
+        retroalimentacion: Defectos para el desarrollador, uno por línea (RF-24).
+        reporte: Reporte de validación en Markdown, para la persona.
+    """
 
     veredictos: tuple[VeredictoCaso, ...]
+    hallazgos: tuple[Hallazgo, ...] = ()
+    veredicto: Veredicto
     retroalimentacion: tuple[TextoObligatorio, ...]
+    reporte: TextoObligatorio
 
 
 class ServiciosElicitador(Protocol):
@@ -158,18 +182,25 @@ class ServiciosDesarrollador(Protocol):
 
 
 class ServiciosTester(Protocol):
-    """Trabajo del agente tester en N11 a N14."""
+    """Trabajo del agente tester en N11 a N14. No modifica el código (decisión 6)."""
 
-    def ejecutar(self, version: VersionCodigo) -> str:
-        """Ejecuta el código y sus pruebas en el entorno aislado (N11)."""
+    def ejecutar(
+        self, version: VersionCodigo, especificacion: EspecificacionDiseno
+    ) -> EjecucionPruebas:
+        """Importa los módulos y ejecuta las pruebas en el entorno aislado (N11, RF-20)."""
         ...
 
-    def analizar(self, version: VersionCodigo, especificacion: EspecificacionDiseno) -> list[str]:
-        """Aplica el análisis estático y la conformidad arquitectónica (N12)."""
+    def analizar(
+        self,
+        version: VersionCodigo,
+        especificacion: EspecificacionDiseno,
+        requerimientos: Requerimientos,
+    ) -> AnalisisEstatico:
+        """Aplica el análisis estático y la conformidad arquitectónica (N12, RF-22, RF-23)."""
         ...
 
-    def recuperar_criterios(self, version: VersionCodigo) -> Contexto:
-        """Recupera los criterios de calidad aplicables al módulo (N13)."""
+    def recuperar_criterios(self, validacion: Validacion) -> Contexto:
+        """Recupera los criterios de calidad aplicables a los hallazgos y a los casos (N13)."""
         ...
 
     def dictaminar(
@@ -177,8 +208,9 @@ class ServiciosTester(Protocol):
         plan: tuple[CasoPrueba, ...],
         validacion: Validacion,
         contexto: Contexto,
+        version: VersionCodigo,
     ) -> Dictamen:
-        """Emite un veredicto por caso del plan y la retroalimentación (N14)."""
+        """Emite el veredicto por caso y el único, y la retroalimentación (N14, RF-21, RF-24)."""
         ...
 
 

@@ -446,35 +446,48 @@ class NodosGrafo:
         return {"codigo": codigo.model_copy(update={"versiones": (*codigo.versiones, version)})}
 
     def n11_ejecucion(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Ejecuta el código y sus pruebas en el entorno aislado."""
-        resultado = self.servicios.tester.ejecutar(estado["codigo"].vigente)
-        return {"validacion": estado["validacion"].model_copy(update={"ejecucion": resultado})}
+        """Importa los módulos y ejecuta las pruebas en el entorno aislado."""
+        ejecucion = self.servicios.tester.ejecutar(
+            estado["codigo"].vigente, estado["arquitectura"].especificacion
+        )
+        return {"validacion": estado["validacion"].model_copy(update={"ejecucion": ejecucion})}
 
     def n12_analisis_estatico(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Aplica el análisis estático y la verificación de conformidad arquitectónica."""
-        hallazgos = self.servicios.tester.analizar(
-            estado["codigo"].vigente, estado["arquitectura"].especificacion
+        analisis = self.servicios.tester.analizar(
+            estado["codigo"].vigente,
+            estado["arquitectura"].especificacion,
+            estado["requerimientos"],
         )
         return {
-            "validacion": estado["validacion"].model_copy(update={"hallazgos": tuple(hallazgos)})
+            "validacion": estado["validacion"].model_copy(
+                update={
+                    "hallazgos": analisis.hallazgos,
+                    "conformidad": analisis.conformidad,
+                    "no_evaluadas": analisis.no_evaluadas,
+                }
+            )
         }
 
     def n13_criterios_calidad(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Recupera los criterios de calidad aplicables al módulo."""
-        recuperado = self.servicios.tester.recuperar_criterios(estado["codigo"].vigente)
+        """Recupera los criterios de calidad aplicables a los hallazgos y a los casos."""
+        recuperado = self.servicios.tester.recuperar_criterios(estado["validacion"])
         return {"contexto": estado["contexto"].combinar(recuperado)}
 
     def n14_veredicto(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Emite un veredicto por cada caso del plan de pruebas y la retroalimentación."""
+        """Emite el veredicto por caso y el único, la retroalimentación y el reporte."""
         validacion = estado["validacion"]
         dictamen = self.servicios.tester.dictaminar(
-            validacion.plan_pruebas, validacion, estado["contexto"]
+            validacion.plan_pruebas, validacion, estado["contexto"], estado["codigo"].vigente
         )
         return {
             "validacion": validacion.model_copy(
                 update={
                     "veredictos": dictamen.veredictos,
+                    "hallazgos": dictamen.hallazgos,
+                    "veredicto": dictamen.veredicto,
                     "retroalimentacion": dictamen.retroalimentacion,
+                    "reporte": dictamen.reporte,
                 }
             )
         }
@@ -511,7 +524,11 @@ class NodosGrafo:
         return {"validacion": Validacion(plan_pruebas=plan)}
 
     def n17_aprobacion_final(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Somete el módulo validado por el tester a la aprobación humana final."""
+        """Somete el módulo validado por el tester a la aprobación humana final.
+
+        La persona revisa el código, el veredicto por caso, los hallazgos, la conformidad por
+        módulo y el reporte de validación (RF-38).
+        """
         validacion = estado["validacion"]
         version = estado["codigo"].vigente
         aprobacion = _pedir_decision(
@@ -519,7 +536,12 @@ class NodosGrafo:
             {
                 "version": version.numero,
                 "archivos": sorted(version.archivos),
+                "veredicto": validacion.veredicto.value if validacion.veredicto else None,
                 "veredictos": [v.model_dump(mode="json") for v in validacion.veredictos],
+                "hallazgos": [h.model_dump(mode="json") for h in validacion.hallazgos],
+                "conformidad": [c.model_dump(mode="json") for c in validacion.conformidad],
+                "no_evaluadas": list(validacion.no_evaluadas),
+                "reporte": validacion.reporte,
             },
         )
         sesion = estado["sesion"]
