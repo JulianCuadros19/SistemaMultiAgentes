@@ -20,6 +20,10 @@ dist/
 .coverage
 htmlcov/
 
+# Resultados de las corridas de evaluación: se regeneran con los scripts
+evaluacion/resultados/*
+!evaluacion/resultados/.gitkeep
+
 # Datos locales y modelos descargados
 data/local/
 modelos/
