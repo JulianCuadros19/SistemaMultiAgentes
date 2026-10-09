@@ -2,7 +2,7 @@
 id: elicitador.sintesis
 agente: elicitador
 nodo: N5
-version: 1.2
+version: 1.3
 descripcion: Síntesis de la historia de usuario y de los requerimientos formales del Anexo A.
 ---
 
@@ -57,7 +57,8 @@ asigna sus identificadores.
   espacios (por ejemplo, `numero_predial`).
 - `escenarios`: criterios de aceptación en Gherkin. Al menos tres: el camino feliz, un camino
   alterno y un camino de error (entrada inválida, precondición incumplida o caso rechazado).
-  Cada escenario tiene un `nombre` breve y un solo comportamiento, con datos concretos y
+  Cada escenario tiene un `nombre` breve y un solo comportamiento; `dado_que`, `cuando` y
+  `entonces` llevan solo el texto de cada cláusula, sin repetir esas palabras clave, con datos concretos y
   coherentes con las reglas; el `entonces` describe un resultado observable. Escríbelos en
   lenguaje de negocio: sin nombres de funciones y sin operadores como `<=` o `=`; puedes nombrar
   los datos declarados en la ficha. Por ejemplo, «CUANDO se registra la solicitud», no «CUANDO

@@ -148,6 +148,19 @@ def _corrido(texto: str) -> str:
     return re.sub(r"(?:\\n|\s)+", " ", texto).strip()
 
 
+def _clausula(texto: str, claves: tuple[str, ...]) -> str:
+    """Quita la palabra clave Gherkin que el modelo repite al inicio de la cláusula.
+
+    El esquema guarda «dado que», «cuando» y «entonces» en campos separados: la palabra clave la
+    pone quien presenta el escenario, no el texto.
+    """
+    limpio = _corrido(texto)
+    patron = re.compile(rf"^(?:{'|'.join(claves)})\b[\s,:]*", re.IGNORECASE)
+    while (sin_clave := patron.sub("", limpio)) != limpio:
+        limpio = sin_clave
+    return limpio.rstrip(".").strip()
+
+
 def _texto(valor: str | None) -> str | None:
     limpio = valor.strip() if valor else ""
     return limpio or None
@@ -281,9 +294,9 @@ def validar_sintesis(
                     EscenarioAceptacion(
                         id=f"ESC-{posicion:02d}",
                         nombre=_texto(escenario.nombre),
-                        dado_que=_corrido(escenario.dado_que),
-                        cuando=_corrido(escenario.cuando),
-                        entonces=_corrido(escenario.entonces),
+                        dado_que=_clausula(escenario.dado_que, ("dado que", "dado")),
+                        cuando=_clausula(escenario.cuando, ("cuando",)),
+                        entonces=_clausula(escenario.entonces, ("entonces",)),
                     )
                     for posicion, escenario in enumerate(contenido.escenarios, 1)
                 ],

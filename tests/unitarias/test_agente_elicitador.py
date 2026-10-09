@@ -638,6 +638,29 @@ def test_sintesis_con_registro_incompleto_declara_lo_pendiente():
     assert any(defecto.requiere_cliente for defecto in defectos)
 
 
+def test_sintesis_quita_las_palabras_clave_repetidas_en_los_escenarios():
+    escenario = {
+        "nombre": "Solicitud válida",
+        "dado_que": "DADO QUE Dado que un predio registrado y un documento del 2026-09-30.",
+        "cuando": "Cuando se registra la solicitud el 2026-10-01.",
+        "entonces": "ENTONCES: el sistema genera el radicado",
+    }
+    escenarios = [escenario, *requerimiento_modelo()["escenarios"][1:]]
+    sintesis = validar_sintesis(
+        salida_sintesis(requerimiento_modelo(escenarios=escenarios)),
+        conversacion_completa(),
+        contexto_recuperado(),
+        Requerimientos(),
+        "Catastro",
+    )
+    primero = sintesis.requerimientos[0].criterios_aceptacion[0]
+    assert (primero.dado_que, primero.cuando, primero.entonces) == (
+        "un predio registrado y un documento del 2026-09-30",
+        "se registra la solicitud el 2026-10-01",
+        "el sistema genera el radicado",
+    )
+
+
 def test_sintesis_une_los_saltos_de_linea_escapados():
     salida = salida_sintesis(
         requerimiento_modelo(regla_negocio="Primera regla.\\nSegunda regla.\n  Tercera.")
