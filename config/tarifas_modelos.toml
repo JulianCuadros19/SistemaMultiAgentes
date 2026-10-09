@@ -12,6 +12,12 @@ entrada = "0.05"
 entrada_cacheada = "0.005"
 salida = "0.40"
 
+# Consultada el 2026-10-09. Perfil alto (N8), versión 2025-08-07.
+[gpt-5]
+entrada = "1.25"
+entrada_cacheada = "0.125"
+salida = "10.00"
+
 # Consultada el 2026-10-09. Alternativa intermedia, más económica; no está desplegada.
 [gpt-5-mini]
 entrada = "0.25"

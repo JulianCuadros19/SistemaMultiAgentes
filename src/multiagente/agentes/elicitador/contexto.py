@@ -7,14 +7,14 @@ Los fragmentos se presentan al modelo con etiquetas `[F1]…[Fn]` estables, que 
 referenciar el contexto en cada requerimiento.
 """
 
-import json
-from collections.abc import Iterable
-
 from openai.types.chat import ChatCompletionMessageParam
 
+from multiagente.agentes.contexto import etiquetar as etiquetar_colecciones
+from multiagente.agentes.contexto import fragmentos_de
+from multiagente.agentes.contexto import mensaje_contexto as mensaje_de_colecciones
 from multiagente.orquestador.estado import Contexto, Conversacion, FragmentoContexto
 from multiagente.rag.colecciones import Coleccion
-from multiagente.rag.recuperacion import Recuperador, ResultadoRecuperacion
+from multiagente.rag.recuperacion import Recuperador
 
 CONSULTAS_ELICITACION: tuple[str, ...] = (
     "Guía de preguntas estratégicas de elicitación: una pregunta por turno, orden de "
@@ -34,37 +34,6 @@ FRAGMENTOS_POR_CONSULTA_METODOLOGICA = 3
 COLECCIONES_ELICITADOR: tuple[Coleccion, ...] = (Coleccion.ELICITACION, Coleccion.DOMINIO_NEGOCIO)
 
 
-def _a_contexto(
-    resultados: Iterable[ResultadoRecuperacion], coleccion: Coleccion
-) -> tuple[tuple[FragmentoContexto, ...], list[str]]:
-    """Convierte resultados de recuperación en fragmentos sin repetir y descartes legibles."""
-    fragmentos: list[FragmentoContexto] = []
-    vistos: set[int] = set()
-    descartados: list[str] = []
-    for resultado in resultados:
-        if resultado.sin_contexto:
-            descartados.append(f"{coleccion}: sin contexto relevante para «{resultado.consulta}»")
-        for descarte in resultado.descartados:
-            fragmento = descarte.fragmento
-            descartados.append(
-                f"{coleccion}: {fragmento.documento_id} · {fragmento.titulo} ({descarte.motivo})"
-            )
-        for fragmento in resultado.fragmentos:
-            if fragmento.id in vistos:
-                continue
-            vistos.add(fragmento.id)
-            fragmentos.append(
-                FragmentoContexto(
-                    documento_id=fragmento.documento_id,
-                    version_documento=fragmento.version_documento,
-                    titulo=fragmento.titulo,
-                    contenido=fragmento.contenido,
-                    similitud=round(fragmento.similitud, 4),
-                )
-            )
-    return tuple(fragmentos), descartados
-
-
 def recuperar_contexto(recuperador: Recuperador, conversacion: Conversacion) -> Contexto:
     """Recupera la guía de elicitación y el dominio de negocio de la necesidad del cliente.
 
@@ -81,7 +50,7 @@ def recuperar_contexto(recuperador: Recuperador, conversacion: Conversacion) -> 
     necesidad = conversacion.necesidad
     if necesidad is None:
         raise ValueError("La conversación no tiene la necesidad inicial del cliente")
-    metodologia, descartes_metodologia = _a_contexto(
+    metodologia, descartes_metodologia = fragmentos_de(
         (
             recuperador.recuperar(
                 consulta, [Coleccion.ELICITACION], k=FRAGMENTOS_POR_CONSULTA_METODOLOGICA
@@ -90,7 +59,7 @@ def recuperar_contexto(recuperador: Recuperador, conversacion: Conversacion) -> 
         ),
         Coleccion.ELICITACION,
     )
-    dominio, descartes_dominio = _a_contexto(
+    dominio, descartes_dominio = fragmentos_de(
         [recuperador.recuperar(necesidad, [Coleccion.DOMINIO_NEGOCIO])], Coleccion.DOMINIO_NEGOCIO
     )
     return Contexto(
@@ -103,48 +72,24 @@ def recuperar_contexto(recuperador: Recuperador, conversacion: Conversacion) -> 
 
 
 def etiquetar(contexto: Contexto) -> dict[str, FragmentoContexto]:
-    """Asigna etiquetas `F1…Fn` estables a los fragmentos de las colecciones del elicitador.
+    """Etiqueta `F1…Fn` los fragmentos de elicitación y de dominio del contexto.
 
     Args:
         contexto: Contexto acumulado de la sesión.
 
     Returns:
-        Fragmentos por etiqueta, en el orden de las colecciones y de la recuperación.
+        Fragmentos por etiqueta, primero los de elicitación y luego los de dominio.
     """
-    fragmentos = (
-        fragmento
-        for coleccion in COLECCIONES_ELICITADOR
-        for fragmento in contexto.fragmentos.get(coleccion.value, ())
-    )
-    return {f"F{numero}": fragmento for numero, fragmento in enumerate(fragmentos, 1)}
+    return etiquetar_colecciones(contexto, COLECCIONES_ELICITADOR)
 
 
 def mensaje_contexto(contexto: Contexto) -> ChatCompletionMessageParam:
-    """Arma el mensaje de datos con el contexto etiquetado que acompaña al prompt.
-
-    Va antes de los datos que cambian en cada turno, de modo que el prefijo de la llamada se
-    repite y el proveedor puede cobrarlo como entrada en caché.
+    """Arma el mensaje con el contexto etiquetado del elicitador.
 
     Args:
         contexto: Contexto acumulado de la sesión.
 
     Returns:
-        Mensaje de usuario con un JSON `{"contexto": [{"etiqueta", "fuente", "contenido"}]}`.
+        Mensaje de datos que acompaña a los prompts de N3 y N5.
     """
-    datos = [
-        {"etiqueta": etiqueta, "fuente": fragmento.referencia, "contenido": fragmento.contenido}
-        for etiqueta, fragmento in etiquetar(contexto).items()
-    ]
-    return {"role": "user", "content": json_texto({"contexto": datos})}
-
-
-def json_texto(datos: object) -> str:
-    """Serializa datos para un mensaje, con tildes legibles y sin espacios de sobra.
-
-    Args:
-        datos: Datos serializables en JSON.
-
-    Returns:
-        Texto JSON.
-    """
-    return json.dumps(datos, ensure_ascii=False, separators=(",", ":"))
+    return mensaje_de_colecciones(contexto, COLECCIONES_ELICITADOR)

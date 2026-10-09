@@ -65,6 +65,13 @@ def test_buscar_tarifa_por_prefijo_mas_largo():
     assert buscar_tarifa(tarifas, "gpt-5-nano-2025-08-07") == TARIFA_NANO
 
 
+def test_una_familia_no_captura_otra_version():
+    # gpt-5 está registrado, pero gpt-5.4 es otra familia y no debe cobrarse con su tarifa.
+    with pytest.raises(ErrorTarifaNoEncontrada):
+        buscar_tarifa({"gpt-5": TARIFA_NANO}, "gpt-5.4-2026-03-05")
+    assert buscar_tarifa({"gpt-5": TARIFA_NANO}, "gpt-5") == TARIFA_NANO
+
+
 def test_buscar_tarifa_de_modelo_desconocido():
     with pytest.raises(ErrorTarifaNoEncontrada):
         buscar_tarifa({"gpt-5-nano": TARIFA_NANO}, "otro-modelo")
@@ -82,6 +89,7 @@ def test_archivo_de_tarifas_versionado():
         ("gpt-5-mini-2025-08-07", "2.00"),
         # Un nombre con punto exige la clave entre comillas en TOML; sin ellas se anida.
         ("gpt-5.4-mini-2026-03-17", "4.50"),
+        ("gpt-5-2025-08-07", "10.00"),
     ],
 )
 def test_cada_modelo_resuelve_su_tarifa(modelo, salida):

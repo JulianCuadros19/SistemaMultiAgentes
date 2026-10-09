@@ -13,8 +13,9 @@ import re
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from multiagente.agentes.contexto import json_texto
 from multiagente.agentes.elicitador.calidad import identificador
-from multiagente.agentes.elicitador.contexto import etiquetar, json_texto, mensaje_contexto
+from multiagente.agentes.elicitador.contexto import etiquetar, mensaje_contexto
 from multiagente.agentes.elicitador.dialogo import DatoEntradaModelo, DatoSalidaModelo
 from multiagente.agentes.elicitador.fidelidad import (
     oraciones_respaldadas,

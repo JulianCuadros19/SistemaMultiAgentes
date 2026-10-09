@@ -30,8 +30,9 @@ from typing import TypeVar
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict
 
+from multiagente.agentes.contexto import json_texto
 from multiagente.agentes.elicitador.calidad import normalizar
-from multiagente.agentes.elicitador.contexto import json_texto, mensaje_contexto
+from multiagente.agentes.elicitador.contexto import mensaje_contexto
 from multiagente.agentes.elicitador.fidelidad import (
     desconoce_algo,
     raices,

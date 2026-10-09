@@ -79,10 +79,11 @@ def cargar_tarifas(ruta: Path = RUTA_TARIFAS) -> dict[str, Tarifa]:
 
 
 def buscar_tarifa(tarifas: dict[str, Tarifa], modelo: str) -> Tarifa:
-    """Busca la tarifa del modelo por el prefijo registrado más largo.
+    """Busca la tarifa del modelo por la familia registrada más larga.
 
     Azure responde con el nombre versionado (`gpt-5-nano-2025-08-07`), mientras que las
-    tarifas se registran por familia (`gpt-5-nano`).
+    tarifas se registran por familia (`gpt-5-nano`). Una familia coincide si es el nombre
+    completo o si va seguida de un guion: así `gpt-5` no se aplica en silencio a `gpt-5.4-…`.
 
     Args:
         tarifas: Tarifas cargadas con `cargar_tarifas`.
@@ -94,7 +95,9 @@ def buscar_tarifa(tarifas: dict[str, Tarifa], modelo: str) -> Tarifa:
     Raises:
         ErrorTarifaNoEncontrada: Si ningún prefijo registrado coincide.
     """
-    candidatos = [nombre for nombre in tarifas if modelo.startswith(nombre)]
+    candidatos = [
+        nombre for nombre in tarifas if modelo == nombre or modelo.startswith(f"{nombre}-")
+    ]
     if not candidatos:
         raise ErrorTarifaNoEncontrada(f"No hay tarifa registrada para el modelo {modelo!r}")
     return tarifas[max(candidatos, key=len)]
