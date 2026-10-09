@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.0
+version: 1.1
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -56,6 +56,9 @@ defecto; conserva el resto.
    (`from dominio.predio import Predio`). Cada módulo importa solo la biblioteca estándar, las
    `dependencias_externas` de la especificación y los módulos de sus `dependencias_permitidas`.
    Las pruebas pueden importar además `pytest` y cualquier módulo declarado.
+   - No importes nombres privados, con prefijo `_`, de otro módulo: si otro módulo necesita
+     algo, hazlo público en el suyo.
+   - No dejes importaciones, variables ni definiciones sin uso.
 3. **Fidelidad a los requerimientos.** Implementa la regla de negocio, los datos y los
    escenarios tal como están. No inventes reglas. Si algo no está definido, elige lo más
    simple y declara el supuesto en `documentacion_uso`. Valida cada dato de entrada contra su

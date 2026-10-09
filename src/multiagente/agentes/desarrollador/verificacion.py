@@ -8,7 +8,8 @@ verificarse leyendo el árbol sintáctico (arquitectura, §11):
   compatibles (los parámetros declarados, en orden y con sus tipos; al final solo se admiten
   parámetros con valor por defecto) y define o importa las excepciones declaradas.
 - RF-17: cada módulo importa solo la biblioteca estándar, las dependencias externas declaradas y
-  los módulos de sus `dependencias_permitidas`, siempre con importaciones absolutas.
+  los módulos de sus `dependencias_permitidas`, siempre con importaciones absolutas y sin nombres
+  privados de otro módulo (CAL-MT-010, que el tester rechaza con el umbral 0).
 - RF-18: toda función, clase y método público documentado, y al menos una prueba por cada
   escenario de cada requerimiento cubierto, nombrada `test_rf_01_esc_01_…`.
 
@@ -56,6 +57,7 @@ CRITERIO_POR_TIPO: dict[TipoProblema, str] = {
     TipoProblema.IMPORTACION_NO_PERMITIDA: DEPENDENCIAS,
     TipoProblema.IMPORTACION_NO_DECLARADA: DEPENDENCIAS,
     TipoProblema.IMPORTACION_EXTERNA: DEPENDENCIAS,
+    TipoProblema.IMPORTACION_PRIVADA: DEPENDENCIAS,
     TipoProblema.SIN_DOCSTRING: DOCUMENTACION,
     TipoProblema.ESCENARIO_SIN_PRUEBA: PRUEBAS,
     TipoProblema.PRUEBA_SIN_ESCENARIO: PRUEBAS,

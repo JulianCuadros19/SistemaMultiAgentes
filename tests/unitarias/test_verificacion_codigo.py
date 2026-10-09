@@ -326,6 +326,14 @@ class Predio:
             agregar("tests/test_extra.py", "import pandas\n"),
             "tests/test_extra.py:1 importa pandas",
         ),
+        (
+            reemplazar(
+                "src/aplicacion/avaluo.py",
+                "from dominio.predio import Predio",
+                "from dominio.predio import Predio, _validar",
+            ),
+            "importa los nombres privados ['_validar'] de dominio.predio",
+        ),
     ],
 )
 def test_detecta_cada_falla_inyectada(cambio, esperado):
