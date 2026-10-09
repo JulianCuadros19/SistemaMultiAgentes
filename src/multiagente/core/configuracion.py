@@ -1,5 +1,6 @@
 """Configuración del sistema leída de variables de entorno o del archivo .env."""
 
+from pathlib import Path
 from typing import Literal
 
 from psycopg.conninfo import make_conninfo
@@ -210,3 +211,25 @@ class ConfiguracionRecuperacion(BaseSettings):
     fragmentos: PositiveInt = 5
     candidatos: PositiveInt = 20
     umbral_similitud: float = Field(default=0.37, ge=0, le=1)
+
+
+class ConfiguracionInterfaces(BaseSettings):
+    """Interfaces de operación, tomadas de las variables INTERFAZ_* (paso 12).
+
+    La traza y la carpeta de trabajo quedan en `data/local/`, que no se versiona. La web escucha
+    solo en la máquina local: el acceso remoto y la autenticación se deciden en el paso 14.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="INTERFAZ_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    traza_llamadas: Path = Path("data/local/traza-llamadas.jsonl")
+    """Archivo JSONL con cada llamada a un modelo y su sesión, sin el contenido de los mensajes."""
+    carpeta_trabajo: Path = Path("data/local/sesiones")
+    """Carpeta donde la consola escribe el código de cada versión para revisarlo."""
+    host_web: str = "127.0.0.1"
+    puerto_web: PositiveInt = 8000

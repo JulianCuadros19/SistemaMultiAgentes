@@ -12,7 +12,30 @@ from multiagente.orquestador.estado import (
     ResultadoPrueba,
     VersionCodigo,
 )
-from multiagente.sandbox.ejecutor import EntornoAislado
+from multiagente.sandbox.ejecutor import EntornoAislado, ResultadoPruebas
+
+
+def pruebas_ejecutadas(corrida: ResultadoPruebas) -> tuple[PruebaEjecutada, ...]:
+    """Convierte el resultado de pytest en el entorno aislado al modelo del estado.
+
+    La usan N11 y las pruebas propias de la persona en N17 (RF-38).
+
+    Args:
+        corrida: Resultado de `EntornoAislado.probar`.
+
+    Returns:
+        Cada prueba con su resultado, su duración y su mensaje.
+    """
+    return tuple(
+        PruebaEjecutada(
+            archivo=prueba.archivo,
+            nombre=prueba.nombre,
+            resultado=ResultadoPrueba(prueba.resultado),
+            duracion_ms=prueba.duracion_ms,
+            mensaje=prueba.mensaje,
+        )
+        for prueba in corrida.pruebas
+    )
 
 
 def ejecutar_version(
@@ -41,16 +64,7 @@ def ejecutar_version(
     corrida = entorno.probar(version.archivos, tiempo_limite_pruebas_s)
     return EjecucionPruebas(
         errores_importacion=importacion.errores,
-        pruebas=tuple(
-            PruebaEjecutada(
-                archivo=prueba.archivo,
-                nombre=prueba.nombre,
-                resultado=ResultadoPrueba(prueba.resultado),
-                duracion_ms=prueba.duracion_ms,
-                mensaje=prueba.mensaje,
-            )
-            for prueba in corrida.pruebas
-        ),
+        pruebas=pruebas_ejecutadas(corrida),
         errores_recoleccion=corrida.errores_recoleccion,
         vencido=importacion.ejecucion.vencido or corrida.ejecucion.vencido,
         duracion_ms=importacion.ejecucion.duracion_ms + corrida.ejecucion.duracion_ms,

@@ -6,6 +6,8 @@ from enum import Enum
 from types import ModuleType
 from typing import Any
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from psycopg import Connection
@@ -85,3 +87,28 @@ def abrir_checkpointer(
         checkpointer = PostgresSaver(conexion, serde=serializador())
         checkpointer.setup()
         yield checkpointer
+
+
+def identificadores_de_sesion(checkpointer: BaseCheckpointSaver) -> list[str]:
+    """Identificadores de las sesiones guardadas, de la más reciente a la más antigua.
+
+    En PostgreSQL se consulta el último punto de control de cada hilo, sin cargar el estado; en
+    memoria, para las pruebas, se toman las claves del almacenamiento.
+
+    Args:
+        checkpointer: Checkpointer del grafo compilado.
+
+    Returns:
+        El `thread_id` de cada sesión.
+    """
+    if isinstance(checkpointer, PostgresSaver):
+        with checkpointer.lock, checkpointer.conn.cursor() as cursor:
+            filas = cursor.execute(
+                "SELECT thread_id FROM checkpoints WHERE checkpoint_ns = '' "
+                "GROUP BY thread_id ORDER BY max(checkpoint_id) DESC"
+            ).fetchall()
+        return [fila["thread_id"] for fila in filas]
+    if isinstance(checkpointer, InMemorySaver):
+        return list(reversed(checkpointer.storage))
+    hilos = (punto.config["configurable"]["thread_id"] for punto in checkpointer.list(None))
+    return list(dict.fromkeys(hilos))
