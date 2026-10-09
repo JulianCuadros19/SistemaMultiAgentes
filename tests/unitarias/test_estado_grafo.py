@@ -29,6 +29,7 @@ from multiagente.orquestador.estado import (
     FragmentoContexto,
     Hallazgo,
     PruebaEjecutada,
+    PruebasPropias,
     PuntoControl,
     RegistroCaptura,
     Requerimientos,
@@ -61,6 +62,42 @@ def caso(numero: int) -> CasoPrueba:
 
 def veredicto(numero: int, cumple: bool) -> VeredictoCaso:
     return VeredictoCaso(id_caso=f"CP-RF-01-ESC-0{numero}", cumple=cumple, evidencia="prueba")
+
+
+PRUEBA_PROPIA = "def test_limite():\n    assert True\n"
+
+
+def pruebas_propias() -> PruebasPropias:
+    return PruebasPropias(
+        archivos={"tests/test_propia.py": PRUEBA_PROPIA},
+        ejecucion=EjecucionPruebas(
+            pruebas=(
+                PruebaEjecutada(
+                    archivo="tests/test_propia.py",
+                    nombre="test_limite",
+                    resultado=ResultadoPrueba.PASO,
+                ),
+            )
+        ),
+    )
+
+
+def test_pruebas_propias_conservan_el_contenido_y_exigen_su_ruta():
+    assert pruebas_propias().archivos["tests/test_propia.py"] == PRUEBA_PROPIA
+    with pytest.raises(ValidationError, match="tests/test_"):
+        PruebasPropias(archivos={"src/otro.py": "x = 1\n"}, ejecucion=EjecucionPruebas())
+
+
+def test_la_decision_final_registra_las_pruebas_propias():
+    respuesta = RespuestaHumana.model_validate(
+        {
+            "decision": "aprobado",
+            "revisor": "Laura",
+            "pruebas_propias": pruebas_propias().model_dump(mode="json"),
+        }
+    )
+    aprobacion = AprobacionHumana(**respuesta.model_dump(), punto=PuntoControl.FINAL, fecha=AHORA)
+    assert aprobacion.pruebas_propias == pruebas_propias()
 
 
 def test_rechazo_exige_observaciones():
@@ -212,6 +249,13 @@ def estado_completo() -> list:
                     decision=Decision.RECHAZADO,
                     revisor="Analista",
                     observaciones="Falta la regla de redondeo",
+                    fecha=AHORA,
+                ),
+                AprobacionHumana(
+                    punto=PuntoControl.FINAL,
+                    decision=Decision.APROBADO,
+                    revisor="Revisor",
+                    pruebas_propias=pruebas_propias(),
                     fecha=AHORA,
                 ),
             ),

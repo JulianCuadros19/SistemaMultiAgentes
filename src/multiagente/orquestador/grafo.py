@@ -102,6 +102,9 @@ def _pedir_decision(
         if bloqueo is not None and validada.decision is Decision.APROBADO:
             aviso = bloqueo
             continue
+        if validada.pruebas_propias is not None and punto is not PuntoControl.FINAL:
+            aviso = "Las pruebas propias solo se registran en la aprobación final del módulo."
+            continue
         return AprobacionHumana(**validada.model_dump(), punto=punto, fecha=_ahora())
 
 
@@ -527,13 +530,18 @@ class NodosGrafo:
         """Somete el módulo validado por el tester a la aprobación humana final.
 
         La persona revisa el código, el veredicto por caso, los hallazgos, la conformidad por
-        módulo y el reporte de validación (RF-38).
+        módulo y el reporte de validación, y puede registrar con su decisión las pruebas propias
+        que ejecutó (RF-38). Ve también la iteración del ciclo de corrección: un rechazo aquí
+        consume una más.
         """
         validacion = estado["validacion"]
         version = estado["codigo"].vigente
+        control = estado["control"]
         aprobacion = _pedir_decision(
             PuntoControl.FINAL,
             {
+                "iteracion": control.iteracion,
+                "limite_iteraciones": control.limite_iteraciones,
                 "version": version.numero,
                 "archivos": sorted(version.archivos),
                 "veredicto": validacion.veredicto.value if validacion.veredicto else None,

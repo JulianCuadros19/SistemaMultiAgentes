@@ -11,8 +11,9 @@ from pydantic import BaseModel, ConfigDict
 from multiagente.orquestador.estado import Fase, Validacion, VersionCodigo
 from multiagente.orquestador.grafo import Nodo
 
-RespuestaPausa = str | dict[str, str]
-"""Respuesta a una pausa: texto del cliente en el diálogo o decisión en un punto de control."""
+RespuestaPausa = str | dict[str, Any]
+"""Respuesta a una pausa: texto del cliente en el diálogo o decisión en un punto de control, que
+en N17 puede traer las pruebas propias de la persona."""
 
 
 class Pausa(BaseModel):

@@ -391,3 +391,42 @@ def test_validaciones_de_cada_version_en_orden():
         historial[-1][1]
         == app.get_state(configuracion_hilo(recorrido.id_sesion)).values["validacion"]
     )
+
+
+PROPIAS = {
+    "archivos": {"tests/test_propia.py": "def test_limite():\n    assert True\n"},
+    "ejecucion": {
+        "pruebas": [
+            {"archivo": "tests/test_propia.py", "nombre": "test_limite", "resultado": "paso"}
+        ]
+    },
+}
+
+
+def avanzar_hasta(app, guion: Guion, punto: str):
+    id_sesion, avance = iniciar_sesion(app, "Cliente", guion.proyecto, guion.necesidad)
+    while avance.pausa.punto != punto:
+        avance = avanzar(app, id_sesion, guion.responder(avance.pausa.punto))
+    return id_sesion, avance
+
+
+def test_n17_muestra_la_iteracion_y_registra_las_pruebas_propias():
+    app = compilar(ServiciosSimulados(fallos_veredicto=0))
+    id_sesion, avance = avanzar_hasta(app, guion_directo(), "final")
+    assert avance.pausa.datos["iteracion"] == 1
+    assert avance.pausa.datos["limite_iteraciones"] == 3
+
+    final = avanzar(app, id_sesion, aprobar() | {"pruebas_propias": PROPIAS})
+    assert final.fase is Fase.VALIDADO
+    sesion = app.get_state(configuracion_hilo(id_sesion)).values["sesion"]
+    registradas = sesion.ultima_aprobacion(PuntoControl.FINAL).pruebas_propias
+    assert registradas.archivos == PROPIAS["archivos"]
+    assert registradas.ejecucion.pruebas[0].nombre == "test_limite"
+
+
+def test_las_pruebas_propias_solo_se_admiten_en_la_aprobacion_final():
+    app = compilar(ServiciosSimulados(fallos_veredicto=0))
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "requerimientos")
+    avance = avanzar(app, id_sesion, aprobar() | {"pruebas_propias": PROPIAS})
+    assert avance.pausa.punto == "requerimientos"
+    assert "solo se registran en la aprobación final" in avance.pausa.datos["aviso"]

@@ -5,12 +5,20 @@ Cada partición es inmutable. Un nodo lee el estado y devuelve particiones nueva
 este estado.
 """
 
+import re
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Self, TypedDict
 
-from pydantic import ConfigDict, Field, NonNegativeInt, PositiveInt, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    NonNegativeInt,
+    PositiveInt,
+    field_validator,
+    model_validator,
+)
 
 from multiagente.core.esquemas.comunes import (
     IdEscenario,
@@ -55,11 +63,17 @@ class Decision(StrEnum):
 
 
 class RespuestaHumana(ModeloEstricto):
-    """Respuesta que entrega la persona al reanudar un punto de control."""
+    """Respuesta que entrega la persona al reanudar un punto de control.
+
+    Attributes:
+        pruebas_propias: Pruebas que la persona ejecutó antes de decidir en N17 (RF-38); quedan
+            con la decisión como evidencia (RF-33).
+    """
 
     decision: Decision
     revisor: TextoObligatorio
     observaciones: TextoObligatorio | None = None
+    pruebas_propias: "PruebasPropias | None" = None
 
     @model_validator(mode="after")
     def _rechazo_con_observaciones(self) -> Self:
@@ -354,6 +368,38 @@ class EjecucionPruebas(ModeloEstricto):
     vencido: bool = False
     duracion_ms: NonNegativeInt = 0
     salida: str = ""
+
+
+RUTA_PRUEBA_PROPIA = re.compile(r"tests/test_\w+\.py")
+"""Ruta admitida para un archivo de pruebas propias: el pytest del entorno aislado lo recolecta."""
+
+
+class PruebasPropias(ModeloEstricto):
+    """Pruebas que la persona escribe y ejecuta en N17 contra la versión vigente (RF-38).
+
+    Attributes:
+        archivos: Contenido de cada archivo de prueba por su ruta, `tests/test_*.py`.
+        ejecucion: Resultado de esas pruebas en el entorno aislado.
+    """
+
+    # Como en `VersionCodigo`, el contenido se conserva tal cual.
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+
+    archivos: dict[str, str] = Field(min_length=1)
+    ejecucion: EjecucionPruebas
+
+    @field_validator("archivos")
+    @classmethod
+    def _rutas_de_prueba(cls, archivos: dict[str, str]) -> dict[str, str]:
+        if ajenas := sorted(r for r in archivos if not RUTA_PRUEBA_PROPIA.fullmatch(r)):
+            raise ValueError(f"Las pruebas propias van en tests/test_*.py: {ajenas}")
+        return archivos
+
+
+# `RespuestaHumana` se declara antes que la ejecución de pruebas que guarda en `pruebas_propias`.
+RespuestaHumana.model_rebuild()
+AprobacionHumana.model_rebuild()
+Sesion.model_rebuild()
 
 
 class Hallazgo(ModeloEstricto):
