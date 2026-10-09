@@ -91,8 +91,8 @@ def test_una_regla_por_fragmento_con_metadatos():
         for f in segmentar(d)
         if "regla" in f.metadatos
     ]
-    assert len(reglas) == 31
-    assert len({r["regla"] for r in reglas}) == 31
+    assert len(reglas) == 33
+    assert len({r["regla"] for r in reglas}) == 33
     assert all({"severidad", "caracteristica", "norma"} <= set(r) for r in reglas)
 
 

@@ -11,7 +11,7 @@ al requerimiento RF-29 de aislamiento por agente.
 | `elicitacion` | Elicitador | N2 | 10 | Por sección |
 | `dominio_negocio` | Elicitador | N2 | 7 | Por sección |
 | `arquitecturas_referencia` | Arquitecto | N7 | 11 | Por unidad conceptual |
-| `criterios_calidad` | Tester | N13 | 8 (31 reglas atómicas) | Una regla por fragmento |
+| `criterios_calidad` | Tester | N13 | 8 (33 reglas atómicas) | Una regla por fragmento |
 
 El agente desarrollador no aparece: opera sin recuperación, tomando su entrada de los
 requerimientos aprobados y de la especificación de diseño.

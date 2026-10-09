@@ -4,8 +4,8 @@ titulo: Mantenibilidad
 fuente: ISO/IEC 25010:2023, característica de mantenibilidad
 tipo_fuente: estandar_internacional
 tags: [25010, mantenibilidad, reglas]
-version: 1.1
-fecha: 2026-10-08
+version: 1.2
+fecha: 2026-10-09
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -124,3 +124,31 @@ coleccion: criterios_calidad
 **Verificación.** Verificar que las pruebas de la capa de dominio se ejecutan con éxito en el entorno aislado, que no dispone de red.
 
 **Evidencia esperada.** Resultado de la ejecución de las pruebas de dominio en el contenedor sin red.
+
+
+### REGLA CAL-MT-009 · Conformidad con la configuración de estilo
+
+- **Característica:** Mantenibilidad › Analizabilidad
+- **Norma de referencia:** ISO/IEC 25010:2023
+- **Severidad:** Baja
+- **Aplica a:** código generado
+
+**Enunciado.** El código debe cumplir la configuración de estilo declarada del sistema en lo que no cubren las demás reglas: longitud de línea, orden de las importaciones, formato y sintaxis vigente para la versión de Python declarada.
+
+**Verificación.** Análisis estático con la configuración de estilo del código generado; toda infracción que no corresponda a otra regla de este catálogo se reporta con esta.
+
+**Evidencia esperada.** Código de la infracción del linter, archivo y línea.
+
+
+### REGLA CAL-MT-010 · Sin importar nombres privados de otro módulo
+
+- **Característica:** Mantenibilidad › Modularidad
+- **Norma de referencia:** ISO/IEC 25010:2023
+- **Severidad:** Media
+- **Aplica a:** código generado
+
+**Enunciado.** Ningún módulo debe importar nombres privados, con prefijo de guion bajo, de otro módulo. Lo que un módulo ofrece a los demás se declara público; lo privado queda dentro de su módulo.
+
+**Verificación.** Extraer las importaciones de cada módulo mediante análisis del árbol sintáctico y buscar nombres con prefijo de guion bajo importados de otro módulo del proyecto.
+
+**Evidencia esperada.** Módulo origen, módulo destino y nombre privado importado, con su línea.

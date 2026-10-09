@@ -6,6 +6,9 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 # ADR-0007 · Bases de conocimiento: embeddings locales, segmentación y recuperación híbrida
 
+> El ADR-0012 (paso 10) agrega a criterios_calidad las reglas CAL-MT-009 y CAL-MT-010: el corpus
+> pasa a 186 fragmentos, 51 de criterios y 33 reglas.
+
 ## Contexto y planteamiento del problema
 
 El paso 6 exige que cada agente recupere únicamente de sus colecciones autorizadas. Cubre:
