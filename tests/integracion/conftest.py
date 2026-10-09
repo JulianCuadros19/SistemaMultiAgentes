@@ -1,4 +1,4 @@
-"""Conexiones aisladas para las pruebas que escriben en la base de conocimiento."""
+"""Conexiones aisladas a la base de conocimiento y acceso al entorno aislado de Docker."""
 
 import uuid
 
@@ -10,6 +10,7 @@ from multiagente.persistencia.migraciones import aplicar_migraciones
 from multiagente.rag.documentos import cargar_corpus
 from multiagente.rag.embeddings import VectorizadorTEI
 from multiagente.rag.ingesta import ingestar
+from multiagente.sandbox.ejecutor import EntornoAislado
 
 
 @pytest.fixture
@@ -56,3 +57,12 @@ def base_real(vectorizador):
     finally:
         with psycopg.connect(cadena, autocommit=True) as administracion:
             administracion.execute(f'DROP SCHEMA "{esquema}" CASCADE')
+
+
+@pytest.fixture(scope="session")
+def entorno_aislado():
+    """Entorno aislado con la imagen configurada; falla con un mensaje claro si no existe."""
+    entorno = EntornoAislado()
+    resultado = entorno.ejecutar({}, ["true"])
+    assert resultado.exito, resultado.errores
+    return entorno

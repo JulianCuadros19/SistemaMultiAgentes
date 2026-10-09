@@ -137,6 +137,27 @@ class ConfiguracionOrquestador(BaseSettings):
     max_correcciones_diseno: PositiveInt = 2
 
 
+class ConfiguracionSandbox(BaseSettings):
+    """Entorno aislado del código generado, tomado de las variables SANDBOX_* (RNF-03).
+
+    La imagen se construye con `docker compose --profile sandbox build sandbox`. Los límites
+    acotan lo que puede consumir una ejecución; el tiempo límite es por ejecución.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="SANDBOX_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    imagen: str = "multiagente-sandbox:1"
+    tiempo_limite_s: PositiveInt = 60
+    memoria: str = "512m"
+    cpus: str = "1"
+    procesos: PositiveInt = 128
+
+
 class ConfiguracionEmbeddings(BaseSettings):
     """Servicio local de embeddings (EMBEDDINGS_URL, EMBEDDINGS_MODELO, EMBEDDINGS_DIMENSION)."""
 

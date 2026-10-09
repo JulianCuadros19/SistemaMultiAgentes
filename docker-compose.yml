@@ -1,6 +1,6 @@
 # Infraestructura local del sistema. Las credenciales se leen de .env (plantilla en .env.example).
-# Base de datos y embeddings; los demás servicios de la vista de despliegue se agregan en
-# sus pasos. Ver docs/decisiones/0002-postgresql-en-contenedor.md.
+# Base de datos, embeddings y la imagen del entorno aislado; los demás servicios de la vista de
+# despliegue se agregan en sus pasos. Ver docs/decisiones/0002-postgresql-en-contenedor.md.
 
 name: multiagente
 
@@ -56,6 +56,17 @@ services:
       retries: 60
       start_period: 30s
     restart: unless-stopped
+
+  # Imagen del entorno aislado del código generado (RF-20, RNF-03). No es un servicio que se
+  # levante: la aplicación crea con ella un contenedor efímero por ejecución, sin red y de solo
+  # lectura (ADR-0011). Se construye con `docker compose --profile sandbox build sandbox`.
+  sandbox:
+    build: ./docker/sandbox
+    image: multiagente-sandbox:1
+    profiles: ["sandbox"]
+    network_mode: none
+    read_only: true
+    restart: "no"
 
 volumes:
   datos_postgres:

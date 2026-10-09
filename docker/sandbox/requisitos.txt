@@ -1,0 +1,13 @@
+# Librerías del catálogo tecnológico autorizado (arq-004), instaladas en la imagen del entorno
+# aislado para que el código generado las importe sin red. Versiones fijas, publicadas al menos
+# dos semanas antes del 2026-10-09 y compatibles con Python 3.11 (ADR-0011).
+pydantic==2.13.5
+typer==0.27.2
+fastapi==0.141.1
+uvicorn==0.53.0
+sqlalchemy==2.0.54
+psycopg[binary]==3.3.6
+pandas==3.0.6
+# numpy 2.5 exige Python 3.12; 2.4.6 es la última versión para 3.11.
+numpy==2.4.6
+pytest==9.1.1

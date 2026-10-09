@@ -1,0 +1,289 @@
+"""Ejecución de código generado en un contenedor efímero sin red (RF-20, RNF-03).
+
+Cada ejecución crea un contenedor con la imagen del entorno aislado y lo destruye al terminar:
+- sin red, con el sistema de archivos de solo lectura y `/tmp` en memoria;
+- sin root, sin capacidades y con límites de procesos, memoria y CPU;
+- el código entra como un archivo tar por la entrada estándar, de modo que no se monta ninguna
+  carpeta del anfitrión;
+- si vence el tiempo límite, el contenedor se mata.
+
+Ningún código generado se ejecuta en el anfitrión: este módulo solo invoca la CLI de Docker.
+"""
+
+import io
+import json
+import subprocess
+import tarfile
+import time
+import uuid
+from collections.abc import Mapping, Sequence
+
+from pydantic import BaseModel, ConfigDict
+
+from multiagente.core.configuracion import ConfiguracionSandbox
+
+RAIZ_CODIGO = "/tmp/codigo"
+"""Carpeta del contenedor, en memoria, donde se extrae el código."""
+
+USUARIO = "10001:10001"
+"""Usuario sin privilegios de la imagen (`docker/sandbox/Dockerfile`)."""
+
+LIMITE_SALIDA = 100_000
+"""Caracteres que se conservan de cada flujo de salida; el resto se trunca."""
+
+CODIGO_ERROR_DOCKER = 125
+"""Código de salida de `docker run` cuando el contenedor no llega a ejecutarse."""
+
+MARCA_RESULTADO = "@@resultado-importacion@@"
+"""Prefijo de la línea con el resultado de la importación, distinta de lo que imprima el código."""
+
+SCRIPT_IMPORTACION = f"""
+import importlib, json, sys, traceback
+sys.path[:0] = ["{RAIZ_CODIGO}/src", "{RAIZ_CODIGO}"]
+errores = {{}}
+for nombre in sys.argv[1:]:
+    try:
+        importlib.import_module(nombre)
+    except BaseException:
+        errores[nombre] = traceback.format_exc(limit=5)
+print("{MARCA_RESULTADO}" + json.dumps(errores))
+"""
+"""Importa cada módulo indicado y reporta los errores; corre dentro del contenedor."""
+
+
+class ErrorEntornoAislado(RuntimeError):
+    """El contenedor no pudo ejecutarse: Docker no responde o falta la imagen."""
+
+
+class ResultadoEjecucion(BaseModel):
+    """Resultado de una ejecución en el entorno aislado.
+
+    Attributes:
+        codigo_salida: Código de salida del comando; None si se mató por tiempo.
+        salida: Salida estándar, truncada a `LIMITE_SALIDA` caracteres.
+        errores: Salida de errores, truncada igual.
+        vencido: Si se alcanzó el tiempo límite y el contenedor se mató.
+        duracion_ms: Duración de la ejecución, creación del contenedor incluida.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    codigo_salida: int | None
+    salida: str
+    errores: str
+    vencido: bool
+    duracion_ms: int
+
+    @property
+    def exito(self) -> bool:
+        """Indica si el comando terminó a tiempo y con código 0."""
+        return not self.vencido and self.codigo_salida == 0
+
+
+class ResultadoImportacion(BaseModel):
+    """Resultado de importar los módulos de una versión en el entorno aislado.
+
+    Attributes:
+        errores: Traza del error de cada módulo que no se importó; vacía si todos se importan.
+        ejecucion: Ejecución que produjo el resultado.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    errores: dict[str, str]
+    ejecucion: ResultadoEjecucion
+
+    @property
+    def exito(self) -> bool:
+        """Indica si todos los módulos se importaron sin error."""
+        return not self.errores and self.ejecucion.exito
+
+
+def es_ruta_segura(ruta: str) -> bool:
+    """Indica si una ruta de archivo generado es relativa y no sale de su carpeta.
+
+    Args:
+        ruta: Ruta del archivo, con separadores `/`.
+
+    Returns:
+        True si es relativa, sin `..`, sin barras invertidas y sin partes vacías.
+    """
+    if not ruta or "\\" in ruta:
+        return False
+    return all(parte not in ("", ".", "..") for parte in ruta.split("/"))
+
+
+def empaquetar(archivos: Mapping[str, str]) -> bytes:
+    """Empaqueta los archivos en un tar en memoria, en orden y con fechas fijas.
+
+    Args:
+        archivos: Contenido de cada archivo por su ruta relativa.
+
+    Returns:
+        El archivo tar.
+
+    Raises:
+        ValueError: Si alguna ruta no es segura.
+    """
+    if inseguras := sorted(ruta for ruta in archivos if not es_ruta_segura(ruta)):
+        raise ValueError(f"Rutas no admitidas en el entorno aislado: {inseguras}")
+    memoria = io.BytesIO()
+    with tarfile.open(fileobj=memoria, mode="w") as tar:
+        for ruta in sorted(archivos):
+            datos = archivos[ruta].encode("utf-8")
+            info = tarfile.TarInfo(ruta)
+            info.size = len(datos)
+            info.mode = 0o644
+            tar.addfile(info, io.BytesIO(datos))
+    return memoria.getvalue()
+
+
+def _texto(datos: bytes | str | None) -> str:
+    if datos is None:
+        return ""
+    texto = datos.decode("utf-8", errors="replace") if isinstance(datos, bytes) else datos
+    if len(texto) > LIMITE_SALIDA:
+        return texto[:LIMITE_SALIDA] + f"\n[… salida truncada a {LIMITE_SALIDA} caracteres]"
+    return texto
+
+
+class EntornoAislado:
+    """Ejecuta comandos sobre código generado en un contenedor efímero sin red."""
+
+    def __init__(self, configuracion: ConfiguracionSandbox | None = None) -> None:
+        """Prepara el entorno con la imagen y los límites configurados.
+
+        Args:
+            configuracion: Imagen y límites; si se omite, se lee de las variables SANDBOX_*.
+        """
+        self.configuracion = configuracion or ConfiguracionSandbox()
+
+    def argumentos(self, nombre: str, comando: Sequence[str]) -> list[str]:
+        """Arma la invocación de `docker run` para un contenedor efímero.
+
+        El contenedor extrae el tar de la entrada estándar en `RAIZ_CODIGO` y ejecuta el
+        comando desde allí. No monta volúmenes ni publica puertos.
+
+        Args:
+            nombre: Nombre del contenedor, para poder matarlo si vence el tiempo.
+            comando: Comando a ejecutar dentro del contenedor, como lista de argumentos.
+
+        Returns:
+            Argumentos de la CLI de Docker, sin intérprete de comandos del anfitrión.
+        """
+        configuracion = self.configuracion
+        preparar = (
+            f"mkdir -p {RAIZ_CODIGO} && tar -x -f - -C {RAIZ_CODIGO} "
+            f'&& cd {RAIZ_CODIGO} && exec "$@"'
+        )
+        return [
+            "docker",
+            "run",
+            "--rm",
+            "--interactive",
+            "--pull=never",
+            f"--name={nombre}",
+            "--network=none",
+            "--read-only",
+            "--tmpfs=/tmp:rw,nosuid,nodev,size=64m",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            f"--user={USUARIO}",
+            f"--pids-limit={configuracion.procesos}",
+            f"--memory={configuracion.memoria}",
+            f"--memory-swap={configuracion.memoria}",
+            f"--cpus={configuracion.cpus}",
+            "--env=PYTHONDONTWRITEBYTECODE=1",
+            configuracion.imagen,
+            "sh",
+            "-c",
+            preparar,
+            "entorno-aislado",
+            *comando,
+        ]
+
+    def ejecutar(
+        self,
+        archivos: Mapping[str, str],
+        comando: Sequence[str],
+        tiempo_limite_s: float | None = None,
+    ) -> ResultadoEjecucion:
+        """Ejecuta un comando sobre los archivos en un contenedor nuevo y lo destruye.
+
+        Args:
+            archivos: Contenido de cada archivo por su ruta relativa a `RAIZ_CODIGO`.
+            comando: Comando a ejecutar, como lista de argumentos.
+            tiempo_limite_s: Tiempo límite; si se omite, el configurado.
+
+        Returns:
+            Código de salida, salidas y si venció el tiempo.
+
+        Raises:
+            ValueError: Si alguna ruta no es segura.
+            ErrorEntornoAislado: Si Docker no responde o la imagen no existe.
+        """
+        limite = tiempo_limite_s or self.configuracion.tiempo_limite_s
+        nombre = f"multiagente-sandbox-{uuid.uuid4().hex[:12]}"
+        entrada = empaquetar(archivos)
+        inicio = time.perf_counter()
+        try:
+            proceso = subprocess.run(
+                self.argumentos(nombre, comando),
+                input=entrada,
+                capture_output=True,
+                timeout=limite,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as vencimiento:
+            subprocess.run(["docker", "kill", nombre], capture_output=True, check=False)
+            return ResultadoEjecucion(
+                codigo_salida=None,
+                salida=_texto(vencimiento.stdout),
+                errores=_texto(vencimiento.stderr),
+                vencido=True,
+                duracion_ms=round((time.perf_counter() - inicio) * 1000),
+            )
+        except FileNotFoundError as error:
+            raise ErrorEntornoAislado("La CLI de Docker no está disponible") from error
+        duracion_ms = round((time.perf_counter() - inicio) * 1000)
+        errores = _texto(proceso.stderr)
+        if proceso.returncode == CODIGO_ERROR_DOCKER:
+            raise ErrorEntornoAislado(
+                "El contenedor no se pudo crear. ¿Docker está activo y la imagen construida "
+                f"(docker compose --profile sandbox build sandbox)? {errores.strip()}"
+            )
+        return ResultadoEjecucion(
+            codigo_salida=proceso.returncode,
+            salida=_texto(proceso.stdout),
+            errores=errores,
+            vencido=False,
+            duracion_ms=duracion_ms,
+        )
+
+    def importar(self, archivos: Mapping[str, str], modulos: Sequence[str]) -> ResultadoImportacion:
+        """Importa cada módulo en el entorno aislado y reporta los que fallan.
+
+        Los módulos se buscan en `src/` y en la raíz del código, como los declara la
+        especificación de diseño (`dominio.predio` en `src/dominio/predio.py`).
+
+        Args:
+            archivos: Archivos de la versión del módulo.
+            modulos: Nombres importables de los módulos, en notación de puntos.
+
+        Returns:
+            La traza de cada módulo que no se importó y la ejecución.
+
+        Raises:
+            ErrorEntornoAislado: Si Docker no responde o la imagen no existe.
+        """
+        ejecucion = self.ejecutar(archivos, ["python", "-I", "-c", SCRIPT_IMPORTACION, *modulos])
+        lineas = [
+            linea.removeprefix(MARCA_RESULTADO)
+            for linea in ejecucion.salida.splitlines()
+            if linea.startswith(MARCA_RESULTADO)
+        ]
+        if not lineas:
+            motivo = "tiempo vencido" if ejecucion.vencido else ejecucion.errores.strip()[-2000:]
+            errores = {modulo: f"Sin resultado de la importación: {motivo}" for modulo in modulos}
+            return ResultadoImportacion(errores=errores, ejecucion=ejecucion)
+        return ResultadoImportacion(errores=json.loads(lineas[-1]), ejecucion=ejecucion)

@@ -21,6 +21,7 @@ SUBPAQUETES = [
     "multiagente.orquestador",
     "multiagente.persistencia",
     "multiagente.rag",
+    "multiagente.sandbox",
 ]
 
 
