@@ -116,8 +116,9 @@ class ConfiguracionRazonamiento(BaseSettings):
 class ConfiguracionOrquestador(BaseSettings):
     """Límites de los ciclos del grafo.
 
-    MAX_ITERACIONES_CORRECCION acota el ciclo N10–N15, MAX_TURNOS_ELICITACION el ciclo N3–N4 y
-    MAX_CORRECCIONES_CALIDAD los retornos automáticos de N6 a N5 antes de escalar al analista.
+    MAX_ITERACIONES_CORRECCION acota el ciclo N10–N15, MAX_TURNOS_ELICITACION el ciclo N3–N4,
+    MAX_CORRECCIONES_CALIDAD los retornos automáticos de N6 a N5 y MAX_CORRECCIONES_DISENO los
+    de N9 a N8, antes de escalar a la persona.
     """
 
     model_config = SettingsConfigDict(
@@ -129,6 +130,7 @@ class ConfiguracionOrquestador(BaseSettings):
     max_iteraciones_correccion: PositiveInt = 3
     max_turnos_elicitacion: PositiveInt = 15
     max_correcciones_calidad: PositiveInt = 2
+    max_correcciones_diseno: PositiveInt = 2
 
 
 class ConfiguracionEmbeddings(BaseSettings):

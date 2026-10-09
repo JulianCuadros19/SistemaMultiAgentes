@@ -248,7 +248,7 @@ class ServiciosSimulados:
         """Produce una especificación válida que cubre todos los requerimientos (N8)."""
         self._contar("disenar")
         cubiertos = [r.id_requerimiento for r in requerimientos.requerimientos]
-        version = len(previa.observaciones_revisor) + 1
+        version = previa.disenos + 1
         especificacion = EspecificacionDiseno(
             id_especificacion="ED-01",
             version=f"0.{version}",
@@ -336,6 +336,55 @@ class ServiciosSimulados:
         )
         retroalimentacion = () if cumple else tuple(f"{caso.id}: no cumple" for caso in plan)
         return Dictamen(veredictos=veredictos, retroalimentacion=retroalimentacion)
+
+
+@dataclass
+class ElicitadorFijo:
+    """Elicitador que entrega requerimientos ya redactados, sin conversar.
+
+    Sirve para probar a los agentes posteriores con requerimientos conocidos y sin el costo de
+    una elicitación: el diálogo se da por completo y confirmado en N3, N5 devuelve la síntesis
+    dada y N6 no encuentra defectos, de modo que la sesión llega a la aprobación humana.
+
+    Attributes:
+        sintesis: Historias, requerimientos y referencias que se entregan en N5.
+    """
+
+    sintesis: Sintesis
+
+    def recuperar_contexto(self, conversacion: Conversacion) -> Contexto:
+        """No recupera nada: los requerimientos ya están redactados (N2)."""
+        return Contexto()
+
+    def dialogar(self, conversacion: Conversacion, contexto: Contexto) -> Dialogo:
+        """Da por capturado y confirmado el registro, a partir de la síntesis dada (N3)."""
+        historia = self.sintesis.historias[0].enunciado
+        primero = self.sintesis.requerimientos[0]
+        registro = RegistroCaptura(
+            rol=historia.como,
+            funcionalidad=historia.quiero,
+            beneficio=historia.para,
+            reglas_negocio=tuple(r.descripcion.regla_negocio for r in self.sintesis.requerimientos),
+            datos_entrada=tuple(primero.descripcion.datos_entrada),
+            datos_salida=tuple(primero.descripcion.datos_salida),
+            excepciones=tuple(e.entonces for e in primero.criterios_aceptacion[-1:]),
+            resumen_confirmado=True,
+        )
+        return Dialogo(registro=registro, siguiente_pregunta=None)
+
+    def sintetizar(
+        self,
+        conversacion: Conversacion,
+        contexto: Contexto,
+        previos: Requerimientos,
+        proyecto: str,
+    ) -> Sintesis:
+        """Devuelve la síntesis dada (N5)."""
+        return self.sintesis
+
+    def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
+        """No reporta defectos: los requerimientos dados se suponen verificados (N6)."""
+        return VerificacionCalidad()
 
 
 def aprobar(revisor: str = "Revisor simulado") -> dict[str, str]:

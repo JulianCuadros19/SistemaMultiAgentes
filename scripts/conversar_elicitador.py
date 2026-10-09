@@ -159,6 +159,8 @@ def conversar(
     respuestas = 0
     while avance.pausa is not None:
         pausa = avance.pausa
+        if pausa.datos.get("aviso"):
+            print(f"(Aviso: {pausa.datos['aviso']})")
         if pausa.punto == "dialogo":
             for observacion in pausa.datos["observaciones_revisor"]:
                 print(f"(Observación del revisor: {observacion})")

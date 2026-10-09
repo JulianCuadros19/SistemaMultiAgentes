@@ -8,15 +8,26 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.orquestador.ejecucion import avanzar, configuracion_hilo, iniciar_sesion
-from multiagente.orquestador.estado import Decision, Emisor, Fase, PuntoControl
+from multiagente.orquestador.estado import (
+    Contexto,
+    Conversacion,
+    Decision,
+    Emisor,
+    Fase,
+    PuntoControl,
+    Requerimientos,
+)
 from multiagente.orquestador.grafo import Nodo, construir_grafo
+from multiagente.orquestador.servicios import Servicios
 from multiagente.orquestador.simulacion import (
+    ElicitadorFijo,
     ErrorSimulado,
     Guion,
     ServiciosSimulados,
     aprobar,
     continuar,
     guion_completo,
+    rechazar,
     recorrer,
 )
 from multiagente.persistencia.puntos_control import serializador
@@ -34,15 +45,21 @@ RESPUESTAS = [
 
 
 def compilar(
-    simulacion: ServiciosSimulados, iteraciones: int = 3, turnos: int = 15, correcciones: int = 2
+    simulacion: ServiciosSimulados | Servicios,
+    iteraciones: int = 3,
+    turnos: int = 15,
+    correcciones: int = 2,
+    correcciones_diseno: int = 2,
 ):
     configuracion = ConfiguracionOrquestador(
         _env_file=None,
         max_iteraciones_correccion=iteraciones,
         max_turnos_elicitacion=turnos,
         max_correcciones_calidad=correcciones,
+        max_correcciones_diseno=correcciones_diseno,
     )
-    grafo = construir_grafo(simulacion.como_servicios(), configuracion)
+    servicios = simulacion if isinstance(simulacion, Servicios) else simulacion.como_servicios()
+    grafo = construir_grafo(servicios, configuracion)
     return grafo.compile(checkpointer=InMemorySaver(serde=serializador()))
 
 
@@ -158,13 +175,32 @@ def test_rechazo_de_requerimientos_lleva_observaciones_al_dialogo():
     assert estado["conversacion"].registro.pendientes == ["confirmacion"]
 
 
-def test_rechazo_sin_observaciones_no_se_acepta():
+def test_respuesta_humana_invalida_vuelve_a_pausar_sin_bloquear_la_sesion():
     app = compilar(ServiciosSimulados())
     id_sesion, _ = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
     for respuesta in RESPUESTAS:
         avanzar(app, id_sesion, respuesta)
-    with pytest.raises(ValueError, match="observaciones"):
-        avanzar(app, id_sesion, {"decision": "rechazado", "revisor": "A"})
+    # Un rechazo sin observaciones no se acepta: la sesión sigue en N6 con el motivo.
+    avance = avanzar(app, id_sesion, {"decision": "rechazado", "revisor": "A"})
+    assert avance.pausa.punto == "requerimientos"
+    assert "observaciones" in avance.pausa.datos["aviso"]
+    # Y una respuesta válida posterior sí se lee: el flujo continúa.
+    avance = avanzar(app, id_sesion, aprobar())
+    assert Nodo.N7 in avance.nodos
+    aprobaciones = app.get_state(configuracion_hilo(id_sesion)).values["sesion"].aprobaciones
+    assert [a.decision for a in aprobaciones] == [Decision.APROBADO]
+
+
+def test_respuesta_vacia_del_cliente_vuelve_a_preguntar():
+    app = compilar(ServiciosSimulados())
+    id_sesion, _ = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
+    avance = avanzar(app, id_sesion, "   ")
+    assert avance.pausa.punto == "dialogo"
+    assert avance.pausa.datos["aviso"] == "La respuesta no puede estar vacía."
+    avance = avanzar(app, id_sesion, "Analista")
+    conversacion = app.get_state(configuracion_hilo(id_sesion)).values["conversacion"]
+    assert conversacion.registro.rol == "Analista"
+    assert avance.pausa.datos["aviso"] is None
 
 
 def test_escalamiento_al_agotar_las_iteraciones():
@@ -228,6 +264,72 @@ def test_defectos_que_requieren_al_cliente_escalan_sin_corregir():
     assert simulacion.llamadas["sintetizar"] == 1
     assert avance.pausa.punto == "requerimientos"
     assert avance.pausa.datos["defectos"] == ["Defecto simulado: la regla de negocio es ambigua"]
+
+
+def hasta_la_especificacion(app, id_sesion: str):
+    """Responde el diálogo y aprueba los requerimientos hasta la primera pausa de N9."""
+    for respuesta in RESPUESTAS:
+        avanzar(app, id_sesion, respuesta)
+    return avanzar(app, id_sesion, aprobar())
+
+
+def test_errores_de_diseno_persistentes_escalan_sin_poder_aprobarse():
+    simulacion = ServiciosSimulados(errores_validacion=99)
+    app = compilar(simulacion, correcciones_diseno=2)
+    id_sesion, _ = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
+    avance = hasta_la_especificacion(app, id_sesion)
+
+    # Un diseño y dos correcciones automáticas; después, la persona ve los errores.
+    assert Counter(avance.nodos)[Nodo.N8] == 3
+    assert avance.pausa.punto == "especificacion"
+    error = "Error simulado: un requerimiento aprobado no tiene módulo asignado"
+    assert avance.pausa.datos["errores"] == [error]
+
+    # Aprobar con errores queda bloqueado (Anexo B): la sesión sigue en la pausa con el aviso.
+    avance = avanzar(app, id_sesion, aprobar())
+    assert avance.pausa.punto == "especificacion"
+    assert "Anexo B" in avance.pausa.datos["aviso"]
+
+    # El rechazo vuelve a N8 con las observaciones y el contador reiniciado.
+    avance = avanzar(app, id_sesion, rechazar("Asignar el RF-01 a un módulo"))
+    assert Counter(avance.nodos)[Nodo.N8] == 3
+    arquitectura = app.get_state(configuracion_hilo(id_sesion)).values["arquitectura"]
+    assert arquitectura.observaciones_revisor == ("Asignar el RF-01 a un módulo",)
+    assert arquitectura.disenos == 6
+    assert arquitectura.especificacion.version == "0.6"
+
+
+def test_especificacion_valida_se_aprueba_y_reinicia_el_contador():
+    simulacion = ServiciosSimulados(errores_validacion=1, fallos_veredicto=0)
+    app = compilar(simulacion)
+    id_sesion, _ = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
+    avance = hasta_la_especificacion(app, id_sesion)
+    assert avance.pausa.datos["errores"] == []
+    avance = avanzar(app, id_sesion, aprobar())
+    assert Nodo.N10 in avance.nodos
+    arquitectura = app.get_state(configuracion_hilo(id_sesion)).values["arquitectura"]
+    assert (arquitectura.correcciones, arquitectura.errores_validacion) == (0, ())
+
+
+def test_elicitador_fijo_lleva_requerimientos_dados_hasta_el_diseno():
+    simulacion = ServiciosSimulados()
+    sintesis = simulacion.sintetizar(Conversacion(), Contexto(), Requerimientos(), "Catastro")
+    simulacion.llamadas.clear()
+    servicios = Servicios(
+        elicitador=ElicitadorFijo(sintesis),
+        arquitecto=simulacion,
+        desarrollador=simulacion,
+        tester=simulacion,
+    )
+    app = compilar(servicios)
+    id_sesion, avance = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
+    assert avance.nodos == (Nodo.N1, Nodo.N2, Nodo.N3, Nodo.N4, Nodo.N5)
+    assert avance.pausa.punto == "requerimientos"
+    avance = avanzar(app, id_sesion, aprobar())
+    assert avance.pausa.punto == "especificacion"
+    requerimientos = app.get_state(configuracion_hilo(id_sesion)).values["requerimientos"]
+    assert requerimientos.requerimientos == sintesis.requerimientos
+    assert simulacion.llamadas["disenar"] == 1
 
 
 def test_limite_de_turnos_cierra_la_elicitacion():

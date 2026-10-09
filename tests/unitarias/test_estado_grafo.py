@@ -216,6 +216,8 @@ def estado_completo() -> list:
         Arquitectura(
             registro_decision="# ADR",
             especificacion=EspecificacionDiseno.model_validate(especificacion),
+            disenos=2,
+            correcciones=1,
         ),
         Codigo(versiones=(VersionCodigo(numero=1, archivos={"src/a.py": "x = 1\n"}),)),
         Validacion(plan_pruebas=(caso(1),), veredictos=(veredicto(1, True),)),
@@ -224,6 +226,7 @@ def estado_completo() -> list:
             limite_iteraciones=3,
             limite_turnos=15,
             limite_correcciones=2,
+            limite_correcciones_diseno=2,
             costo_acumulado_usd=Decimal("0.000825"),
         ),
     ]

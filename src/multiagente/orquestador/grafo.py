@@ -12,6 +12,7 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
+from pydantic import ValidationError
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.orquestador.estado import (
@@ -63,10 +64,45 @@ def _ahora() -> datetime:
     return datetime.now(UTC)
 
 
-def _registrar(punto: PuntoControl, respuesta: object) -> AprobacionHumana:
-    """Valida la respuesta de la persona y la convierte en una aprobación registrada."""
-    validada = RespuestaHumana.model_validate(respuesta)
-    return AprobacionHumana(**validada.model_dump(), punto=punto, fecha=_ahora())
+def _motivo(error: ValidationError) -> str:
+    """Mensaje legible de una respuesta humana inválida."""
+    return "; ".join(
+        str(detalle["msg"]).removeprefix("Value error, ") for detalle in error.errors()
+    )
+
+
+def _pedir_decision(
+    punto: PuntoControl,
+    datos: dict[str, Any],
+    bloqueo: str | None = None,
+) -> AprobacionHumana:
+    """Pausa hasta recibir una decisión humana válida y la registra con su momento.
+
+    Una respuesta inválida (un rechazo sin observaciones, o una aprobación bloqueada) no hace
+    fallar el nodo: LangGraph conservaría esa respuesta y la repetiría en cada reanudación,
+    dejando la sesión detenida para siempre. En su lugar, se vuelve a pausar con un aviso; al
+    reanudar, LangGraph entrega las respuestas en orden y el nodo llega a la válida.
+
+    Args:
+        punto: Punto de control.
+        datos: Lo que la persona revisa en la pausa.
+        bloqueo: Si se indica, la aprobación no se admite y este es el motivo.
+
+    Returns:
+        La decisión válida, registrada con el punto y la fecha.
+    """
+    aviso: str | None = None
+    while True:
+        respuesta = interrupt({**datos, "punto": punto.value, "aviso": aviso})
+        try:
+            validada = RespuestaHumana.model_validate(respuesta)
+        except ValidationError as error:
+            aviso = f"Respuesta inválida: {_motivo(error)}"
+            continue
+        if bloqueo is not None and validada.decision is Decision.APROBADO:
+            aviso = bloqueo
+            continue
+        return AprobacionHumana(**validada.model_dump(), punto=punto, fecha=_ahora())
 
 
 def _con_aprobacion(sesion: Sesion, aprobacion: AprobacionHumana, fase: Fase | None) -> Sesion:
@@ -194,6 +230,7 @@ class NodosGrafo:
                 limite_iteraciones=self.configuracion.max_iteraciones_correccion,
                 limite_turnos=self.configuracion.max_turnos_elicitacion,
                 limite_correcciones=self.configuracion.max_correcciones_calidad,
+                limite_correcciones_diseno=self.configuracion.max_correcciones_diseno,
             ),
         }
 
@@ -212,14 +249,16 @@ class NodosGrafo:
         """
         conversacion = estado["conversacion"]
         if conversacion.pregunta_pendiente is not None:
-            respuesta = interrupt(
-                {
-                    "punto": "dialogo",
-                    "pregunta": conversacion.pregunta_pendiente,
-                    "observaciones_revisor": list(conversacion.observaciones_revisor),
-                    "turno": conversacion.turnos_cliente + 1,
-                }
-            )
+            datos = {
+                "punto": "dialogo",
+                "pregunta": conversacion.pregunta_pendiente,
+                "observaciones_revisor": list(conversacion.observaciones_revisor),
+                "turno": conversacion.turnos_cliente + 1,
+                "aviso": None,
+            }
+            # Una respuesta vacía vuelve a pausar con un aviso, en lugar de hacer fallar el nodo.
+            while not (respuesta := str(interrupt(datos)).strip()):
+                datos = {**datos, "aviso": "La respuesta no puede estar vacía."}
             turno = Turno(emisor=Emisor.CLIENTE, texto=respuesta, fecha=_ahora())
             conversacion = conversacion.model_copy(update={"turnos": (*conversacion.turnos, turno)})
         dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
@@ -282,9 +321,9 @@ class NodosGrafo:
                     update={"defectos": defectos, "correcciones": requerimientos.correcciones + 1}
                 )
             }
-        respuesta = interrupt(
+        aprobacion = _pedir_decision(
+            PuntoControl.REQUERIMIENTOS,
             {
-                "punto": PuntoControl.REQUERIMIENTOS.value,
                 "historias": [h.model_dump(mode="json") for h in requerimientos.historias],
                 "requerimientos": [
                     r.model_dump(mode="json") for r in requerimientos.requerimientos
@@ -294,10 +333,9 @@ class NodosGrafo:
                     for id_requerimiento, referencias in requerimientos.referencias.items()
                 },
                 "defectos": list(defectos),
-            }
+            },
         )
         sesion = estado["sesion"]
-        aprobacion = _registrar(PuntoControl.REQUERIMIENTOS, respuesta)
         aprobado = aprobacion.decision is Decision.APROBADO
         cambios: dict[str, Any] = {
             "sesion": _con_aprobacion(sesion, aprobacion, Fase.DISENO if aprobado else None),
@@ -338,45 +376,59 @@ class NodosGrafo:
                     "registro_decision": diseno.registro_decision,
                     "especificacion": diseno.especificacion,
                     "errores_validacion": (),
+                    "disenos": previa.disenos + 1,
                 }
             )
         }
 
     def n9_aprobacion_especificacion(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Valida la especificación y la somete a aprobación humana."""
+        """Valida la especificación (Anexo B) y la somete a aprobación humana.
+
+        Con errores, la devuelve a N8 sin intervención humana hasta agotar el límite de
+        correcciones. Al agotarlo, pausa con los errores a la vista, pero la persona solo puede
+        rechazar con observaciones: el Anexo B exige las tres validaciones antes de habilitar la
+        generación de código.
+        """
         arquitectura = estado["arquitectura"]
-        errores = self.servicios.arquitecto.validar(
-            arquitectura.especificacion, estado["requerimientos"]
+        errores = tuple(
+            self.servicios.arquitecto.validar(arquitectura.especificacion, estado["requerimientos"])
         )
-        if errores:
+        limite = estado["control"].limite_correcciones_diseno
+        if errores and arquitectura.correcciones < limite:
             return {
                 "arquitectura": arquitectura.model_copy(
-                    update={"errores_validacion": tuple(errores)}
+                    update={
+                        "errores_validacion": errores,
+                        "correcciones": arquitectura.correcciones + 1,
+                    }
                 )
             }
-        respuesta = interrupt(
+        aprobacion = _pedir_decision(
+            PuntoControl.ESPECIFICACION,
             {
-                "punto": PuntoControl.ESPECIFICACION.value,
                 "registro_decision": arquitectura.registro_decision,
                 "especificacion": arquitectura.especificacion.model_dump(mode="json"),
-            }
+                "errores": list(errores),
+            },
+            bloqueo=(
+                "La especificación no pasa las validaciones del Anexo B y no puede aprobarse: "
+                "recházala con observaciones para que el arquitecto la corrija."
+                if errores
+                else None
+            ),
         )
         sesion = estado["sesion"]
-        aprobacion = _registrar(PuntoControl.ESPECIFICACION, respuesta)
         aprobado = aprobacion.decision is Decision.APROBADO
-        cambios: dict[str, Any] = {
-            "sesion": _con_aprobacion(sesion, aprobacion, Fase.DESARROLLO if aprobado else None)
-        }
+        actualizacion: dict[str, Any] = {"correcciones": 0, "errores_validacion": errores}
         if not aprobado:
-            cambios["arquitectura"] = arquitectura.model_copy(
-                update={
-                    "observaciones_revisor": (
-                        *arquitectura.observaciones_revisor,
-                        aprobacion.observaciones,
-                    )
-                }
+            actualizacion["observaciones_revisor"] = (
+                *arquitectura.observaciones_revisor,
+                aprobacion.observaciones,
             )
-        return cambios
+        return {
+            "sesion": _con_aprobacion(sesion, aprobacion, Fase.DESARROLLO if aprobado else None),
+            "arquitectura": arquitectura.model_copy(update=actualizacion),
+        }
 
     def n10_generacion(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Genera una nueva versión del módulo sin recuperación de contexto."""
@@ -458,16 +510,15 @@ class NodosGrafo:
         """Somete el módulo validado por el tester a la aprobación humana final."""
         validacion = estado["validacion"]
         version = estado["codigo"].vigente
-        respuesta = interrupt(
+        aprobacion = _pedir_decision(
+            PuntoControl.FINAL,
             {
-                "punto": PuntoControl.FINAL.value,
                 "version": version.numero,
                 "archivos": sorted(version.archivos),
                 "veredictos": [v.model_dump(mode="json") for v in validacion.veredictos],
-            }
+            },
         )
         sesion = estado["sesion"]
-        aprobacion = _registrar(PuntoControl.FINAL, respuesta)
         if aprobacion.decision is Decision.APROBADO:
             return {"sesion": _con_aprobacion(sesion, aprobacion, Fase.VALIDADO)}
         return {

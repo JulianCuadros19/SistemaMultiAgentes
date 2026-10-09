@@ -221,12 +221,19 @@ class Requerimientos(Particion):
 
 
 class Arquitectura(Particion):
-    """Registro de decisión y especificación de diseño del arquitecto."""
+    """Registro de decisión y especificación de diseño del arquitecto.
+
+    Attributes:
+        disenos: Diseños producidos en la sesión; da la versión de la especificación.
+        correcciones: Retornos automáticos de N9 a N8 desde la última decisión humana.
+    """
 
     registro_decision: TextoObligatorio | None = None
     especificacion: EspecificacionDiseno | None = None
     errores_validacion: tuple[TextoObligatorio, ...] = ()
     observaciones_revisor: tuple[TextoObligatorio, ...] = ()
+    disenos: NonNegativeInt = 0
+    correcciones: NonNegativeInt = 0
 
 
 class VersionCodigo(ModeloEstricto):
@@ -328,6 +335,7 @@ class Control(Particion):
     limite_iteraciones: PositiveInt
     limite_turnos: PositiveInt
     limite_correcciones: PositiveInt
+    limite_correcciones_diseno: PositiveInt
     costo_acumulado_usd: Decimal = Decimal(0)
 
 
