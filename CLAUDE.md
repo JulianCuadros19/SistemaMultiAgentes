@@ -156,8 +156,21 @@ Mantener esta sección actualizada al cerrar cada paso.
   (ADR-0005): `BacklogHistorias` y `RequerimientoFormal` (Anexo A) y `EspecificacionDiseno`
   (Anexo B, con la validación 1: estructura y ausencia de ciclos). Validan el backlog y el RF-27
   del Anexo A y los ejemplos de las plantillas 03 y 02; 86 pruebas unitarias pasan.
-- **Paso actual: 5.** Grafo completo con nodos simulados: una sesión recorre los 17 nodos,
-  cierra ambos ciclos, ejercita los retornos de los tres puntos de control y se reanuda.
+- **Paso 5: cerrado el 2026-10-08.** Grafo de 17 nodos en `multiagente.orquestador` (ADR-0006):
+  - estado tipado con particiones Pydantic inmutables;
+  - nodos determinísticos y puntos de control reales (`interrupt`);
+  - el trabajo de cada agente entra por un `Protocol` de servicios: hoy `ServiciosSimulados`,
+    en los pasos 6 a 10 los agentes reales en `agentes/<agente>/`;
+  - persistencia con `PostgresSaver` (`abrir_checkpointer`), durabilidad síncrona y lista
+    blanca de tipos en el serializador.
+
+  Verificado:
+  - una sesión recorre los 17 nodos, cierra ambos ciclos, ejercita los tres retornos y se
+    reanuda en un proceso nuevo, tanto a mitad del diálogo como tras una caída;
+  - pasan 106 pruebas unitarias y 5 de integración;
+  - `python scripts/simular_sesion.py` muestra el recorrido.
+- **Paso actual: 6.** Pipeline de las bases de conocimiento: cada agente recupera únicamente de
+  sus colecciones autorizadas.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, despliegue
