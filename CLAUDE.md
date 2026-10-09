@@ -97,9 +97,8 @@ durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse
 - Modelos desplegados, tipo Global Standard (ADR-0009):
   - `gpt-5.4-mini`, para N3 y N5, del perfil intermedio;
   - `gpt-5`, para N8, del perfil alto (ADR-0010);
-  - `gpt-5-nano`, para N14, del perfil económico, y provisionalmente para N10.
-
-  El modelo de N10 se decide al empezar el paso 9.
+  - `gpt-6.1-sol`, para N10, el perfil más alto disponible (ADR-0011);
+  - `gpt-5-nano`, para N14, del perfil económico.
 - Usar el paquete `openai` con la API OpenAI/v1. El paquete `azure-ai-inference` está retirado.
 - **Los modelos GPT-5 son de razonamiento.** Generan tokens de razonamiento ocultos que se
   facturan como salida. En la primera prueba, una respuesta corta consumió cerca de 4.700
@@ -233,8 +232,38 @@ Mantener esta sección actualizada al cerrar cada paso.
     arquitectura elegida entre las candidatas de arq-003, a 0,05–0,08 USD por diseño;
   - `python scripts/disenar_arquitectura.py` reproduce el rechazo con observaciones y la
     aprobación.
-- **Paso actual: 9.** Agente desarrollador: el código se importa sin error y cubre las interfaces
-  de la especificación.
+- **Paso 9: cerrado el 2026-10-09.** Agente desarrollador real en `agentes/desarrollador/` (ADR-0011):
+  - N10 usa `gpt-6.1-sol` con esfuerzo medium, en una llamada estructurada sin recuperación;
+    recibe los requerimientos, la especificación y `config/estilo_generado/ruff.toml`;
+  - la verificación estructural de RF-15, RF-17 y RF-18 corre en código, sin ejecutar nada:
+    - archivos en las rutas declaradas y sintaxis 3.11;
+    - firmas compatibles y excepciones declaradas;
+    - dependencias permitidas y docstring en todo lo público;
+    - una prueba `test_rf_NN_esc_NN` por escenario.
+
+    Reintenta una vez con los problemas a la vista;
+  - la corrección (RF-19) recibe la versión previa y la retroalimentación, y combina solo los
+    archivos que cambian;
+  - el entorno aislado mínimo (`multiagente.sandbox`, `docker/sandbox/`) importa el código en un
+    contenedor efímero sin red, de solo lectura y sin root. Lo reutilizará N11;
+  - el costo refleja la escritura en caché de GPT-6, y `VersionCodigo` conserva el contenido de
+    los archivos tal cual (defecto del paso 5);
+  - `ArquitectoFijo` y `evaluacion/casos/desarrollo-*.json` prueban al desarrollador con diseños
+    aprobados en el paso 8.
+
+  Verificado:
+  - 358 pruebas unitarias, 27 de integración, 19 de embeddings y 5 del entorno aislado
+    (`pytest -m "sandbox and not nube"`, con la imagen de `docker compose --profile sandbox build
+    sandbox`);
+  - `pytest -m "nube and sandbox" tests/integracion/test_desarrollador_nube.py`: 6 de 6 corridas
+    finales importan cada módulo y cubren las interfaces, 5 al primer intento. Las pruebas
+    generadas pasan sin red, por 0,06 a 0,21 USD y de 1 a 2 minutos por generación;
+  - `python scripts/generar_modulo.py` reproduce el rechazo en N17 y la corrección.
+
+  Pendiente para el paso 10:
+  - N12 debe aplicar la misma noción de firma compatible y clasificar los hallazgos de Ruff;
+  - el código generado importa funciones privadas de otros módulos.
+- **Paso actual: 10.** Agente tester: detecta defectos inyectados a propósito en código de prueba.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
@@ -242,7 +271,10 @@ Mantener esta sección actualizada al cerrar cada paso.
   - `gpt-5-nano` (versión 2025-08-07): entrada 0,05, caché 0,005 y salida 0,40 USD por millón de
     tokens;
   - `gpt-5.4-mini` (versión 2026-03-17): entrada 0,75, caché 0,075 y salida 4,50 USD;
-  - `gpt-5` (versión 2025-08-07): entrada 1,25, caché 0,125 y salida 10 USD.
+  - `gpt-5` (versión 2025-08-07): entrada 1,25, caché 0,125 y salida 10 USD;
+  - `gpt-6.1-sol` (versión 2026-09-29): entrada 2,00, caché 0,10, escritura de caché 2,50 y salida
+    10 USD. Es el único que cobra aparte la escritura en caché, que la API reporta en
+    `cache_write_tokens` (ADR-0011).
 
   Endpoint y clave solo en `.env`. Las tarifas están en `config/tarifas_modelos.toml`. Para
   `gpt-5-nano`, medido con el mismo mensaje: minimal 80 tokens de salida y 1,7 s; low

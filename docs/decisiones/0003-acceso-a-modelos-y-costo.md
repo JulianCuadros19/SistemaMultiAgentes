@@ -6,6 +6,9 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 # ADR-0003 · Acceso a modelos por la API OpenAI v1 y registro de costo por llamada
 
+> El ADR-0010 permite fijar el tiempo de espera por nodo. El ADR-0011 agrega al costo la escritura
+> en caché, que los modelos GPT-6 cobran aparte y la API reporta en `cache_write_tokens`.
+
 ## Contexto y planteamiento del problema
 
 El paso 3 del plan exige que una llamada real a Azure OpenAI responda y que su costo quede

@@ -11,6 +11,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 > limita las correcciones automáticas antes de escalar al analista. El ADR-0010 (paso 8) acota
 > también las de N9, bloquea la aprobación de una especificación con errores y hace que una
 > respuesta humana inválida vuelva a pausar con un aviso en lugar de detener la sesión.
+> El ADR-0011 (paso 9) entrega a N10 la versión vigente del código para corregirla y hace que
+> `VersionCodigo` conserve el contenido de los archivos tal cual.
 
 ## Contexto y planteamiento del problema
 
