@@ -8,7 +8,9 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 > El ADR-0008 (paso 7) modifica los puntos 1, 4 y 5: la sesión se abre con la necesidad del
 > cliente, N3 solo espera si hay una pregunta pendiente, N4 usa la suficiencia de eli-006 y N6
-> limita las correcciones automáticas antes de escalar al analista.
+> limita las correcciones automáticas antes de escalar al analista. El ADR-0010 (paso 8) acota
+> también las de N9, bloquea la aprobación de una especificación con errores y hace que una
+> respuesta humana inválida vuelva a pausar con un aviso en lugar de detener la sesión.
 
 ## Contexto y planteamiento del problema
 

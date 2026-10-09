@@ -96,9 +96,10 @@ durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse
   southcentralus y centralus cubren despliegue global, de zona de datos de EE. UU. y regional.
 - Modelos desplegados, tipo Global Standard (ADR-0009):
   - `gpt-5.4-mini`, para N3 y N5, del perfil intermedio;
-  - `gpt-5-nano`, para N14, del perfil económico, y provisionalmente para N8 y N10.
+  - `gpt-5`, para N8, del perfil alto (ADR-0010);
+  - `gpt-5-nano`, para N14, del perfil económico, y provisionalmente para N10.
 
-  El modelo de N8 y N10 se decide al empezar los pasos 8 y 9.
+  El modelo de N10 se decide al empezar el paso 9.
 - Usar el paquete `openai` con la API OpenAI/v1. El paquete `azure-ai-inference` está retirado.
 - **Los modelos GPT-5 son de razonamiento.** Generan tokens de razonamiento ocultos que se
   facturan como salida. En la primera prueba, una respuesta corta consumió cerca de 4.700
@@ -213,15 +214,35 @@ Mantener esta sección actualizada al cerrar cada paso.
   Pendiente:
   - el benchmark del paso 15 compara `gpt-5-nano`, `gpt-5-mini` y `gpt-5.4-mini` en N3 y N5;
   - la interfaz del paso 12 debe acusar la confirmación antes de sintetizar.
-- **Paso actual: 8.** Agente arquitecto: la especificación generada pasa las tres validaciones
-  del Anexo B.
+- **Paso 8: cerrado el 2026-10-09.** Agente arquitecto real en `agentes/arquitecto/` (ADR-0010):
+  - N7 recupera las seis arquitecturas del catálogo cerrado, cada una de su propio documento,
+    junto con la metodología;
+  - N8 hace dos llamadas con `gpt-5` (esfuerzo low, 300 s de espera): la selección, cuyo
+    registro MADR verifica y arma el código, y la parametrización, cuyos campos deterministas
+    asigna el código;
+  - N9 aplica las tres validaciones del Anexo B y reglas de arq-002 (firmas con tipos, rutas,
+    nombres que no tapen la biblioteca estándar, Decimal en dinero). Devuelve a N8 hasta dos
+    veces y después solo admite el rechazo.
+  - Se corrigió un defecto del paso 5: una respuesta humana inválida ya no detiene la sesión,
+    sino que vuelve a pausar con un aviso.
+
+  Verificado:
+  - 276 pruebas unitarias, 27 de integración y 19 de embeddings;
+  - `pytest -m nube tests/integracion/test_arquitecto_nube.py`, sobre tres casos de
+    `evaluacion/casos/diseno-*.json`: 9 de 9 corridas pasan en el primer diseño, con la
+    arquitectura elegida entre las candidatas de arq-003, a 0,05–0,08 USD por diseño;
+  - `python scripts/disenar_arquitectura.py` reproduce el rechazo con observaciones y la
+    aprobación.
+- **Paso actual: 9.** Agente desarrollador: el código se importa sin error y cubre las interfaces
+  de la especificación.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
   South Central US. Despliegues Global Standard:
   - `gpt-5-nano` (versión 2025-08-07): entrada 0,05, caché 0,005 y salida 0,40 USD por millón de
     tokens;
-  - `gpt-5.4-mini` (versión 2026-03-17): entrada 0,75, caché 0,075 y salida 4,50 USD.
+  - `gpt-5.4-mini` (versión 2026-03-17): entrada 0,75, caché 0,075 y salida 4,50 USD;
+  - `gpt-5` (versión 2025-08-07): entrada 1,25, caché 0,125 y salida 10 USD.
 
   Endpoint y clave solo en `.env`. Las tarifas están en `config/tarifas_modelos.toml`. Para
   `gpt-5-nano`, medido con el mismo mensaje: minimal 80 tokens de salida y 1,7 s; low
