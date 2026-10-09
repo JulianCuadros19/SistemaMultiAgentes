@@ -72,6 +72,9 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
     inicio = time.perf_counter()
     id_sesion, avance = iniciar_sesion(app, caso.cliente, caso.proyecto, caso.necesidad)
     sistema_s = time.perf_counter() - inicio
+    # Duración de cada respuesta al cliente: hasta la siguiente pregunta o hasta N6.
+    turnos = [sistema_s]
+    cierres: list[float] = []
     pausas: list[str] = []
     final = None
     while avance.pausa is not None:
@@ -91,11 +94,19 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
             respuesta = aprobar("Revisor")
         inicio = time.perf_counter()
         avance = avanzar(app, id_sesion, respuesta)
-        sistema_s += time.perf_counter() - inicio
+        segundos = time.perf_counter() - inicio
+        sistema_s += segundos
+        if pausa.punto == "dialogo":
+            pregunta = avance.pausa is not None and avance.pausa.punto == "dialogo"
+            (turnos if pregunta else cierres).append(segundos)
 
     estado = app.get_state(configuracion_hilo(id_sesion)).values
     historial = validaciones(app, id_sesion)
     imprimir_resumen(caso.id, estado, historial, registro, caplog.messages, sistema_s)
+    print(
+        f"  Turnos de diálogo: {len(turnos)} · máximo {max(turnos):.1f} s · cierre de la "
+        f"elicitación: {[round(segundos, 1) for segundos in cierres]} s"
+    )
 
     # El módulo llega a N17 aprobado por el tester, sin escalar por el límite de iteraciones.
     assert estado["sesion"].fase is not Fase.REQUIERE_INTERVENCION, historial[-1][1].reporte

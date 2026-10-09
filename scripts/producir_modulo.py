@@ -92,19 +92,28 @@ class Guion:
 
 @dataclass
 class Tiempos:
-    """Tiempo del sistema en este proceso, sin la espera humana ni el cliente simulado."""
+    """Tiempo del sistema en este proceso, sin la espera humana ni el cliente simulado.
+
+    Attributes:
+        sistema: Duración total de los avances del grafo.
+        turnos: Respuestas del cliente que terminan en la siguiente pregunta (RNF-01).
+        cierres: Respuestas que cierran la elicitación: incluyen la síntesis y su verificación
+            (N5 y N6), no una pregunta.
+    """
 
     sistema: float = 0.0
     turnos: list[float] = field(default_factory=list)
+    cierres: list[float] = field(default_factory=list)
 
     def medir(self, accion: Callable[[], Avance], turno: bool = False) -> Avance:
-        """Ejecuta un avance del grafo, suma su duración y, si es un turno, la registra."""
+        """Ejecuta un avance del grafo, suma su duración y, si responde al cliente, la registra."""
         inicio = time.perf_counter()
         avance = accion()
         segundos = time.perf_counter() - inicio
         self.sistema += segundos
         if turno:
-            self.turnos.append(segundos)
+            pregunta = avance.pausa is not None and avance.pausa.punto == "dialogo"
+            (self.turnos if pregunta else self.cierres).append(segundos)
         return avance
 
 
@@ -231,6 +240,11 @@ def resumir(app: CompiledStateGraph, id_sesion: str, tiempos: Tiempos, salida: P
             f"Turnos de diálogo: {len(tiempos.turnos)} · media "
             f"{statistics.mean(tiempos.turnos):.1f} s · máxima {max(tiempos.turnos):.1f} s "
             "(RNF-01: menos de 15 s)"
+        )
+    if tiempos.cierres:
+        print(
+            "Cierre de la elicitación (síntesis y verificación): "
+            + ", ".join(f"{segundos:.1f} s" for segundos in tiempos.cierres)
         )
     print(
         f"Tiempo del sistema en este proceso: {tiempos.sistema / 60:.1f} min "
