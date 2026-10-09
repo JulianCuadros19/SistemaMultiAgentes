@@ -1,5 +1,5 @@
 # Infraestructura local del sistema. Las credenciales se leen de .env (plantilla en .env.example).
-# Por ahora solo la base de datos; los demás servicios de la vista de despliegue se agregan en
+# Base de datos y embeddings; los demás servicios de la vista de despliegue se agregan en
 # sus pasos. Ver docs/decisiones/0002-postgresql-en-contenedor.md.
 
 name: multiagente
@@ -23,5 +23,40 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Descarga única de los pesos ONNX de BGE-M3 (revisión fijada) al volumen de modelos. Termina
+  # en segundos si ya están verificados. El descargador interno de TEI corta los archivos
+  # grandes, por eso se usa curl con reanudación (ADR-0007).
+  descarga-modelo:
+    image: curlimages/curl:8.22.0
+    user: "0:0"
+    entrypoint: ["sh", "/config/descargar_modelo.sh"]
+    volumes:
+      - modelos_embeddings:/data
+      - ./docker/embeddings:/config:ro
+    restart: "no"
+
+  # Embeddings locales (RNF-04, decisión 8). TEI carga el modelo desde el volumen y no contacta
+  # a Hugging Face; los textos del corpus y las consultas nunca salen del equipo.
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4
+    command: ["--model-id", "/data/bge-m3"]
+    environment:
+      HF_HUB_OFFLINE: "1"
+    depends_on:
+      descarga-modelo:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${EMBEDDINGS_PUERTO:-8081}:80"
+    volumes:
+      - modelos_embeddings:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 30s
+    restart: unless-stopped
+
 volumes:
   datos_postgres:
+  modelos_embeddings:
