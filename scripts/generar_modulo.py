@@ -52,8 +52,6 @@ from multiagente.sandbox.ejecutor import EntornoAislado
 
 RAIZ = Path(__file__).resolve().parents[1]
 ARCHIVO_MEDICIONES = RAIZ / "docs" / "mediciones" / "paso-09-desarrollador.jsonl"
-COMANDO_PRUEBAS = ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "-o", "pythonpath=src"]
-"""Pruebas del módulo en el entorno aislado, con `src/` en la ruta de importación."""
 
 
 def revisar(
@@ -85,9 +83,12 @@ def revisar(
     for modulo, traza in importacion.errores.items():
         print(f"  - {modulo}: {traza.strip().splitlines()[-1]}")
 
-    pruebas = entorno.ejecutar(version.archivos, COMANDO_PRUEBAS, tiempo_limite_s=120)
-    resumen = (pruebas.salida.strip().splitlines() or ["sin salida"])[-1]
-    print(f"Pruebas en el entorno aislado (informativo): {resumen}")
+    pruebas = entorno.probar(version.archivos, tiempo_limite_s=120)
+    resultados = dict(Counter(prueba.resultado for prueba in pruebas.pruebas))
+    print(
+        f"Pruebas en el entorno aislado (informativo): {resultados} · "
+        f"{len(pruebas.errores_recoleccion)} errores de recolección"
+    )
 
     hallazgos = hallazgos_de_estilo(version.archivos)
     por_codigo = Counter(hallazgo.codigo for hallazgo in hallazgos)

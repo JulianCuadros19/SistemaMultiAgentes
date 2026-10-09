@@ -78,3 +78,29 @@ def test_tiempo_vencido_mata_y_elimina_el_contenedor(entorno_aislado):
         check=True,
     )
     assert restantes.stdout.strip() == ""
+
+
+def test_corre_las_pruebas_y_reporta_cada_resultado(entorno_aislado):
+    archivos = {
+        "src/dominio/calculo.py": "def doble(x: int) -> int:\n    return 2 * x\n",
+        "tests/test_calculo.py": (
+            "import pytest\n\nfrom dominio.calculo import doble\n\n\n"
+            "def test_pasa():\n    assert doble(2) == 4\n\n\n"
+            "def test_falla():\n    assert doble(2) == 5\n\n\n"
+            "@pytest.fixture\ndef rota():\n    raise RuntimeError('preparación')\n\n\n"
+            "def test_error(rota):\n    pass\n\n\n"
+            "@pytest.mark.skip(reason='no aplica')\ndef test_omitida():\n    pass\n"
+        ),
+        "tests/test_roto.py": "import modulo_inexistente\n",
+    }
+    resultado = entorno_aislado.probar(archivos)
+    por_nombre = {prueba.nombre: prueba.resultado for prueba in resultado.pruebas}
+    assert por_nombre == {
+        "test_pasa": "paso",
+        "test_falla": "fallo",
+        "test_error": "error",
+        "test_omitida": "omitida",
+    }
+    assert len(resultado.errores_recoleccion) == 1
+    assert resultado.errores_recoleccion[0].startswith("tests/test_roto.py")
+    assert not resultado.exito

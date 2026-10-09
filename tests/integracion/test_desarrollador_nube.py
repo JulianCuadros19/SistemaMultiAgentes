@@ -42,7 +42,6 @@ from multiagente.persistencia.puntos_control import serializador
 pytestmark = [pytest.mark.nube, pytest.mark.sandbox]
 
 CASOS = sorted((RAIZ_EVALUACION / "casos").glob("desarrollo-*.json"))
-COMANDO_PRUEBAS = ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "-o", "pythonpath=src"]
 
 
 @pytest.mark.parametrize("archivo", CASOS, ids=[caso.stem for caso in CASOS])
@@ -71,7 +70,7 @@ def test_el_codigo_generado_se_importa_y_cubre_las_interfaces(entorno_aislado, a
     especificacion = caso.especificacion
     modulos = [modulo.nombre for modulo in especificacion.modulos]
     importacion = entorno_aislado.importar(version.archivos, modulos)
-    pruebas = entorno_aislado.ejecutar(version.archivos, COMANDO_PRUEBAS, tiempo_limite_s=120)
+    pruebas = entorno_aislado.probar(version.archivos, tiempo_limite_s=120)
     estilo = Counter(hallazgo.codigo for hallazgo in hallazgos_de_estilo(version.archivos))
     for llamada in registro.llamadas:
         print(
@@ -82,7 +81,7 @@ def test_el_codigo_generado_se_importa_y_cubre_las_interfaces(entorno_aislado, a
     for rechazo in caplog.messages:
         print(f"Reintento: {rechazo[:600]}")
     costo = sum((llamada.costo_usd for llamada in registro.llamadas), Decimal(0))
-    resumen_pruebas = (pruebas.salida.strip().splitlines() or ["sin salida"])[-1]
+    resumen_pruebas = dict(Counter(prueba.resultado for prueba in pruebas.pruebas))
     print(
         f"{caso.id}: {len(modulos)} módulos · {len(version.archivos)} archivos · "
         f"{len(registro.llamadas)} llamadas · USD {costo:.4f} · pruebas: {resumen_pruebas} · "

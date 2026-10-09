@@ -50,6 +50,58 @@ print("{MARCA_RESULTADO}" + json.dumps(errores))
 """
 """Importa cada módulo indicado y reporta los errores; corre dentro del contenedor."""
 
+MARCA_PRUEBAS = "@@resultado-pruebas@@"
+"""Prefijo de la línea con el resultado de las pruebas."""
+
+SCRIPT_PRUEBAS = f"""
+import contextlib, io, json
+import pytest
+
+
+class Recolector:
+    def __init__(self):
+        self.pruebas = {{}}
+        self.recoleccion = []
+
+    def pytest_runtest_logreport(self, report):
+        prueba = self.pruebas.setdefault(
+            report.nodeid, {{"resultado": None, "duracion": 0.0, "mensaje": ""}}
+        )
+        prueba["duracion"] += report.duration
+        if report.failed:
+            prueba["resultado"] = "fallo" if report.when == "call" else "error"
+            prueba["mensaje"] = report.longreprtext[-3000:]
+        elif report.skipped and prueba["resultado"] is None:
+            prueba["resultado"] = "omitida"
+            prueba["mensaje"] = report.longreprtext[-500:]
+        elif report.passed and report.when == "call" and prueba["resultado"] is None:
+            prueba["resultado"] = "paso"
+
+    def pytest_collectreport(self, report):
+        if report.failed:
+            self.recoleccion.append(f"{{report.nodeid}}: {{report.longreprtext[-3000:]}}")
+
+
+recolector = Recolector()
+salida = io.StringIO()
+with contextlib.redirect_stdout(salida):
+    codigo = pytest.main(
+        ["-q", "-p", "no:cacheprovider", "--continue-on-collection-errors",
+         "--rootdir", "{RAIZ_CODIGO}", "-o", "pythonpath=src", "tests"],
+        plugins=[recolector],
+    )
+print("{MARCA_PRUEBAS}" + json.dumps({{
+    "codigo": int(codigo),
+    "pruebas": recolector.pruebas,
+    "recoleccion": recolector.recoleccion,
+    "salida": salida.getvalue()[-5000:],
+}}))
+"""
+"""Corre pytest sobre `tests/` y reporta cada prueba; corre dentro del contenedor.
+
+La salida de pytest se guarda aparte para que la línea del resultado nunca quede truncada.
+"""
+
 
 class ErrorEntornoAislado(RuntimeError):
     """El contenedor no pudo ejecutarse: Docker no responde o falta la imagen."""
@@ -97,6 +149,102 @@ class ResultadoImportacion(BaseModel):
     def exito(self) -> bool:
         """Indica si todos los módulos se importaron sin error."""
         return not self.errores and self.ejecucion.exito
+
+
+class PruebaReportada(BaseModel):
+    """Resultado de una prueba de pytest en el entorno aislado.
+
+    Attributes:
+        archivo: Archivo de la prueba, p. ej. `tests/test_avaluo.py`.
+        nombre: Nombre de la prueba dentro del archivo, con su clase y parámetros si los tiene.
+        resultado: `paso`, `fallo`, `error` (en la preparación o el cierre) u `omitida`.
+        duracion_ms: Duración de la prueba.
+        mensaje: Detalle del fallo, del error o de la omisión, truncado.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    archivo: str
+    nombre: str
+    resultado: str
+    duracion_ms: int
+    mensaje: str = ""
+
+
+class ResultadoPruebas(BaseModel):
+    """Resultado de correr las pruebas de una versión en el entorno aislado.
+
+    Attributes:
+        pruebas: Cada prueba ejecutada, en orden de ejecución.
+        errores_recoleccion: Archivos de prueba que pytest no pudo recolectar, con su error.
+        codigo_pytest: Código de salida de pytest; None si no hubo resultado.
+        salida_pytest: Final de la salida de pytest.
+        ejecucion: Ejecución del contenedor que produjo el resultado.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    pruebas: tuple[PruebaReportada, ...]
+    errores_recoleccion: tuple[str, ...]
+    codigo_pytest: int | None
+    salida_pytest: str
+    ejecucion: ResultadoEjecucion
+
+    @property
+    def exito(self) -> bool:
+        """Indica si hubo pruebas, se recolectaron todas y ninguna falló ni dio error."""
+        return (
+            self.ejecucion.exito
+            and bool(self.pruebas)
+            and not self.errores_recoleccion
+            and all(prueba.resultado in ("paso", "omitida") for prueba in self.pruebas)
+        )
+
+
+def leer_resultado_pruebas(ejecucion: ResultadoEjecucion) -> ResultadoPruebas:
+    """Lee la línea marcada que imprime el guion de pruebas.
+
+    Args:
+        ejecucion: Ejecución del guion de pruebas en el contenedor.
+
+    Returns:
+        El resultado por prueba; sin pruebas y con el motivo como error de recolección si la
+        línea no está, por ejemplo porque venció el tiempo.
+    """
+    lineas = [
+        linea.removeprefix(MARCA_PRUEBAS)
+        for linea in ejecucion.salida.splitlines()
+        if linea.startswith(MARCA_PRUEBAS)
+    ]
+    if not lineas:
+        motivo = "tiempo vencido" if ejecucion.vencido else ejecucion.errores.strip()[-2000:]
+        return ResultadoPruebas(
+            pruebas=(),
+            errores_recoleccion=(f"Sin resultado de las pruebas: {motivo}",),
+            codigo_pytest=None,
+            salida_pytest="",
+            ejecucion=ejecucion,
+        )
+    datos = json.loads(lineas[-1])
+    pruebas = []
+    for nodo, prueba in datos["pruebas"].items():
+        archivo, _, nombre = nodo.partition("::")
+        pruebas.append(
+            PruebaReportada(
+                archivo=archivo,
+                nombre=nombre,
+                resultado=prueba["resultado"] or "error",
+                duracion_ms=round(prueba["duracion"] * 1000),
+                mensaje=prueba["mensaje"],
+            )
+        )
+    return ResultadoPruebas(
+        pruebas=tuple(pruebas),
+        errores_recoleccion=tuple(datos["recoleccion"]),
+        codigo_pytest=datos["codigo"],
+        salida_pytest=datos["salida"],
+        ejecucion=ejecucion,
+    )
 
 
 def es_ruta_segura(ruta: str) -> bool:
@@ -287,3 +435,24 @@ class EntornoAislado:
             errores = {modulo: f"Sin resultado de la importación: {motivo}" for modulo in modulos}
             return ResultadoImportacion(errores=errores, ejecucion=ejecucion)
         return ResultadoImportacion(errores=json.loads(lineas[-1]), ejecucion=ejecucion)
+
+    def probar(
+        self, archivos: Mapping[str, str], tiempo_limite_s: float | None = None
+    ) -> ResultadoPruebas:
+        """Corre las pruebas de `tests/` con pytest en el entorno aislado.
+
+        `src/` entra en la ruta de importación, como la declara la especificación. La caché de
+        pytest se desactiva, porque el sistema de archivos es de solo lectura fuera de `/tmp`.
+
+        Args:
+            archivos: Archivos de la versión del módulo, con sus pruebas.
+            tiempo_limite_s: Tiempo límite; si se omite, el configurado.
+
+        Returns:
+            El resultado de cada prueba y los errores de recolección.
+
+        Raises:
+            ErrorEntornoAislado: Si Docker no responde o la imagen no existe.
+        """
+        ejecucion = self.ejecutar(archivos, ["python", "-I", "-c", SCRIPT_PRUEBAS], tiempo_limite_s)
+        return leer_resultado_pruebas(ejecucion)

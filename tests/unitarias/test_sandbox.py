@@ -1,6 +1,7 @@
 """Entorno aislado sin Docker: invocación, empaquetado y lectura del resultado."""
 
 import io
+import json
 import subprocess
 import tarfile
 
@@ -9,6 +10,7 @@ import pytest
 from multiagente.core.configuracion import ConfiguracionSandbox
 from multiagente.sandbox import ejecutor
 from multiagente.sandbox.ejecutor import (
+    MARCA_PRUEBAS,
     MARCA_RESULTADO,
     EntornoAislado,
     ErrorEntornoAislado,
@@ -119,3 +121,47 @@ def test_tiempo_vencido_mata_el_contenedor(monkeypatch):
     assert resultado.salida == "parcial"
     nombre = next(a.removeprefix("--name=") for a in invocaciones[0] if a.startswith("--name="))
     assert invocaciones[1] == ["docker", "kill", nombre]
+
+
+def test_probar_lee_cada_prueba_de_la_linea_marcada(monkeypatch):
+    datos = {
+        "codigo": 1,
+        "pruebas": {
+            "tests/test_a.py::test_rf_01_esc_01_pasa": {
+                "resultado": "paso",
+                "duracion": 0.002,
+                "mensaje": "",
+            },
+            "tests/test_a.py::TestX::test_falla[1]": {
+                "resultado": "fallo",
+                "duracion": 0.01,
+                "mensaje": "AssertionError",
+            },
+        },
+        "recoleccion": ["tests/test_b.py: ImportError"],
+        "salida": "1 failed, 1 passed",
+    }
+    salida = f"ruido\n{MARCA_PRUEBAS}{json.dumps(datos)}\n"
+    monkeypatch.setattr(ejecutor.subprocess, "run", completado(salida))
+    resultado = EntornoAislado(CONFIGURACION).probar({"tests/test_a.py": ""})
+    primera, segunda = resultado.pruebas
+    assert (primera.archivo, primera.nombre, primera.resultado) == (
+        "tests/test_a.py",
+        "test_rf_01_esc_01_pasa",
+        "paso",
+    )
+    assert (segunda.nombre, segunda.resultado, segunda.duracion_ms) == (
+        "TestX::test_falla[1]",
+        "fallo",
+        10,
+    )
+    assert resultado.errores_recoleccion == ("tests/test_b.py: ImportError",)
+    assert resultado.codigo_pytest == 1 and not resultado.exito
+
+
+def test_probar_sin_resultado_lo_reporta_como_error_de_recoleccion(monkeypatch):
+    monkeypatch.setattr(ejecutor.subprocess, "run", completado(errores="Killed", codigo=137))
+    resultado = EntornoAislado(CONFIGURACION).probar({"tests/test_a.py": ""})
+    assert resultado.pruebas == ()
+    assert "Killed" in resultado.errores_recoleccion[0]
+    assert resultado.codigo_pytest is None and not resultado.exito
