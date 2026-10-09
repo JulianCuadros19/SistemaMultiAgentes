@@ -102,13 +102,14 @@ def consumo_desde_uso(uso: CompletionUsage) -> ConsumoTokens:
         uso: Bloque `usage` de la respuesta.
 
     Returns:
-        Consumo con la entrada cacheada y el razonamiento desglosados.
+        Consumo con la entrada leída y escrita en caché y el razonamiento desglosados.
     """
     detalle_entrada = uso.prompt_tokens_details
     detalle_salida = uso.completion_tokens_details
     return ConsumoTokens(
         entrada=uso.prompt_tokens,
         entrada_cacheada=(detalle_entrada.cached_tokens or 0) if detalle_entrada else 0,
+        entrada_escrita_cache=((detalle_entrada.cache_write_tokens or 0) if detalle_entrada else 0),
         salida=uso.completion_tokens,
         razonamiento=(detalle_salida.reasoning_tokens or 0) if detalle_salida else 0,
     )

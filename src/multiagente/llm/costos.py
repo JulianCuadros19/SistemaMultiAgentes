@@ -15,21 +15,22 @@ RUTA_TARIFAS = Path(__file__).resolve().parents[3] / "config" / "tarifas_modelos
 class ConsumoTokens(BaseModel):
     """Tokens de una llamada, con el razonamiento registrado aparte.
 
-    Los tokens de razonamiento y los cacheados ya están incluidos en `salida` y `entrada`
-    respectivamente; se desglosan para la traza, no se suman de nuevo.
+    Los tokens de razonamiento ya están incluidos en `salida`, y los leídos y escritos en caché
+    en `entrada`; se desglosan para la traza y el costo, no se suman de nuevo.
     """
 
     model_config = ConfigDict(frozen=True)
 
     entrada: NonNegativeInt
     entrada_cacheada: NonNegativeInt = 0
+    entrada_escrita_cache: NonNegativeInt = 0
     salida: NonNegativeInt
     razonamiento: NonNegativeInt = 0
 
     @model_validator(mode="after")
     def _desgloses_dentro_del_total(self) -> "ConsumoTokens":
-        if self.entrada_cacheada > self.entrada:
-            raise ValueError("entrada_cacheada no puede superar a entrada")
+        if self.entrada_cacheada + self.entrada_escrita_cache > self.entrada:
+            raise ValueError("entrada_cacheada y entrada_escrita_cache no pueden superar a entrada")
         if self.razonamiento > self.salida:
             raise ValueError("razonamiento no puede superar a salida")
         return self
@@ -41,13 +42,18 @@ class ConsumoTokens(BaseModel):
 
 
 class Tarifa(BaseModel):
-    """Precio en USD por millón de tokens de un modelo y tipo de despliegue."""
+    """Precio en USD por millón de tokens de un modelo y tipo de despliegue.
+
+    `escritura_cache` es None cuando el proveedor no cobra aparte la escritura en caché: esos
+    tokens se cobran entonces como entrada normal. Los modelos GPT-6 sí la cobran (ADR-0011).
+    """
 
     model_config = ConfigDict(frozen=True)
 
     entrada: Decimal
     entrada_cacheada: Decimal
     salida: Decimal
+    escritura_cache: Decimal | None = None
 
 
 class ErrorTarifaNoEncontrada(LookupError):
@@ -61,7 +67,7 @@ def cargar_tarifas(ruta: Path = RUTA_TARIFAS) -> dict[str, Tarifa]:
 
     Args:
         ruta: Archivo con una tabla por modelo y las claves `entrada`, `entrada_cacheada`
-            y `salida`.
+            y `salida`, más `escritura_cache` si el modelo la cobra aparte.
 
     Returns:
         Tarifas indexadas por el nombre del modelo.
@@ -73,6 +79,9 @@ def cargar_tarifas(ruta: Path = RUTA_TARIFAS) -> dict[str, Tarifa]:
             entrada=Decimal(str(valores["entrada"])),
             entrada_cacheada=Decimal(str(valores["entrada_cacheada"])),
             salida=Decimal(str(valores["salida"])),
+            escritura_cache=(
+                Decimal(str(valores["escritura_cache"])) if "escritura_cache" in valores else None
+            ),
         )
         for modelo, valores in datos.items()
     }
@@ -106,9 +115,10 @@ def buscar_tarifa(tarifas: dict[str, Tarifa], modelo: str) -> Tarifa:
 def calcular_costo(consumo: ConsumoTokens, tarifa: Tarifa) -> Decimal:
     """Calcula el costo en USD de una llamada.
 
-    La entrada cacheada se cobra a su tarifa reducida y el resto de la entrada a la tarifa
-    normal. Los tokens de razonamiento se cobran como salida una sola vez, porque ya están
-    incluidos en `consumo.salida`.
+    La entrada cacheada se cobra a su tarifa reducida, la escrita en caché a su tarifa si el
+    modelo la tiene (si no, como entrada normal) y el resto de la entrada a la tarifa normal.
+    Los tokens de razonamiento se cobran como salida una sola vez, porque ya están incluidos en
+    `consumo.salida`.
 
     Args:
         consumo: Tokens de la llamada.
@@ -117,10 +127,12 @@ def calcular_costo(consumo: ConsumoTokens, tarifa: Tarifa) -> Decimal:
     Returns:
         Costo en USD, sin redondear.
     """
-    entrada_normal = consumo.entrada - consumo.entrada_cacheada
+    escritura = tarifa.escritura_cache if tarifa.escritura_cache is not None else tarifa.entrada
+    entrada_normal = consumo.entrada - consumo.entrada_cacheada - consumo.entrada_escrita_cache
     total = (
         entrada_normal * tarifa.entrada
         + consumo.entrada_cacheada * tarifa.entrada_cacheada
+        + consumo.entrada_escrita_cache * escritura
         + consumo.salida * tarifa.salida
     )
     return total / MILLON

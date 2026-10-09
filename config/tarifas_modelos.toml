@@ -1,7 +1,8 @@
 # Tarifas en USD por millón de tokens, por modelo. Rigen el cálculo de costo de cada llamada.
 # El nombre de cada tabla es un prefijo del modelo que devuelve la API
 # (por ejemplo, gpt-5-nano cubre gpt-5-nano-2025-08-07).
-# Los tokens de razonamiento se facturan como salida.
+# Los tokens de razonamiento se facturan como salida. `escritura_cache` es opcional: sin ella, los
+# tokens escritos en caché se cobran como entrada normal.
 #
 # Fuente: API de precios minoristas de Azure (prices.azure.com). Recurso en southcentralus,
 # despliegue Global Standard. Con Data Zone, cada tarifa sube un 10 %.
@@ -29,3 +30,12 @@ salida = "2.00"
 entrada = "0.75"
 entrada_cacheada = "0.075"
 salida = "4.50"
+
+# Consultada el 2026-10-09, vigente desde el 2026-10-01. Perfil alto (N10), versión 2026-09-29.
+# Contexto corto (menos de 272k tokens de entrada). Cobra aparte la escritura en caché, que la API
+# reporta en prompt_tokens_details.cache_write_tokens (ADR-0011).
+["gpt-6.1-sol"]
+entrada = "2.00"
+entrada_cacheada = "0.10"
+escritura_cache = "2.50"
+salida = "10.00"

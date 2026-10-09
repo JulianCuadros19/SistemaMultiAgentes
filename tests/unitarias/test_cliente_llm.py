@@ -69,3 +69,16 @@ def test_consumo_sin_desgloses():
     )
     consumo = consumo_desde_uso(respuesta.usage)
     assert (consumo.entrada_cacheada, consumo.razonamiento) == (0, 0)
+
+
+def test_consumo_con_escritura_en_cache():
+    respuesta = construir_respuesta(
+        {
+            "prompt_tokens": 2143,
+            "completion_tokens": 5,
+            "total_tokens": 2148,
+            "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 2140},
+        }
+    )
+    consumo = consumo_desde_uso(respuesta.usage)
+    assert (consumo.entrada, consumo.entrada_escrita_cache) == (2143, 2140)

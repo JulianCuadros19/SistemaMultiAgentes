@@ -32,6 +32,26 @@ def test_costo_con_entrada_cacheada():
     assert calcular_costo(consumo, TARIFA_NANO) == Decimal("0.032")
 
 
+TARIFA_SOL = Tarifa(
+    entrada=Decimal("2.00"),
+    entrada_cacheada=Decimal("0.10"),
+    salida=Decimal("10.00"),
+    escritura_cache=Decimal("2.50"),
+)
+
+
+def test_costo_con_escritura_en_cache():
+    # Medido con gpt-6.1-sol: 2.143 de entrada, de ellos 2.140 escritos en caché.
+    consumo = ConsumoTokens(entrada=2_143, entrada_escrita_cache=2_140, salida=5)
+    # 3 a 2,00, 2.140 a 2,50 y 5 a 10,00
+    assert calcular_costo(consumo, TARIFA_SOL) == Decimal("0.005406")
+
+
+def test_escritura_en_cache_sin_tarifa_propia_se_cobra_como_entrada():
+    consumo = ConsumoTokens(entrada=1_000_000, entrada_escrita_cache=1_000_000, salida=0)
+    assert calcular_costo(consumo, TARIFA_NANO) == Decimal("0.05")
+
+
 def test_razonamiento_no_se_cobra_dos_veces():
     con_razonamiento = ConsumoTokens(entrada=20, salida=4_700, razonamiento=4_500)
     sin_desglose = ConsumoTokens(entrada=20, salida=4_700)
@@ -51,6 +71,7 @@ def test_costo_es_decimal_exacto():
     "campos",
     [
         {"entrada": 10, "entrada_cacheada": 11, "salida": 0},
+        {"entrada": 10, "entrada_cacheada": 6, "entrada_escrita_cache": 5, "salida": 0},
         {"entrada": 0, "salida": 10, "razonamiento": 11},
         {"entrada": -1, "salida": 0},
     ],
@@ -90,8 +111,15 @@ def test_archivo_de_tarifas_versionado():
         # Un nombre con punto exige la clave entre comillas en TOML; sin ellas se anida.
         ("gpt-5.4-mini-2026-03-17", "4.50"),
         ("gpt-5-2025-08-07", "10.00"),
+        ("gpt-6.1-sol-2026-09-29", "10.00"),
     ],
 )
 def test_cada_modelo_resuelve_su_tarifa(modelo, salida):
     tarifas = cargar_tarifas(RAIZ / "config" / "tarifas_modelos.toml")
     assert buscar_tarifa(tarifas, modelo).salida == Decimal(salida)
+
+
+def test_solo_gpt_6_cobra_aparte_la_escritura_en_cache():
+    tarifas = cargar_tarifas(RAIZ / "config" / "tarifas_modelos.toml")
+    assert tarifas["gpt-6.1-sol"] == TARIFA_SOL
+    assert tarifas["gpt-5"].escritura_cache is None
