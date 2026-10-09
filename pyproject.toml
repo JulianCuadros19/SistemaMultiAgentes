@@ -20,7 +20,7 @@ classifiers = [
     "Private :: Do Not Upload",
     "Programming Language :: Python :: 3",
 ]
-# Dependencias de los pasos 1 a 5. Los embeddings (BGE-M3) se agregan en el paso 6.
+# BGE-M3 corre en el servicio `embeddings` (TEI); el sistema solo necesita su cliente HTTP.
 dependencies = [
     "langgraph>=1.2,<2",
     "langgraph-checkpoint-postgres>=3.1,<4",
@@ -29,6 +29,8 @@ dependencies = [
     "psycopg[binary,pool]>=3.3,<4",
     "openai>=3.19,<4",
     "langfuse>=4.15,<5",
+    "httpx>=0.28,<1",
+    "pyyaml>=6.0,<7",
 ]
 
 [project.optional-dependencies]
@@ -62,16 +64,18 @@ convention = "google"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Las pruebas de integración requieren los contenedores (`pytest -m integracion`) y las de
-# nube hacen llamadas reales que cuestan dinero (`pytest -m nube`). Ninguna corre por defecto.
+# Las pruebas de integración requieren la base (`pytest -m integracion`), las de embeddings
+# también el modelo BGE-M3 (`pytest -m embeddings`) y las de nube hacen llamadas reales que
+# cuestan dinero (`pytest -m nube`). Ninguna corre por defecto.
 addopts = [
     "-ra",
     "--import-mode=importlib",
     "--strict-markers",
     "-m",
-    "not integracion and not nube",
+    "not integracion and not nube and not embeddings",
 ]
 markers = [
     "integracion: requiere los servicios de docker compose y el archivo .env",
     "nube: hace llamadas reales a Azure OpenAI, con costo; requiere el archivo .env",
+    "embeddings: requiere los servicios db y embeddings (BGE-M3) de docker compose",
 ]
