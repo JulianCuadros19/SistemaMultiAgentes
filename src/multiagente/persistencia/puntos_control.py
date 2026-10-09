@@ -1,10 +1,17 @@
 """Persistencia del estado del grafo mediante puntos de control (RF-28, RNF-02)."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from enum import Enum
 from types import ModuleType
+from typing import Any
 
+from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from psycopg import Connection
+from psycopg.rows import dict_row
 
+from multiagente.core.configuracion import ConfiguracionBaseDatos
 from multiagente.core.esquemas import comunes, especificacion_diseno, requerimiento
 from multiagente.orquestador import estado
 from multiagente.orquestador.estado import PARTICIONES
@@ -50,3 +57,31 @@ def serializador() -> JsonPlusSerializer:
         Serializador que reconstruye las particiones del estado al reanudar.
     """
     return JsonPlusSerializer(allowed_msgpack_modules=tipos_permitidos())
+
+
+@contextmanager
+def abrir_checkpointer(
+    configuracion: ConfiguracionBaseDatos | None = None,
+) -> Iterator[PostgresSaver]:
+    """Abre el checkpointer de PostgreSQL y crea sus tablas si no existen.
+
+    La conexión usa `autocommit`, sin sentencias preparadas y con filas como diccionarios, como
+    exige `PostgresSaver`. Se cierra al salir del contexto; una sesión se reanuda abriendo otro.
+
+    Args:
+        configuracion: Conexión a la base; si se omite, se lee del entorno.
+
+    Yields:
+        Checkpointer listo para compilar el grafo.
+    """
+    configuracion = configuracion or ConfiguracionBaseDatos()
+    conexion: Connection[dict[str, Any]]
+    with Connection.connect(
+        configuracion.cadena_conexion(),
+        autocommit=True,
+        prepare_threshold=0,
+        row_factory=dict_row,
+    ) as conexion:
+        checkpointer = PostgresSaver(conexion, serde=serializador())
+        checkpointer.setup()
+        yield checkpointer
