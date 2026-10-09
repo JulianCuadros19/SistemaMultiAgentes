@@ -440,6 +440,36 @@ class ArquitectoFijo:
         return []
 
 
+@dataclass
+class DesarrolladorFijo:
+    """Desarrollador que entrega versiones ya escritas, en orden, sin generar.
+
+    Sirve para probar al tester real con código conocido, como el corpus de defectos: la primera
+    generación entrega la primera versión, cada corrección la siguiente y, agotadas, se repite la
+    última.
+
+    Attributes:
+        versiones: Archivos de cada versión, en el orden en que se entregan.
+    """
+
+    versiones: list[dict[str, str]]
+
+    def generar(
+        self,
+        requerimientos: Requerimientos,
+        especificacion: EspecificacionDiseno,
+        validacion: Validacion,
+        previa: VersionCodigo | None,
+    ) -> VersionCodigo:
+        """Entrega la versión siguiente y declara atendida la retroalimentación (N10)."""
+        numero = previa.numero + 1 if previa is not None else 1
+        return VersionCodigo(
+            numero=numero,
+            archivos=self.versiones[min(numero, len(self.versiones)) - 1],
+            defectos_atendidos=validacion.retroalimentacion if previa is not None else (),
+        )
+
+
 def aprobar(revisor: str = "Revisor simulado") -> dict[str, str]:
     """Respuesta de aprobación para un punto de control."""
     return {"decision": "aprobado", "revisor": revisor}

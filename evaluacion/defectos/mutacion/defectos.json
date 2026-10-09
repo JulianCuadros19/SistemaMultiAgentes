@@ -1,0 +1,8 @@
+{
+  "caso": "evaluacion/casos/desarrollo-mutacion.json",
+  "descripcion": "Módulo de mutación que generó N10 en el paso 9, en su versión corregida, ajustado a mano para que el tester no le encuentre hallazgos. Es un segundo control limpio.",
+  "control": {
+    "veredicto": "aprobado"
+  },
+  "defectos": []
+}

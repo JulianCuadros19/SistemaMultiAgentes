@@ -1,0 +1,336 @@
+{
+  "caso": "evaluacion/casos/desarrollo-avaluo.json",
+  "descripcion": "Módulo de avalúo que generó N10 en el paso 9, ajustado a mano para que el tester no le encuentre hallazgos. Es el control limpio y la base de las inyecciones.",
+  "control": {
+    "veredicto": "aprobado"
+  },
+  "defectos": [
+    {
+      "id": "D01",
+      "clase": "funcional",
+      "descripcion": "Regla de negocio alterada: el avalúo total suma un peso de más; las pruebas del escenario fallan.",
+      "cambios": [
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "return ResultadoAvaluo(terreno, construccion, terreno + construccion)",
+          "reemplazar": "return ResultadoAvaluo(terreno, construccion, terreno + construccion + 1)"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-002"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D02",
+      "clase": "funcional",
+      "descripcion": "Error de sintaxis en el módulo de dominio.",
+      "cambios": [
+        {
+          "ruta": "src/dominio/avaluo.py",
+          "buscar": "\"\"\"Objetos de dominio",
+          "reemplazar": "def roto(:\n    pass\n\n\n\"\"\"Objetos de dominio"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-003"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D03",
+      "clase": "dinero",
+      "descripcion": "El avalúo del terreno se calcula con punto flotante; las pruebas siguen pasando.",
+      "cambios": [
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "terreno = (predio.area_terreno * valores.valor_terreno_m2).quantize(",
+          "reemplazar": "terreno = Decimal(float(predio.area_terreno) * float(valores.valor_terreno_m2)).quantize("
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-005"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D04",
+      "clase": "seguridad",
+      "descripcion": "Evaluación dinámica de la vigencia con eval.",
+      "cambios": [
+        {
+          "ruta": "src/infraestructura/valores_unitarios_repositorio.py",
+          "buscar": "    validar_vigencia(vigencia)\n    valores =",
+          "reemplazar": "    vigencia = eval(str(vigencia))\n    validar_vigencia(vigencia)\n    valores ="
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-SG-002"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D05",
+      "clase": "seguridad",
+      "descripcion": "Contraseña de la base de datos escrita en el código.",
+      "cambios": [
+        {
+          "ruta": "src/infraestructura/valores_unitarios_repositorio.py",
+          "buscar": "_VALORES_UNITARIOS: dict[tuple[str, int], ValoresUnitarios] = {}\n",
+          "reemplazar": "_VALORES_UNITARIOS: dict[tuple[str, int], ValoresUnitarios] = {}\nCONTRASENA_BD = \"catastro2026\"\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-SG-001"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D06",
+      "clase": "conformidad",
+      "descripcion": "La capa de dominio importa de infraestructura, fuera de sus dependencias permitidas.",
+      "cambios": [
+        {
+          "ruta": "src/dominio/avaluo.py",
+          "buscar": "raise ValueError(\"Los avalúos deben expresarse en pesos sin decimales.\")\n",
+          "reemplazar": "raise ValueError(\"Los avalúos deben expresarse en pesos sin decimales.\")\n\n\nfrom infraestructura import valores_unitarios_repositorio  # noqa: E402, F401\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-MT-006"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D07",
+      "clase": "conformidad",
+      "descripcion": "La firma de calcular_avaluo renombra un parámetro declarado en la especificación.",
+      "cambios": [
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "    area_construida: Decimal,\n) -> ResultadoAvaluo:",
+          "reemplazar": "    area_construccion: Decimal,\n) -> ResultadoAvaluo:"
+        },
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "        area_construida: Área",
+          "reemplazar": "        area_construccion: Área"
+        },
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "Predio(numero_predial, area_terreno, area_construida)",
+          "reemplazar": "Predio(numero_predial, area_terreno, area_construccion)"
+        },
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "(area_terreno, area_construida, valores",
+          "reemplazar": "(area_terreno, area_construccion, valores"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-AR-002"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D08",
+      "clase": "conformidad",
+      "descripcion": "Falta el módulo de infraestructura declarado en la especificación.",
+      "cambios": [
+        {
+          "ruta": "src/infraestructura/valores_unitarios_repositorio.py",
+          "eliminar": true
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-AR-001"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D09",
+      "clase": "conformidad",
+      "descripcion": "Módulo no previsto en la especificación.",
+      "cambios": [
+        {
+          "ruta": "src/dominio/utilidades.py",
+          "contenido": "\"\"\"Utilidades de redondeo.\"\"\"\n\nfrom decimal import ROUND_HALF_UP, Decimal\n\n\ndef redondear_pesos(valor: Decimal) -> Decimal:\n    \"\"\"Redondea un valor a pesos enteros.\n\n    Args:\n        valor: Valor en pesos.\n\n    Returns:\n        El valor redondeado sin decimales.\n    \"\"\"\n    return valor.quantize(Decimal(\"1\"), rounding=ROUND_HALF_UP)\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-AR-003"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D10",
+      "clase": "mantenibilidad",
+      "descripcion": "Se elimina el docstring de una función pública.",
+      "cambios": [
+        {
+          "ruta": "src/infraestructura/valores_unitarios_repositorio.py",
+          "buscar": "    \"\"\"Obtiene los valores aplicables al predio en la vigencia solicitada.\n\n    Args:\n        numero_predial: Identificador de exactamente 30 dígitos.\n        vigencia: Año de cuatro dígitos, hasta el año actual más uno.\n\n    Returns:\n        Valores unitarios registrados para la clave solicitada.\n\n    Raises:\n        NumeroPredialInvalido: Si el identificador es inválido.\n        VigenciaInvalida: Si el año es inválido.\n        ValoresUnitariosNoEncontrados: Si la clave no está registrada.\n    \"\"\"\n",
+          "reemplazar": ""
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-MT-001"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D11",
+      "clase": "mantenibilidad",
+      "descripcion": "Importación sin uso.",
+      "cambios": [
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "from decimal import ROUND_HALF_UP, Decimal, localcontext\n",
+          "reemplazar": "import os\nfrom decimal import ROUND_HALF_UP, Decimal, localcontext\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-MT-004"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D12",
+      "clase": "funcional",
+      "descripcion": "Se elimina la prueba del escenario ESC-02.",
+      "cambios": [
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "def test_rf_01_esc_02_predio_sin_construccion(",
+          "reemplazar": "def test_predio_sin_construccion("
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D13",
+      "clase": "seguridad",
+      "descripcion": "Captura genérica de excepciones que silencia el error.",
+      "cambios": [
+        {
+          "ruta": "src/infraestructura/valores_unitarios_repositorio.py",
+          "buscar": "    valores = _VALORES_UNITARIOS.get((numero_predial, vigencia))\n",
+          "reemplazar": "    try:\n        valores = _VALORES_UNITARIOS.get((numero_predial, vigencia))\n    except Exception:\n        valores = None\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-SG-006"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "J01",
+      "clase": "juez",
+      "descripcion": "Aserción debilitada: la prueba del ESC-01 solo comprueba que hay un resultado.",
+      "cambios": [
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "    assert resultado == ResultadoAvaluo(\n        Decimal(\"100000000\"), Decimal(\"120000000\"), Decimal(\"220000000\")\n    )\n    assert resultado.avaluo_total.as_tuple().exponent == 0\n",
+          "reemplazar": "    assert resultado is not None\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ]
+      },
+      "solo_juez": true
+    },
+    {
+      "id": "J02",
+      "clase": "juez",
+      "descripcion": "Código y prueba coherentes entre sí con un avalúo distinto del escenario: la construcción se cuenta a la mitad.",
+      "cambios": [
+        {
+          "ruta": "src/aplicacion/calculo_avaluo.py",
+          "buscar": "construccion = (predio.area_construida * valores.valor_construccion_m2).quantize(",
+          "reemplazar": "construccion = (predio.area_construida * valores.valor_construccion_m2 / 2).quantize("
+        },
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "Decimal(\"100000000\"), Decimal(\"120000000\"), Decimal(\"220000000\")",
+          "reemplazar": "Decimal(\"100000000\"), Decimal(\"60000000\"), Decimal(\"160000000\")"
+        },
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "ResultadoAvaluo(Decimal(\"1\"), Decimal(\"1\"), Decimal(\"2\"))",
+          "reemplazar": "ResultadoAvaluo(Decimal(\"1\"), Decimal(\"0\"), Decimal(\"1\"))"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ]
+      },
+      "solo_juez": true
+    },
+    {
+      "id": "J03",
+      "clase": "juez",
+      "descripcion": "La prueba del ESC-03 no ejecuta el cálculo: lanza ella misma la excepción esperada.",
+      "cambios": [
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "        calcular_avaluo(NUMERO, ANIO, Decimal(\"0\"), Decimal(\"100\"))\n",
+          "reemplazar": "        raise AreaTerrenoInvalida(\"El área de terreno debe ser mayor que cero\")\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ]
+      },
+      "solo_juez": true
+    }
+  ]
+}
