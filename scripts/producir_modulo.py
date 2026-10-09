@@ -132,10 +132,15 @@ def decidir(punto: str, datos: dict[str, Any], guion: Guion | None) -> dict[str,
     eleccion = input("\n[a]probar, [r]echazar o [s]alir: ").strip().lower()
     if not eleccion.startswith(("a", "r")):
         return None
-    nombre = input(f"Revisor [{revisor}]: ").strip() or revisor
-    if eleccion.startswith("a"):
-        return aprobar(nombre)
-    return rechazar(input("Observaciones: ").strip(), nombre)
+    # Las observaciones van antes que el nombre: en la primera corrida con una persona, la
+    # pregunta por el revisor justo después de elegir se tomó por un pedido de comentarios.
+    observaciones = (
+        input("Observaciones para el agente (qué debe cambiar): ").strip()
+        if eleccion.startswith("r")
+        else None
+    )
+    nombre = input(f"Su nombre, como revisor (Enter: «{revisor}»): ").strip() or revisor
+    return aprobar(nombre) if observaciones is None else rechazar(observaciones, nombre)
 
 
 def guardar(carpeta: Path, version: VersionCodigo, reporte: str | None) -> Path:
