@@ -75,6 +75,28 @@ def cargar_catalogo_tecnologico(ruta: Path = RUTA_CATALOGO_TECNOLOGICO) -> Catal
     )
 
 
+def titulos_del_catalogo(carpeta: Path = CARPETA_ARQUITECTURAS) -> dict[str, str]:
+    """Arquitecturas del catálogo cerrado con el título de su documento.
+
+    Args:
+        carpeta: Carpeta `catalogo/` de la colección de arquitecturas.
+
+    Returns:
+        Título por identificador `ARQ-nn`, en orden de identificador.
+
+    Raises:
+        ErrorCatalogo: Si la carpeta no tiene arquitecturas.
+    """
+    titulos = {
+        archivo.name[:6]: leer_documento(archivo).metadatos.titulo
+        for archivo in sorted(carpeta.glob("ARQ-*.md"))
+        if re.match(r"ARQ-\d{2}-", archivo.name)
+    }
+    if not titulos:
+        raise ErrorCatalogo(f"{carpeta}: no hay arquitecturas en el catálogo")
+    return titulos
+
+
 def arquitecturas_del_catalogo(carpeta: Path = CARPETA_ARQUITECTURAS) -> frozenset[str]:
     """Identificadores de las arquitecturas de referencia del catálogo cerrado.
 
@@ -87,11 +109,4 @@ def arquitecturas_del_catalogo(carpeta: Path = CARPETA_ARQUITECTURAS) -> frozens
     Raises:
         ErrorCatalogo: Si la carpeta no tiene arquitecturas.
     """
-    identificadores = frozenset(
-        archivo.name[:6]
-        for archivo in carpeta.glob("ARQ-*.md")
-        if re.match(r"ARQ-\d{2}-", archivo.name)
-    )
-    if not identificadores:
-        raise ErrorCatalogo(f"{carpeta}: no hay arquitecturas en el catálogo")
-    return identificadores
+    return frozenset(titulos_del_catalogo(carpeta))

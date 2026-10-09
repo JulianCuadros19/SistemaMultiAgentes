@@ -226,6 +226,8 @@ class Arquitectura(Particion):
     Attributes:
         disenos: Diseños producidos en la sesión; da la versión de la especificación.
         correcciones: Retornos automáticos de N9 a N8 desde la última decisión humana.
+        observaciones_atendidas: Observaciones del revisor que ya conocía el último diseño; si
+            llega una nueva, N8 vuelve a seleccionar la arquitectura.
     """
 
     registro_decision: TextoObligatorio | None = None
@@ -234,6 +236,7 @@ class Arquitectura(Particion):
     observaciones_revisor: tuple[TextoObligatorio, ...] = ()
     disenos: NonNegativeInt = 0
     correcciones: NonNegativeInt = 0
+    observaciones_atendidas: NonNegativeInt = 0
 
 
 class VersionCodigo(ModeloEstricto):

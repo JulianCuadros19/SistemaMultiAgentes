@@ -377,6 +377,7 @@ class NodosGrafo:
                     "especificacion": diseno.especificacion,
                     "errores_validacion": (),
                     "disenos": previa.disenos + 1,
+                    "observaciones_atendidas": len(previa.observaciones_revisor),
                 }
             )
         }
