@@ -25,7 +25,7 @@ from multiagente.agentes.elicitador.dialogo import (
     resumen_para_confirmar,
     validar_pregunta,
 )
-from multiagente.agentes.elicitador.fidelidad import raices
+from multiagente.agentes.elicitador.fidelidad import raices, respaldado
 from multiagente.agentes.elicitador.servicio import AgenteElicitador
 from multiagente.agentes.elicitador.sintesis import (
     AUTOR,
@@ -35,6 +35,7 @@ from multiagente.agentes.elicitador.sintesis import (
     validar_sintesis,
 )
 from multiagente.core.configuracion import ConfiguracionOrquestador
+from multiagente.core.esquemas.requerimiento import DatoEntrada
 from multiagente.llm.costos import Tarifa
 from multiagente.llm.invocador import (
     CLAVE_PROBLEMAS,
@@ -411,6 +412,43 @@ def test_lo_que_no_dijo_el_cliente_no_entra_al_registro():
         "La solicitud se acepta solo si el número predial existe en la base catastral",
     )
     assert registro.excepciones == ()
+
+
+@pytest.mark.parametrize(
+    ("texto", "dicho"),
+    [
+        ("4 dígitos", "La vigencia debe ser de cuatro dígitos"),
+        ("cuatro dígitos", "La vigencia es de 4 dígitos"),
+        ("30 dígitos", "El número predial tiene treinta dígitos"),
+        ("área construida igual a 0", "El área construida puede ser cero"),
+    ],
+)
+def test_un_numero_en_letras_respalda_el_mismo_en_cifras(texto, dicho):
+    assert respaldado(texto, raices(dicho))
+
+
+def test_los_articulos_no_cuentan_como_numeros():
+    assert raices("Una solicitud por un predio") == {"solic", "predi"}
+
+
+def test_la_restriccion_que_el_cliente_dice_en_letras_entra_al_registro():
+    # Defecto hallado en el paso 11: el cliente dijo «cuatro dígitos», el modelo escribió
+    # «4 dígitos» y el filtro la descartaba; el resumen no cambiaba y el cliente lo rechazaba
+    # una y otra vez.
+    completo = registro_completo()
+    vigencia = DatoEntrada(nombre="vigencia", tipo="texto", obligatorio=True)
+    previo = completo.model_copy(update={"datos_entrada": (*completo.datos_entrada, vigencia)})
+    conversacion = con_respuesta(
+        previo,
+        f"{resumen_para_confirmar(previo)}\n{PREGUNTA_CIERRE}",
+        "No, falta indicar que la vigencia debe ser de cuatro dígitos. Lo demás sí coincide.",
+    )
+    precisada = vigencia.model_dump() | {"restriccion": "4 dígitos"}
+    registro = aplicar_extraccion(
+        salida_extraccion(datos_entrada=[*DATOS_ENTRADA, precisada]), conversacion
+    )
+    assert registro.datos_entrada[-1].restriccion == "4 dígitos"
+    assert not registro.resumen_confirmado
 
 
 @pytest.mark.parametrize(

@@ -67,9 +67,49 @@ PALABRAS_VACIAS = frozenset(
 )
 """Palabras de cuatro letras o más que no aportan contenido propio a una regla."""
 
+NUMEROS_EN_LETRAS = {
+    "cero": "0",
+    "dos": "2",
+    "tres": "3",
+    "cuatro": "4",
+    "cinco": "5",
+    "seis": "6",
+    "siete": "7",
+    "ocho": "8",
+    "nueve": "9",
+    "diez": "10",
+    "once": "11",
+    "doce": "12",
+    "trece": "13",
+    "catorce": "14",
+    "quince": "15",
+    "dieciseis": "16",
+    "diecisiete": "17",
+    "dieciocho": "18",
+    "diecinueve": "19",
+    "veinte": "20",
+    "treinta": "30",
+    "cuarenta": "40",
+    "cincuenta": "50",
+    "sesenta": "60",
+    "setenta": "70",
+    "ochenta": "80",
+    "noventa": "90",
+    "cien": "100",
+    "mil": "1000",
+}
+"""Números que el cliente dice en letras y el modelo suele escribir en cifras, o al revés.
+
+«Uno» y «una» se omiten, porque casi siempre son artículos. Los compuestos, como «treinta y
+dos», no se reconocen como un solo número.
+"""
+
 
 def raices(texto: str) -> set[str]:
-    """Raíces léxicas de un texto: números completos y prefijos de las palabras con contenido.
+    """Raíces léxicas de un texto: números en cifras y prefijos de las palabras con contenido.
+
+    Un número escrito en letras cuenta como el mismo número en cifras: «cuatro dígitos» y
+    «4 dígitos» tienen las mismas raíces.
 
     Args:
         texto: Texto a analizar.
@@ -81,6 +121,8 @@ def raices(texto: str) -> set[str]:
     for palabra in re.findall(r"\w+", normalizar(texto).replace("_", " ")):
         if palabra.isdigit():
             resultado.add(palabra)
+        elif palabra in NUMEROS_EN_LETRAS:
+            resultado.add(NUMEROS_EN_LETRAS[palabra])
         elif len(palabra) >= 4 and palabra not in PALABRAS_VACIAS:
             resultado.add(palabra[:LONGITUD_RAIZ])
     return resultado
