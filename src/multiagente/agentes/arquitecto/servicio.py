@@ -10,7 +10,7 @@ from multiagente.agentes.arquitecto.catalogo import (
     cargar_catalogo_tecnologico,
     titulos_del_catalogo,
 )
-from multiagente.agentes.arquitecto.contexto import recuperar_catalogo
+from multiagente.agentes.arquitecto.contexto import COLECCIONES_ARQUITECTO, recuperar_catalogo
 from multiagente.agentes.arquitecto.parametrizacion import (
     SalidaEspecificacion,
     especificacion_desde_salida,
@@ -23,6 +23,7 @@ from multiagente.agentes.arquitecto.seleccion import (
     validar_seleccion,
 )
 from multiagente.agentes.arquitecto.validacion import validar_especificacion
+from multiagente.agentes.contexto import etiquetar
 from multiagente.core.configuracion import (
     ConfiguracionAzureOpenAI,
     ConfiguracionModelos,
@@ -88,7 +89,12 @@ class AgenteArquitecto:
                 SalidaSeleccion,
                 lambda s: validar_seleccion(s, aprobados, frozenset(self.titulos)),
             )
-            registro = registro_de_decision(salida, self.titulos, datetime.now(UTC).date())
+            registro = registro_de_decision(
+                salida,
+                self.titulos,
+                datetime.now(UTC).date(),
+                etiquetar(contexto, COLECCIONES_ARQUITECTO),
+            )
             elegida = salida.elegida
         else:
             registro = previa.registro_decision
@@ -118,8 +124,9 @@ def crear_agente_arquitecto(
 ) -> AgenteArquitecto:
     """Crea el agente arquitecto con la configuración del entorno.
 
-    El despliegue sale de MODELO_N8_ARQUITECTURA, el esfuerzo y el límite de salida de
-    ESFUERZO_N8_ARQUITECTURA y MAX_TOKENS_N8_ARQUITECTURA, y los prompts de
+    El despliegue sale de MODELO_N8_ARQUITECTURA; el esfuerzo, el límite de salida y el tiempo
+    de espera, de ESFUERZO_N8_ARQUITECTURA, MAX_TOKENS_N8_ARQUITECTURA y
+    TIEMPO_ESPERA_N8_ARQUITECTURA; los prompts, de
     `prompts/arquitecto/`. Las dos llamadas de N8 usan los parámetros del nodo.
 
     Args:
@@ -137,6 +144,7 @@ def crear_agente_arquitecto(
         despliegue=ConfiguracionModelos().n8_arquitectura,
         esfuerzo=razonamiento.esfuerzo_n8_arquitectura,
         max_tokens_salida=razonamiento.max_tokens_n8_arquitectura,
+        tiempo_espera_s=razonamiento.tiempo_espera_n8_arquitectura,
     )
     cliente = cliente or crear_cliente(ConfiguracionAzureOpenAI())
     tarifas = cargar_tarifas()

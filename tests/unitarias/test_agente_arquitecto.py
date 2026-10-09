@@ -248,6 +248,24 @@ def test_reglas_de_la_seleccion(cambios, mensaje):
         validar_seleccion(salida_seleccion(**cambios), {"RF-01", "RF-02"}, ARQUITECTURAS)
 
 
+def test_registro_cambia_las_etiquetas_por_la_referencia_del_fragmento():
+    salida = validar_seleccion(
+        salida_seleccion(justificacion="RF-01 tiene lógica moderada (F1), según los criterios."),
+        {"RF-01", "RF-02"},
+        ARQUITECTURAS,
+    )
+    criterios = FragmentoContexto(
+        documento_id="arq-003",
+        version_documento="1.0",
+        titulo="Criterios de selección › Paso 2",
+        contenido="x",
+        similitud=0.7,
+    )
+    registro = registro_de_decision(salida, TITULOS, date(2026, 10, 9), {"F1": criterios})
+    assert "(arq-003 v1.0 · Criterios de selección › Paso 2)" in registro
+    assert "(F1)" not in registro
+
+
 def test_registro_de_decision_con_la_estructura_madr():
     salida = validar_seleccion(salida_seleccion(), {"RF-01", "RF-02"}, ARQUITECTURAS)
     registro = registro_de_decision(salida, TITULOS, date(2026, 10, 9))

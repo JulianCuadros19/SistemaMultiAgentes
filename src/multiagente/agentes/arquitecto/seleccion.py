@@ -14,9 +14,15 @@ from pydantic import BaseModel, ConfigDict
 from multiagente.agentes.arquitecto.contexto import mensaje_contexto
 from multiagente.agentes.contexto import json_texto
 from multiagente.llm.invocador import ErrorValidacionSalida
-from multiagente.orquestador.estado import Arquitectura, Contexto, Requerimientos
+from multiagente.orquestador.estado import (
+    Arquitectura,
+    Contexto,
+    FragmentoContexto,
+    Requerimientos,
+)
 
 RF = re.compile(r"\bRF-\d{2,}\b")
+ETIQUETA = re.compile(r"\bF\d+\b")
 
 
 class OpcionModelo(BaseModel):
@@ -129,13 +135,22 @@ def validar_seleccion(
     return salida
 
 
-def registro_de_decision(salida: SalidaSeleccion, titulos: dict[str, str], fecha: date) -> str:
+def registro_de_decision(
+    salida: SalidaSeleccion,
+    titulos: dict[str, str],
+    fecha: date,
+    etiquetas: dict[str, FragmentoContexto] | None = None,
+) -> str:
     """Arma el registro de decisión en Markdown con la estructura MADR de la plantilla arq-001.
+
+    Las etiquetas `F1…Fn` que el modelo cite se reemplazan por la referencia estable del
+    fragmento, que sí tiene sentido para quien lee el registro.
 
     Args:
         salida: Selección validada.
         titulos: Título de cada arquitectura del catálogo.
         fecha: Fecha del registro.
+        etiquetas: Fragmentos por etiqueta, tal como se presentaron al modelo.
 
     Returns:
         El registro en Markdown.
@@ -143,6 +158,12 @@ def registro_de_decision(salida: SalidaSeleccion, titulos: dict[str, str], fecha
 
     def nombre(identificador: str) -> str:
         return f"{identificador} · {titulos.get(identificador, identificador)}"
+
+    def con_fuentes(texto: str) -> str:
+        return ETIQUETA.sub(
+            lambda m: etiquetas[m[0]].referencia if etiquetas and m[0] in etiquetas else m[0],
+            texto,
+        )
 
     lineas = [
         "---",
@@ -186,4 +207,4 @@ def registro_de_decision(salida: SalidaSeleccion, titulos: dict[str, str], fecha
         lineas += [f"- Desfavorable, porque {a}" for a in _textos(opcion.desfavorables)]
         if opcion.id != salida.elegida and opcion.motivo_descarte:
             lineas.append(f"- Descartada, porque {opcion.motivo_descarte.strip()}")
-    return "\n".join(lineas) + "\n"
+    return con_fuentes("\n".join(lineas)) + "\n"

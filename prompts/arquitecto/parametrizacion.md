@@ -2,7 +2,7 @@
 id: arquitecto.parametrizacion
 agente: arquitecto
 nodo: N8
-version: 1.0
+version: 1.1
 descripcion: Parametrización de N8. Declara la especificación de diseño de la arquitectura elegida.
 ---
 
@@ -35,7 +35,9 @@ verificará el código contra lo que declares, de forma automática.
   - `nombre`: nombre importable en notación de puntos, en minúsculas y con guion bajo, por
     ejemplo `dominio.predio`.
   - `ruta`: el archivo que corresponde al nombre, bajo `src/`, por ejemplo
-    `src/dominio/predio.py`. La primera carpeta es la capa del módulo.
+    `src/dominio/predio.py`. La primera carpeta es la capa del módulo, y no puede llamarse como
+    un módulo de la biblioteca estándar de Python (`io`, `json`, `logging`, `types`…) ni como
+    una dependencia, porque taparía ese módulo al importarlo.
   - `responsabilidad` y `capa`: qué hace el módulo y a qué capa pertenece. La capa es el nombre
     de la carpeta de su ruta.
   - `interfaces_publicas`: al menos una por módulo.

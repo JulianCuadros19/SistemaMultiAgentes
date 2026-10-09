@@ -109,6 +109,10 @@ class ClienteModeloFalso:
             completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=self._crear))
         )
 
+    def with_options(self, **opciones: Any) -> "ClienteModeloFalso":
+        self.opciones = opciones
+        return self
+
     def _crear(self, **argumentos: Any) -> _RespuestaCruda:
         self.llamadas.append(argumentos)
         if not self.pendientes:

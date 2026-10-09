@@ -111,8 +111,10 @@ class ConfiguracionRazonamiento(BaseSettings):
     max_tokens_n3_dialogo: PositiveInt = 4000
     esfuerzo_n5_sintesis: EsfuerzoRazonamiento = "low"
     max_tokens_n5_sintesis: PositiveInt = 8000
-    esfuerzo_n8_arquitectura: EsfuerzoRazonamiento = "medium"
+    esfuerzo_n8_arquitectura: EsfuerzoRazonamiento = "low"
     max_tokens_n8_arquitectura: PositiveInt = 16000
+    tiempo_espera_n8_arquitectura: PositiveInt = 300
+    """Segundos de espera de cada llamada de N8; la parametrización supera los 60 s."""
 
 
 class ConfiguracionOrquestador(BaseSettings):

@@ -142,8 +142,11 @@ def _llamar(
     esfuerzo: EsfuerzoRazonamiento,
     max_tokens_salida: int,
     formato: ResponseFormat | Omit = omit,
+    tiempo_espera_s: float | None = None,
 ) -> RespuestaModelo:
     """Hace una llamada y mide su consumo, su latencia y su región de procesamiento."""
+    if tiempo_espera_s is not None:
+        cliente = cliente.with_options(timeout=tiempo_espera_s)
     inicio = time.perf_counter()
     crudo = cliente.chat.completions.with_raw_response.create(
         model=despliegue,
@@ -212,6 +215,7 @@ def invocar_estructurado(
     esfuerzo: EsfuerzoRazonamiento,
     max_tokens_salida: int,
     esquema: type[M],
+    tiempo_espera_s: float | None = None,
 ) -> SalidaEstructurada[M]:
     """Hace una llamada con salida estructurada y valida el contenido contra el esquema.
 
@@ -222,6 +226,7 @@ def invocar_estructurado(
         esfuerzo: Esfuerzo de razonamiento del modelo.
         max_tokens_salida: Límite de tokens de salida, razonamiento incluido.
         esquema: Modelo Pydantic de la salida, con tipos planos (ver `formato_json`).
+        tiempo_espera_s: Tiempo de espera de esta llamada; si se omite, el del cliente (60 s).
 
     Returns:
         La salida validada y la respuesta medida.
@@ -239,6 +244,7 @@ def invocar_estructurado(
         esfuerzo=esfuerzo,
         max_tokens_salida=max_tokens_salida,
         formato=formato_json(esquema),
+        tiempo_espera_s=tiempo_espera_s,
     )
     consumo = respuesta.consumo
     if respuesta.motivo_fin == "length":

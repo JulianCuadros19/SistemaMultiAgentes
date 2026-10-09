@@ -201,6 +201,14 @@ def test_el_ejemplo_de_la_plantilla_arq_002_cumple_salvo_la_cobertura():
             "no está en una carpeta de la capa «dominio»",
         ),
         (
+            {
+                "modulos__0__nombre": "io.predio",
+                "modulos__0__ruta": "src/io/predio.py",
+                "modulos__0__capa": "io",
+            },
+            "el paquete «io» de io.predio tapa un módulo de la biblioteca estándar",
+        ),
+        (
             {"modelo_datos__0__campos__1__tipo": "float"},
             "Dinero en Decimal: el campo Predio.avaluo_total es monetario y usa float",
         ),

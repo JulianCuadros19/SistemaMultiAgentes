@@ -4,7 +4,9 @@ Aplica las tres validaciones del Anexo B, de forma determinística:
 
 1. Conformidad con el esquema y ausencia de dependencias circulares, más las reglas de la
    plantilla arq-002 que el código necesita para verificar la conformidad en N12: firmas
-   completas con tipos, rutas coherentes con la capa y con el nombre del módulo.
+   completas con tipos, rutas coherentes con la capa y con el nombre del módulo, y paquetes que
+   no tapen un módulo de la biblioteca estándar ni una dependencia (un paquete `io` rompería
+   `import io`).
 2. Cobertura: todo requerimiento aprobado queda asignado al menos a un módulo.
 3. Catálogo tecnológico: toda dependencia externa pertenece al catálogo autorizado (arq-004) y
    la arquitectura base es una del catálogo de referencia.
@@ -14,6 +16,7 @@ Además, el dinero y los avalúos usan `Decimal` (decisión 10 de `CLAUDE.md`, r
 
 import ast
 import re
+import sys
 
 from pydantic import ValidationError
 
@@ -76,8 +79,14 @@ def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
     return errores
 
 
-def _errores_de_ruta(nombre: str, ruta: str, capa: str) -> list[str]:
+def _errores_de_ruta(nombre: str, ruta: str, capa: str, reservados: frozenset[str]) -> list[str]:
     errores = []
+    paquete = nombre.split(".", 1)[0]
+    if paquete in reservados:
+        errores.append(
+            f"{ESQUEMA}: el paquete «{paquete}» de {nombre} tapa un módulo de la biblioteca "
+            "estándar o una dependencia; usa otro nombre"
+        )
     relativa = ruta.removeprefix("./").removeprefix("src/").removesuffix(".py")
     if relativa.replace("/", ".") != nombre:
         errores.append(f"{ESQUEMA}: la ruta {ruta} no corresponde al módulo {nombre}")
@@ -111,8 +120,9 @@ def validar_especificacion(
     except ValidationError as error:
         errores.extend(f"{ESQUEMA}: {detalle['msg']}" for detalle in error.errors())
 
+    reservados = frozenset(sys.stdlib_module_names) | catalogo.autorizadas
     for modulo in especificacion.modulos:
-        errores.extend(_errores_de_ruta(modulo.nombre, modulo.ruta, modulo.capa))
+        errores.extend(_errores_de_ruta(modulo.nombre, modulo.ruta, modulo.capa, reservados))
         for interfaz in modulo.interfaces_publicas:
             errores.extend(_errores_de_firma(modulo.nombre, interfaz))
 

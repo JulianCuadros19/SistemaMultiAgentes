@@ -1,6 +1,7 @@
 """Invocación de un nodo con modelo: prompt versionado, parámetros configurados y traza."""
 
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -23,6 +24,8 @@ from multiagente.llm.traza import RegistradorLlamadas, RegistroLlamada
 
 M = TypeVar("M", bound=BaseModel)
 R = TypeVar("R")
+
+registro = logging.getLogger(__name__)
 
 REINTENTOS_CORRECCION = 1
 """Reintentos de una salida que incumple el esquema o las reglas del nodo (ADR-0008)."""
@@ -50,12 +53,17 @@ class ErrorValidacionSalida(ValueError):
 
 @dataclass(frozen=True)
 class ParametrosNodo:
-    """Despliegue y razonamiento de un nodo, tomados de la configuración (RNF-06)."""
+    """Despliegue, razonamiento y tiempo de espera de un nodo, tomados de la configuración.
+
+    El tiempo de espera es opcional: los nodos conversacionales usan el del cliente (60 s), que
+    protege el RNF-01; los que generan artefactos extensos con razonamiento necesitan más.
+    """
 
     nodo: str
     despliegue: str
     esfuerzo: EsfuerzoRazonamiento
     max_tokens_salida: int
+    tiempo_espera_s: float | None = None
 
 
 class InvocadorNodo:
@@ -112,6 +120,7 @@ class InvocadorNodo:
                 esfuerzo=parametros.esfuerzo,
                 max_tokens_salida=parametros.max_tokens_salida,
                 esquema=esquema,
+                tiempo_espera_s=parametros.tiempo_espera_s,
             )
         except ErrorRespuestaModelo as error:
             self._registrar(error.respuesta, type(error).__name__)
@@ -155,6 +164,13 @@ class InvocadorNodo:
                     raise
                 problemas = (
                     error.problemas if isinstance(error, ErrorValidacionSalida) else [str(error)]
+                )
+                registro.warning(
+                    "%s: salida rechazada en el intento %d (%s): %s",
+                    self.parametros.nodo,
+                    intento + 1,
+                    self.prompt.identificador,
+                    "; ".join(problemas),
                 )
                 contenido = json.dumps({CLAVE_PROBLEMAS: problemas}, ensure_ascii=False)
                 actuales = [*mensajes, {"role": "user", "content": contenido}]

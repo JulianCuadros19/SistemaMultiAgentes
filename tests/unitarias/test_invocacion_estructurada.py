@@ -66,6 +66,20 @@ def test_salida_estructurada_valida(cliente_falso, completar_respuesta):
     assert argumentos["response_format"]["json_schema"]["name"] == "Salida"
 
 
+def test_tiempo_de_espera_por_llamada(cliente_falso, completar_respuesta):
+    cliente = cliente_falso(completar_respuesta({"pregunta": None, "atributos": []}))
+    invocar_estructurado(
+        cliente,
+        despliegue="gpt-5",
+        mensajes=[],
+        esfuerzo="medium",
+        max_tokens_salida=16000,
+        esquema=Salida,
+        tiempo_espera_s=300,
+    )
+    assert cliente.opciones == {"timeout": 300}
+
+
 def test_invocacion_de_texto_libre_no_envia_formato(cliente_falso, completar_respuesta):
     cliente = cliente_falso(completar_respuesta("listo"))
     respuesta = invocar(
