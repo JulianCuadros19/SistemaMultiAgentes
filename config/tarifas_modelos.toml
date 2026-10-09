@@ -3,11 +3,23 @@
 # (por ejemplo, gpt-5-nano cubre gpt-5-nano-2025-08-07).
 # Los tokens de razonamiento se facturan como salida.
 #
-# Fuente: API de precios minoristas de Azure (prices.azure.com), consultada el 2026-09-25.
-# Recurso en southcentralus, despliegue Global Standard.
-# Si el despliegue cambia a Data Zone, las tarifas suben a 0.055, 0.0055 y 0.44.
+# Fuente: API de precios minoristas de Azure (prices.azure.com). Recurso en southcentralus,
+# despliegue Global Standard. Con Data Zone, cada tarifa sube un 10 %.
 
+# Consultada el 2026-09-25. Perfil económico (N14).
 [gpt-5-nano]
 entrada = "0.05"
 entrada_cacheada = "0.005"
 salida = "0.40"
+
+# Consultada el 2026-10-09. Alternativa intermedia, más económica; no está desplegada.
+[gpt-5-mini]
+entrada = "0.25"
+entrada_cacheada = "0.025"
+salida = "2.00"
+
+# Consultada el 2026-10-09. Perfil intermedio (N3 y N5), versión 2026-03-17.
+["gpt-5.4-mini"]
+entrada = "0.75"
+entrada_cacheada = "0.075"
+salida = "4.50"

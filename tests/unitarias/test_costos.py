@@ -73,3 +73,17 @@ def test_buscar_tarifa_de_modelo_desconocido():
 def test_archivo_de_tarifas_versionado():
     tarifas = cargar_tarifas(RAIZ / "config" / "tarifas_modelos.toml")
     assert tarifas["gpt-5-nano"] == TARIFA_NANO
+
+
+@pytest.mark.parametrize(
+    ("modelo", "salida"),
+    [
+        ("gpt-5-nano-2025-08-07", "0.40"),
+        ("gpt-5-mini-2025-08-07", "2.00"),
+        # Un nombre con punto exige la clave entre comillas en TOML; sin ellas se anida.
+        ("gpt-5.4-mini-2026-03-17", "4.50"),
+    ],
+)
+def test_cada_modelo_resuelve_su_tarifa(modelo, salida):
+    tarifas = cargar_tarifas(RAIZ / "config" / "tarifas_modelos.toml")
+    assert buscar_tarifa(tarifas, modelo).salida == Decimal(salida)

@@ -7,6 +7,9 @@ modifica: ADR-0006 (puntos 1, 4 y 5)
 
 # ADR-0008 · Agente elicitador: fidelidad al cliente, verificación de calidad y escalamiento
 
+> El ADR-0009 cambia el modelo de N3 y N5 a `gpt-5.4-mini`. Las mediciones de este ADR son con
+> `gpt-5-nano`.
+
 ## Contexto y planteamiento del problema
 
 El paso 7 exige que una conversación produzca un requerimiento que pase la verificación de

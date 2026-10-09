@@ -232,7 +232,9 @@ def main() -> None:
     cliente_modelo = crear_cliente(ConfiguracionAzureOpenAI())
     caso = cargar_caso(argumentos.simulado) if argumentos.simulado else None
     simulado = (
-        ClienteSimulado(cliente_modelo, ConfiguracionModelos().n3_dialogo, caso, registro)
+        ClienteSimulado(
+            cliente_modelo, ConfiguracionModelos().despliegue_cliente_simulado, caso, registro
+        )
         if caso
         else None
     )

@@ -84,6 +84,13 @@ class ConfiguracionModelos(BaseSettings):
     n8_arquitectura: str
     n10_generacion: str
     n14_veredicto: str
+    cliente_simulado: str | None = None
+    """Despliegue del cliente simulado de las pruebas; si se omite, el de N3."""
+
+    @property
+    def despliegue_cliente_simulado(self) -> str:
+        """Despliegue que usa el cliente simulado: el propio o, si no se fijó, el de N3."""
+        return self.cliente_simulado or self.n3_dialogo
 
 
 class ConfiguracionRazonamiento(BaseSettings):

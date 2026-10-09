@@ -39,7 +39,8 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(base_real
     cliente_modelo = crear_cliente(ConfiguracionAzureOpenAI())
     caso = cargar_caso(CASO)
     elicitador = crear_agente_elicitador(base_real, registro, cliente_modelo, vectorizador)
-    simulado = ClienteSimulado(cliente_modelo, ConfiguracionModelos().n3_dialogo, caso, registro)
+    despliegue = ConfiguracionModelos().despliegue_cliente_simulado
+    simulado = ClienteSimulado(cliente_modelo, despliegue, caso, registro)
     simulados = ServiciosSimulados()
     servicios = Servicios(
         elicitador=elicitador, arquitecto=simulados, desarrollador=simulados, tester=simulados

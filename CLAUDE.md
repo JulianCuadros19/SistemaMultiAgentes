@@ -94,7 +94,11 @@ durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse
 - Recurso de Microsoft Foundry en la suscripción Azure for Students. Regiones permitidas por
   política: southcentralus, centralus, canadacentral, brazilsouth y mexicocentral. Solo
   southcentralus y centralus cubren despliegue global, de zona de datos de EE. UU. y regional.
-- Modelo desplegado: `gpt-5-nano`, tipo Global Standard. Probado con éxito en el playground.
+- Modelos desplegados, tipo Global Standard (ADR-0009):
+  - `gpt-5.4-mini`, para N3 y N5, del perfil intermedio;
+  - `gpt-5-nano`, para N14, del perfil económico, y provisionalmente para N8 y N10.
+
+  El modelo de N8 y N10 se decide al empezar los pasos 8 y 9.
 - Usar el paquete `openai` con la API OpenAI/v1. El paquete `azure-ai-inference` está retirado.
 - **Los modelos GPT-5 son de razonamiento.** Generan tokens de razonamiento ocultos que se
   facturan como salida. En la primera prueba, una respuesta corta consumió cerca de 4.700
@@ -202,21 +206,25 @@ Mantener esta sección actualizada al cerrar cada paso.
     `evaluacion/casos/elicitacion-mutacion.md`, llega a N6 sin defectos (6 de 7 corridas);
   - `python scripts/conversar_elicitador.py` permite conversar o simular, y reproduce pausa,
     reanudación, rechazo y aprobación;
-  - con `gpt-5-nano`, cada turno de diálogo dura de 3 a 9 s; el turno de cierre, con la
-    síntesis, hasta 15,3 s. Costo del sistema: 0,002 a 0,005 USD por elicitación.
+  - con `gpt-5.4-mini` (ADR-0009), 4 de 4 corridas `nube` pasan y cada llamada de N3 tarda 1,6 s
+    de media; el turno más largo mide 11,6 s y el costo es de 0,018 a 0,033 USD por elicitación.
+    Con `gpt-5-nano` pasaban 6 de 7, con turnos de hasta 15,3 s y 0,002 a 0,005 USD.
 
   Pendiente:
-  - el benchmark del paso 15 debe comparar `gpt-5-mini`, que es el perfil «intermedio» que la
-    arquitectura asigna a N3 y N5;
+  - el benchmark del paso 15 compara `gpt-5-nano`, `gpt-5-mini` y `gpt-5.4-mini` en N3 y N5;
   - la interfaz del paso 12 debe acusar la confirmación antes de sintetizar.
 - **Paso actual: 8.** Agente arquitecto: la especificación generada pasa las tres validaciones
   del Anexo B.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
-- **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, despliegue
-  Global Standard de `gpt-5-nano` (versión 2025-08-07), procesado en South Central US.
-  Endpoint y clave solo en `.env`. Tarifas: entrada 0,05, caché 0,005 y salida 0,40 USD por
-  millón de tokens. Medido con el mismo mensaje: minimal 80 tokens de salida y 1,7 s; low
+- **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
+  South Central US. Despliegues Global Standard:
+  - `gpt-5-nano` (versión 2025-08-07): entrada 0,05, caché 0,005 y salida 0,40 USD por millón de
+    tokens;
+  - `gpt-5.4-mini` (versión 2026-03-17): entrada 0,75, caché 0,075 y salida 4,50 USD.
+
+  Endpoint y clave solo en `.env`. Las tarifas están en `config/tarifas_modelos.toml`. Para
+  `gpt-5-nano`, medido con el mismo mensaje: minimal 80 tokens de salida y 1,7 s; low
   555 (448 de razonamiento) y 4,6 s; medium 1.340 (1.216 de razonamiento) y 8,9 s. Si el
   límite es menor que el razonamiento, la respuesta llega vacía con motivo `length` y se
   cobra igual.
