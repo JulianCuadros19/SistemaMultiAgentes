@@ -7,9 +7,15 @@ los cuatro agentes reales, desde la necesidad del cliente:
 - el desarrollador genera el módulo (N10);
 - el tester lo valida (N11 a N14) en el ciclo de corrección, hasta la aprobación final (N17).
 
-Las personas de los tres puntos de control aprueban: en N6 sin defectos de calidad, en N9 sin
-errores del Anexo B y en N17 el módulo que aprobó el tester. El módulo debe salir aprobado dentro
-del límite de iteraciones y en 20 minutos o menos de tiempo del sistema (RNF-01).
+Las personas de los tres puntos de control deciden como lo haría el equipo:
+- en N6, si llegan defectos escalados, como una pregunta abierta para el cliente, el analista
+  rechaza una vez con ellos como observaciones y el diálogo los resuelve (RNF-09); si vuelven, la
+  corrida falla;
+- en N9 se aprueba una especificación sin errores del Anexo B;
+- en N17 se aprueba el módulo que aprobó el tester.
+
+El módulo debe salir aprobado dentro del límite de iteraciones y en 20 minutos o menos de tiempo
+del sistema (RNF-01).
 
 Cuesta dinero (de 0,15 a 0,55 USD por caso) y requiere el archivo .env, los servicios `db` y
 `embeddings` y la imagen del entorno aislado:
@@ -41,7 +47,7 @@ from multiagente.orquestador.ejecucion import (
 )
 from multiagente.orquestador.estado import Decision, Fase, PuntoControl, Severidad
 from multiagente.orquestador.grafo import construir_grafo
-from multiagente.orquestador.simulacion import aprobar
+from multiagente.orquestador.simulacion import aprobar, rechazar
 from multiagente.persistencia.puntos_control import serializador
 
 pytestmark = [pytest.mark.nube, pytest.mark.embeddings, pytest.mark.sandbox]
@@ -49,6 +55,16 @@ pytestmark = [pytest.mark.nube, pytest.mark.embeddings, pytest.mark.sandbox]
 CASOS = sorted((RAIZ_EVALUACION / "casos").glob("elicitacion-*.md"))
 TIEMPO_MAXIMO_MODULO_S = 20 * 60
 """RNF-01: el ciclo completo de un módulo no excede los 20 minutos."""
+RECHAZOS_N6 = 1
+"""Rechazos del analista en N6 por defectos escalados antes de dar la corrida por fallida."""
+
+
+def observaciones_del_analista(datos: dict) -> str:
+    """Observaciones con que el analista devuelve al diálogo lo pendiente con el cliente."""
+    preguntas = [p for historia in datos["historias"] for p in historia["preguntas_abiertas"]]
+    return "Resolver con el cliente antes de aprobar: " + "; ".join(
+        [*datos["defectos"], *preguntas]
+    )
 
 
 @pytest.mark.parametrize("archivo", CASOS, ids=[caso.stem for caso in CASOS])
@@ -76,6 +92,7 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
     turnos = [sistema_s]
     cierres: list[float] = []
     pausas: list[str] = []
+    rechazos_n6: list[str] = []
     final = None
     while avance.pausa is not None:
         pausa = avance.pausa
@@ -83,8 +100,11 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
         if pausa.punto == "dialogo":
             conversacion = app.get_state(configuracion_hilo(id_sesion)).values["conversacion"]
             respuesta = simulado.responder(conversacion, pausa.datos["pregunta"])
+        elif pausa.punto == "requerimientos" and pausa.datos["defectos"]:
+            assert len(rechazos_n6) < RECHAZOS_N6, (pausa.datos["defectos"], rechazos_n6)
+            rechazos_n6.append(observaciones_del_analista(pausa.datos))
+            respuesta = rechazar(rechazos_n6[-1], "Analista")
         elif pausa.punto == "requerimientos":
-            assert pausa.datos["defectos"] == [], pausa.datos["defectos"]
             respuesta = aprobar("Analista")
         elif pausa.punto == "especificacion":
             assert pausa.datos["errores"] == [], pausa.datos["errores"]
@@ -107,6 +127,8 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
         f"  Turnos de diálogo: {len(turnos)} · máximo {max(turnos):.1f} s · cierre de la "
         f"elicitación: {[round(segundos, 1) for segundos in cierres]} s"
     )
+    for observaciones in rechazos_n6:
+        print(f"  Rechazo en N6: {observaciones}")
 
     # El módulo llega a N17 aprobado por el tester, sin escalar por el límite de iteraciones.
     assert estado["sesion"].fase is not Fase.REQUIERE_INTERVENCION, historial[-1][1].reporte
@@ -134,6 +156,7 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
     assert estado["sesion"].fase is Fase.VALIDADO
     aprobaciones = [(a.punto, a.decision) for a in estado["sesion"].aprobaciones]
     assert aprobaciones == [
+        *[(PuntoControl.REQUERIMIENTOS, Decision.RECHAZADO)] * len(rechazos_n6),
         (PuntoControl.REQUERIMIENTOS, Decision.APROBADO),
         (PuntoControl.ESPECIFICACION, Decision.APROBADO),
         (PuntoControl.FINAL, Decision.APROBADO),
