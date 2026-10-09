@@ -6,17 +6,11 @@ colecciones autorizadas. Requiere los servicios `db` y `embeddings` de docker co
 """
 
 import math
-import uuid
 
-import psycopg
 import pytest
 
-from multiagente.core.configuracion import ConfiguracionBaseDatos, ConfiguracionRecuperacion
-from multiagente.persistencia.migraciones import aplicar_migraciones
+from multiagente.core.configuracion import ConfiguracionRecuperacion
 from multiagente.rag.colecciones import ACCESO, Agente, ErrorAccesoNoAutorizado
-from multiagente.rag.documentos import cargar_corpus
-from multiagente.rag.embeddings import VectorizadorTEI
-from multiagente.rag.ingesta import ingestar
 from multiagente.rag.recuperacion import Recuperador
 
 pytestmark = pytest.mark.embeddings
@@ -40,28 +34,6 @@ CONSULTAS_AJENAS = {
         "ARQ-04 servicio API REST con contrato de interfaz",
     ],
 }
-
-
-@pytest.fixture(scope="module")
-def vectorizador():
-    return VectorizadorTEI()
-
-
-@pytest.fixture(scope="module")
-def base_real(vectorizador):
-    cadena = ConfiguracionBaseDatos().cadena_conexion()
-    esquema = f"prueba_{uuid.uuid4().hex[:12]}"
-    with psycopg.connect(cadena, autocommit=True) as administracion:
-        administracion.execute(f'CREATE SCHEMA "{esquema}"')
-    try:
-        with psycopg.connect(cadena, options=f"-c search_path={esquema},public") as conexion:
-            aplicar_migraciones(conexion)
-            ingestar(conexion, cargar_corpus(), vectorizador)
-            conexion.commit()
-            yield conexion
-    finally:
-        with psycopg.connect(cadena, autocommit=True) as administracion:
-            administracion.execute(f'DROP SCHEMA "{esquema}" CASCADE')
 
 
 def test_vectores_de_dimension_1024_normalizados(vectorizador):

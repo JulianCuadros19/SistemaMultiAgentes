@@ -97,12 +97,6 @@ def test_confirmacion_exige_registro_completo():
         registro_completo(excepciones=(), resumen_confirmado=True)
 
 
-def test_mismo_contenido_ignora_la_confirmacion():
-    registro = registro_completo()
-    assert registro.mismo_contenido(registro.model_copy(update={"resumen_confirmado": True}))
-    assert not registro.mismo_contenido(registro_completo(beneficio="otro beneficio"))
-
-
 def test_respuesta_nueva_distingue_lo_ya_procesado():
     necesidad = Turno(emisor=Emisor.CLIENTE, texto="Necesito liquidar", fecha=AHORA)
     pregunta = Turno(emisor=Emisor.ELICITADOR, texto="¿Quién lo usa?", fecha=AHORA)

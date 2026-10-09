@@ -167,18 +167,6 @@ class RegistroCaptura(ModeloEstricto):
             faltantes.append("confirmacion")
         return faltantes
 
-    def mismo_contenido(self, otro: "RegistroCaptura") -> bool:
-        """Indica si dos registros capturan la misma información, sin mirar la confirmación.
-
-        Args:
-            otro: Registro con el que se compara.
-
-        Returns:
-            True si todos los atributos, salvo la confirmación, coinciden.
-        """
-        excluir = {"resumen_confirmado"}
-        return self.model_dump(exclude=excluir) == otro.model_dump(exclude=excluir)
-
 
 class Conversacion(Particion):
     """Historial del diálogo, registro capturado y observaciones del revisor.
