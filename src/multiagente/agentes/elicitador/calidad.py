@@ -42,6 +42,13 @@ class DefectoCalidad:
     campo: str
     detalle: str
 
+    @property
+    def requiere_cliente(self) -> bool:
+        """Solo el cliente puede resolverlo: corregirlo sin él sería inventar (eli-009)."""
+        return self.campo == "preguntas_abiertas" or self.detalle.startswith(
+            "marcador de pendiente"
+        )
+
     def __str__(self) -> str:
         """Texto del defecto tal como se registra en el estado y se muestra al analista."""
         return f"{self.artefacto} · {self.caracteristica} · {self.campo}: {self.detalle}"
@@ -58,6 +65,18 @@ def normalizar(texto: str) -> str:
     """
     descompuesto = unicodedata.normalize("NFKD", texto)
     return "".join(c for c in descompuesto if not unicodedata.combining(c)).casefold()
+
+
+def identificador(nombre: str) -> str:
+    """Convierte el nombre de un dato en identificador: minúsculas, sin tildes y con guion bajo.
+
+    Args:
+        nombre: Nombre del dato, p. ej. «Número predial».
+
+    Returns:
+        Identificador, p. ej. `numero_predial`.
+    """
+    return re.sub(r"[^a-z0-9]+", "_", normalizar(nombre)).strip("_")
 
 
 def _patron(frases: tuple[str, ...]) -> re.Pattern[str]:
@@ -127,6 +146,11 @@ COMPARATIVOS = re.compile(
     r"(?!(?:\s+\w+){0,2}\s+que\b)"
 )
 CONECTORES_COMPUESTOS = _patron(("así como", "además de", "también"))
+DETALLE_IMPLEMENTACION = re.compile(r"\w+\(\)|\w+_\w+|[<>]=?|[=!]=|\s=\s|[≤≥≠]")
+"""Llamadas, identificadores y operadores que un escenario Gherkin no debe contener (eli-004).
+
+Un identificador con guion bajo se admite si es el nombre de un dato declarado en la ficha.
+"""
 SENALES_ERROR = re.compile(
     r"\b(?:rechaz\w*|error\w*|invalid\w*|incorrect\w*|inexistent\w*|no existe\w*|no permite"
     r"|no se permite|impide|deniega|bloquea|falla\w*|incumpl\w*|falta\w*|incomplet\w*|vaci[oa]s?"
@@ -330,6 +354,24 @@ def verificar_requerimiento(requerimiento: RequerimientoFormal) -> list[DefectoC
         ]
     for campo, texto in evaluables:
         defectos.extend(_redaccion(artefacto, campo, texto))
+    declarados = {
+        identificador(dato.nombre)
+        for dato in (*descripcion.datos_entrada, *descripcion.datos_salida)
+    }
+    for escenario in requerimiento.criterios_aceptacion:
+        for parte in ("dado_que", "cuando", "entonces"):
+            texto = normalizar(getattr(escenario, parte))
+            for coincidencia in DETALLE_IMPLEMENTACION.finditer(texto):
+                if coincidencia.group(0) in declarados:
+                    continue
+                defectos.append(
+                    DefectoCalidad(
+                        artefacto,
+                        Caracteristica.CONFORME,
+                        f"{escenario.id}.{parte}",
+                        f"detalle de implementación «{coincidencia.group(0)}»",
+                    )
+                )
 
     for campo, datos in (
         ("descripcion.datos_entrada", descripcion.datos_entrada),

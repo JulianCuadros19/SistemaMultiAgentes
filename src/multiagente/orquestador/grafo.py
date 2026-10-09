@@ -263,13 +263,20 @@ class NodosGrafo:
     def n6_aprobacion_requerimientos(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Verifica la calidad (RF-07) y somete los requerimientos a aprobación humana.
 
-        Con defectos, los devuelve a N5 sin intervención humana hasta agotar el límite de
-        correcciones; al agotarlo, escala a la persona con los defectos a la vista. Un rechazo
-        devuelve el flujo al diálogo con las observaciones y exige confirmar un nuevo resumen.
+        Con defectos que N5 puede corregir, los devuelve a N5 sin intervención humana hasta
+        agotar el límite de correcciones. Al agotarlo, o si algún defecto requiere información
+        del cliente, escala a la persona con los defectos a la vista. Un rechazo devuelve el
+        flujo al diálogo con las observaciones y exige confirmar un nuevo resumen.
         """
         requerimientos = estado["requerimientos"]
-        defectos = tuple(self.servicios.elicitador.verificar_calidad(requerimientos))
-        if defectos and requerimientos.correcciones < estado["control"].limite_correcciones:
+        verificacion = self.servicios.elicitador.verificar_calidad(requerimientos)
+        defectos = verificacion.defectos
+        corregible = not verificacion.requiere_cliente
+        if (
+            defectos
+            and corregible
+            and requerimientos.correcciones < estado["control"].limite_correcciones
+        ):
             return {
                 "requerimientos": requerimientos.model_copy(
                     update={"defectos": defectos, "correcciones": requerimientos.correcciones + 1}

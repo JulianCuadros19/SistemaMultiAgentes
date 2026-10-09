@@ -15,14 +15,21 @@ from multiagente.agentes.elicitador.contexto import (
     recuperar_contexto,
 )
 from multiagente.agentes.elicitador.dialogo import (
-    SalidaDialogo,
-    mensajes_dialogo,
+    PREGUNTA_CIERRE,
+    SalidaExtraccion,
+    SalidaPregunta,
+    aplicar_extraccion,
+    mensajes_extraccion,
+    mensajes_pregunta,
     registro_desde_salida,
-    validar_dialogo,
+    resumen_para_confirmar,
+    validar_pregunta,
 )
+from multiagente.agentes.elicitador.fidelidad import raices
 from multiagente.agentes.elicitador.servicio import AgenteElicitador
 from multiagente.agentes.elicitador.sintesis import (
     AUTOR,
+    POR_CONFIRMAR,
     SalidaSintesis,
     mensajes_sintesis,
     validar_sintesis,
@@ -204,131 +211,272 @@ COMPLETO = {
     "datos_salida": DATOS_SALIDA,
     "excepciones": ["Si el número predial no existe, la solicitud se rechaza"],
 }
-RESUMEN = "Le resumo lo que entendí: … ¿Es correcto?"
+DICHO_POR_EL_CLIENTE = (
+    "El analista de conservación catastral registra solicitudes de mutación de propietario con "
+    "su documento soporte, para tramitar el cambio en la información del predio y hacerle "
+    "seguimiento. La solicitud se acepta solo si el número predial existe y el documento "
+    "soporte no tiene fecha posterior a la radicación; el predio existe en la base catastral con "
+    "ficha vigente. Se necesita el número predial de 30 dígitos y la fecha del documento; se "
+    "entrega un radicado único RAD-AAAA-NNNNNN con estado inicial en trámite. Si el número "
+    "predial no existe, la solicitud se rechaza."
+)
+REGLA_DEL_DOMINIO = (
+    "Una mutación de cuarta clase por englobe exige que todos los predios a englobar pertenezcan "
+    "al mismo propietario y sean colindantes"
+)
 
 
-def salida_dialogo(**cambios) -> SalidaDialogo:
+def salida_extraccion(**cambios) -> SalidaExtraccion:
     base = {
         "rol": None,
         "funcionalidad": None,
         "beneficio": None,
-        "reglas_negocio": [],
-        "datos_entrada": [],
-        "datos_salida": [],
-        "excepciones": [],
+        "reglas_negocio": None,
+        "datos_entrada": None,
+        "datos_salida": None,
+        "excepciones": None,
         "supuestos": [],
         "preguntas_abiertas": [],
         "confirma_resumen": False,
-        "siguiente_pregunta": None,
     }
-    return SalidaDialogo.model_validate(base | cambios)
+    return SalidaExtraccion.model_validate(base | cambios)
 
 
 def registro_completo() -> RegistroCaptura:
-    return registro_desde_salida(salida_dialogo(**COMPLETO), RegistroCaptura())
-
-
-def esperando_confirmacion(respuesta: str | None = "Sí, es correcto") -> Conversacion:
-    """Conversación con el registro completo, el resumen presentado y quizá una respuesta."""
-    turnos = [
-        Turno(emisor=Emisor.CLIENTE, texto=NECESIDAD, fecha=AHORA),
-        Turno(emisor=Emisor.ELICITADOR, texto=RESUMEN, fecha=AHORA),
-    ]
-    conversacion = Conversacion(
-        turnos=tuple(turnos), turnos_procesados=2, registro=registro_completo()
+    return registro_desde_salida(
+        salida_extraccion(**COMPLETO), RegistroCaptura(), raices(DICHO_POR_EL_CLIENTE)
     )
+
+
+def conversacion_completa() -> Conversacion:
+    turnos = (
+        Turno(emisor=Emisor.CLIENTE, texto=NECESIDAD, fecha=AHORA),
+        Turno(emisor=Emisor.ELICITADOR, texto="¿Cómo funciona hoy?", fecha=AHORA),
+        Turno(emisor=Emisor.CLIENTE, texto=DICHO_POR_EL_CLIENTE, fecha=AHORA),
+    )
+    return Conversacion(turnos=turnos, turnos_procesados=3, registro=registro_completo())
+
+
+def con_respuesta(registro: RegistroCaptura, pregunta: str, respuesta: str | None) -> Conversacion:
+    """Conversación con un registro, la última pregunta del elicitador y quizá una respuesta."""
+    turnos = (
+        Turno(emisor=Emisor.CLIENTE, texto=NECESIDAD, fecha=AHORA),
+        Turno(emisor=Emisor.ELICITADOR, texto=pregunta, fecha=AHORA),
+    )
+    conversacion = Conversacion(turnos=turnos, turnos_procesados=2, registro=registro)
     if respuesta is None:
         return conversacion
     turno = Turno(emisor=Emisor.CLIENTE, texto=respuesta, fecha=AHORA)
     return conversacion.model_copy(update={"turnos": (*turnos, turno)})
 
 
-def test_mensajes_del_dialogo():
-    conversacion = abierta()
-    [contexto, estado] = mensajes_dialogo(conversacion, contexto_recuperado())
+def esperando_confirmacion(respuesta: str | None = "Sí, es correcto") -> Conversacion:
+    resumen = f"{resumen_para_confirmar(registro_completo())}\n{PREGUNTA_CIERRE}"
+    return con_respuesta(registro_completo(), resumen, respuesta)
+
+
+def test_la_extraccion_no_ve_el_contexto_de_dominio():
+    conversacion = con_respuesta(RegistroCaptura(), "¿Quién lo usa?", "El analista catastral")
+    [mensaje] = mensajes_extraccion(conversacion)
+    datos = json.loads(mensaje["content"])
+    assert set(datos) == {"registro", "transcripcion", "pregunta_anterior", "respuesta_nueva"}
+    assert datos["pregunta_anterior"] == "¿Quién lo usa?"
+    assert datos["respuesta_nueva"] == "El analista catastral"
+
+
+def test_la_pregunta_ve_el_contexto_y_el_registro_actualizado():
+    registro = registro_completo()
+    [contexto, estado] = mensajes_pregunta(abierta(), registro, contexto_recuperado())
     assert json.loads(contexto["content"])["contexto"][0]["etiqueta"] == "F1"
     datos = json.loads(estado["content"])
-    assert datos["pendientes"][0] == "rol"
-    assert datos["respuesta_nueva"] == NECESIDAD
-    assert datos["transcripcion"] == [{"emisor": "cliente", "texto": NECESIDAD}]
+    assert datos["pendientes"] == ["confirmacion"]
+    assert datos["registro"]["rol"] == registro.rol
     assert datos["observaciones_revisor"] == []
 
 
-def test_extrae_y_pregunta_por_lo_que_falta():
-    dialogo = validar_dialogo(
-        salida_dialogo(
-            funcionalidad="registrar solicitudes de mutación",
-            siguiente_pregunta="¿Qué cargo tiene la persona que registra las solicitudes?",
-        ),
-        abierta(),
+def test_extrae_lo_que_aporta_la_necesidad():
+    registro = aplicar_extraccion(
+        salida_extraccion(funcionalidad="registrar solicitudes de mutación"), abierta()
     )
-    assert dialogo.registro.funcionalidad == "registrar solicitudes de mutación"
-    assert dialogo.registro.pendientes[0] == "rol"
-    assert dialogo.siguiente_pregunta.startswith("¿Qué cargo")
+    assert registro.funcionalidad == "registrar solicitudes de mutación"
+    assert registro.pendientes[0] == "rol"
+
+
+def test_solo_cambia_lo_que_aporta_la_respuesta():
+    previo = registro_completo()
+    conversacion = esperando_confirmacion("El beneficio es hacer seguimiento al trámite")
+    registro = aplicar_extraccion(
+        salida_extraccion(beneficio="hacer seguimiento al trámite"), conversacion
+    )
+    assert registro.beneficio == "hacer seguimiento al trámite"
+    assert registro.model_dump(exclude={"beneficio"}) == previo.model_dump(exclude={"beneficio"})
 
 
 def test_lo_capturado_no_se_pierde_por_omision():
     previo = registro_completo()
-    conversacion = esperando_confirmacion("Además, el radicado incluye el año")
-    conversacion = conversacion.model_copy(update={"registro": previo})
-    dialogo = validar_dialogo(
-        salida_dialogo(
-            reglas_negocio=[*COMPLETO["reglas_negocio"], "El radicado incluye el año"],
-            siguiente_pregunta=RESUMEN,
+    registro = aplicar_extraccion(
+        salida_extraccion(
+            reglas_negocio=[*COMPLETO["reglas_negocio"], "El radicado incluye el año"]
         ),
-        conversacion,
+        esperando_confirmacion("Además, el radicado incluye el año"),
     )
-    assert dialogo.registro.rol == previo.rol
-    assert dialogo.registro.datos_entrada == previo.datos_entrada
-    assert len(dialogo.registro.reglas_negocio) == 2
+    assert registro.rol == previo.rol
+    assert registro.datos_entrada == previo.datos_entrada
+    assert len(registro.reglas_negocio) == 2
 
 
-def test_confirmacion_valida_cierra_sin_pregunta():
-    # Diferencias de mayúsculas y espacios no cuentan como cambio del registro.
-    cambios = COMPLETO | {"rol": "Analista de conservación  catastral"}
-    dialogo = validar_dialogo(
-        salida_dialogo(**cambios, confirma_resumen=True, siguiente_pregunta="¿Algo más?"),
-        esperando_confirmacion(),
+def test_confirmacion_valida():
+    # Mayúsculas, espacios y paráfrasis del modelo no cuentan como cambio del registro.
+    parafrasis = COMPLETO | {
+        "rol": "Analista de conservación  catastral",
+        "beneficio": "tramitar cambios en la información del predio y seguirlos",
+        "reglas_negocio": ["Solo se acepta la solicitud si existe el número predial"],
+    }
+    registro = aplicar_extraccion(
+        salida_extraccion(**parafrasis, confirma_resumen=True), esperando_confirmacion()
     )
-    assert dialogo.registro.resumen_confirmado
-    assert dialogo.registro.pendientes == []
-    assert dialogo.siguiente_pregunta is None
+    assert registro.resumen_confirmado
+    assert registro.pendientes == []
+    assert registro.beneficio == COMPLETO["beneficio"]
+    assert registro.reglas_negocio == tuple(COMPLETO["reglas_negocio"])
 
 
 def test_confirmacion_de_un_registro_cambiado_no_cuenta():
-    cambios = COMPLETO | {"beneficio": "hacer seguimiento al trámite"}
-    dialogo = validar_dialogo(
-        salida_dialogo(**cambios, confirma_resumen=True, siguiente_pregunta=RESUMEN),
+    registro = aplicar_extraccion(
+        salida_extraccion(beneficio="hacer seguimiento al trámite", confirma_resumen=True),
         esperando_confirmacion("Sí, pero el beneficio es hacer seguimiento al trámite"),
     )
-    assert not dialogo.registro.resumen_confirmado
-    assert dialogo.siguiente_pregunta == RESUMEN
+    assert not registro.resumen_confirmado
+    assert registro.beneficio == "hacer seguimiento al trámite"
 
-    with pytest.raises(ErrorValidacionSalida, match="pide de nuevo la confirmación"):
-        validar_dialogo(
-            salida_dialogo(**cambios, confirma_resumen=True),
-            esperando_confirmacion("Sí, pero el beneficio es hacer seguimiento al trámite"),
-        )
+
+def test_confirmacion_que_agrega_una_regla_no_cuenta():
+    nueva = "El radicado incluye el año de radicación"
+    registro = aplicar_extraccion(
+        salida_extraccion(
+            reglas_negocio=[*COMPLETO["reglas_negocio"], nueva], confirma_resumen=True
+        ),
+        esperando_confirmacion(f"Sí, y además {nueva.lower()}"),
+    )
+    assert not registro.resumen_confirmado
+    assert registro.reglas_negocio == (*COMPLETO["reglas_negocio"], nueva)
+
+
+def test_confirmacion_que_precisa_un_dato_no_cuenta():
+    formato = "RAD-año-consecutivo, con el año de radicación en cuatro dígitos"
+    radicado = DATOS_SALIDA[0] | {"formato": formato}
+    registro = aplicar_extraccion(
+        salida_extraccion(datos_salida=[radicado], confirma_resumen=True),
+        esperando_confirmacion(f"Sí, es correcto; el radicado es {formato}"),
+    )
+    assert not registro.resumen_confirmado
+    assert registro.datos_salida[0].formato == formato
+
+
+def test_confirmacion_ignora_la_parafrasis_de_un_dato():
+    radicado = DATOS_SALIDA[0] | {"formato": "formato de radicado con año y número"}
+    registro = aplicar_extraccion(
+        salida_extraccion(datos_salida=[radicado], confirma_resumen=True), esperando_confirmacion()
+    )
+    assert registro.resumen_confirmado
+    assert registro.datos_salida[0].formato == DATOS_SALIDA[0]["formato"]
 
 
 def test_confirmacion_exige_respuesta_nueva():
-    with pytest.raises(ErrorValidacionSalida, match="respuesta nueva"):
-        validar_dialogo(
-            salida_dialogo(**COMPLETO, confirma_resumen=True), esperando_confirmacion(None)
-        )
+    registro = aplicar_extraccion(
+        salida_extraccion(confirma_resumen=True), esperando_confirmacion(None)
+    )
+    assert not registro.resumen_confirmado
+
+
+def test_lo_que_no_dijo_el_cliente_no_entra_al_registro():
+    conversacion = con_respuesta(
+        RegistroCaptura(),
+        "¿Qué reglas aplican?",
+        "Solo se acepta si el número predial existe en la base catastral",
+    )
+    registro = aplicar_extraccion(
+        salida_extraccion(
+            rol="analista de requerimientos",
+            reglas_negocio=[
+                "La solicitud se acepta solo si el número predial existe en la base catastral",
+                REGLA_DEL_DOMINIO,
+            ],
+            excepciones=["Fallo en la digitalización de los documentos escaneados"],
+        ),
+        conversacion,
+    )
+    assert registro.rol is None
+    assert registro.reglas_negocio == (
+        "La solicitud se acepta solo si el número predial existe en la base catastral",
+    )
+    assert registro.excepciones == ()
+
+
+@pytest.mark.parametrize(
+    ("respuesta", "conservadas"),
+    [
+        ("El documento soporte es obligatorio", ()),
+        ("No sé qué tipos de documento se aceptan", ("¿Qué tipos de documento se aceptan?",)),
+        ("Si el predio no existe, no se acepta", ()),
+    ],
+)
+def test_solo_hay_preguntas_abiertas_si_el_cliente_no_sabe(respuesta, conservadas):
+    registro = aplicar_extraccion(
+        salida_extraccion(preguntas_abiertas=["¿Qué tipos de documento se aceptan?"]),
+        con_respuesta(RegistroCaptura(), "¿Qué documentos se aceptan?", respuesta),
+    )
+    assert registro.preguntas_abiertas == conservadas
+
+
+def test_resumen_para_confirmar_sale_del_registro():
+    registro = registro_completo().model_copy(update={"supuestos": ("Prioridad alta",)})
+    resumen = resumen_para_confirmar(registro)
+    assert resumen.splitlines() == [
+        "Le resumo lo que entendí:",
+        "- Quién lo usa: analista de conservación catastral",
+        "- Qué necesita: registrar solicitudes de mutación de propietario con su documento soporte",
+        "- Para qué: tramitar el cambio en la información del predio y hacerle seguimiento",
+        "- Reglas: La solicitud se acepta solo si el número predial existe y el documento "
+        "soporte no tiene fecha posterior a la radicación",
+        "- Datos que se reciben: numero predial (obligatorio, 30 dígitos); fecha documento "
+        "(obligatorio, no posterior a la fecha de radicación)",
+        "- Resultados que se entregan: radicado (RAD-AAAA-NNNNNN)",
+        "- Casos de error: Si el número predial no existe, la solicitud se rechaza",
+        "- Supuestos por confirmar: Prioridad alta",
+    ]
+    assert "?" not in resumen
 
 
 @pytest.mark.parametrize(
     ("pregunta", "mensaje"),
     [
-        (None, "no formulaste la siguiente pregunta"),
+        ("  ", "Debes formular"),
         ("¿Quién lo usa? ¿Para qué?", "una sola"),
         ("¿Qué campos de la API necesita?", "términos técnicos"),
+        ("¿El numero_predial es obligatorio?", "numero_predial"),
+        ("¿Cuál es el beneficio y, para cerrar, ¿está correcto este resumen?", "una sola"),
+        ("Antes de seguir, ¿me confirma el resumen?", "no pidas confirmar"),
     ],
 )
 def test_reglas_de_la_pregunta(pregunta, mensaje):
     with pytest.raises(ErrorValidacionSalida, match=mensaje):
-        validar_dialogo(salida_dialogo(siguiente_pregunta=pregunta), abierta())
+        validar_pregunta(SalidaPregunta(siguiente_pregunta=pregunta), RegistroCaptura())
+
+
+def test_confirmar_un_dato_puntual_es_una_pregunta_valida():
+    pregunta = "Estoy asumiendo que el número predial tiene 30 dígitos, ¿puede confirmarlo?"
+    assert validar_pregunta(SalidaPregunta(siguiente_pregunta=pregunta), RegistroCaptura()) == (
+        pregunta
+    )
+
+
+def test_la_pregunta_de_cierre_lleva_el_resumen():
+    registro = registro_completo()
+    pregunta = validar_pregunta(
+        SalidaPregunta(siguiente_pregunta="El revisor pide el año; ¿lo incluimos?"), registro
+    )
+    assert pregunta == f"{resumen_para_confirmar(registro)}\nEl revisor pide el año; ¿lo incluimos?"
 
 
 # Síntesis --------------------------------------------------------------------------------------
@@ -399,6 +547,7 @@ def test_sintesis_asigna_los_campos_deterministas():
     previos = Requerimientos(sintesis=1)
     sintesis = validar_sintesis(
         salida_sintesis(requerimiento_modelo(relacionados=[2]), requerimiento_modelo()),
+        conversacion_completa(),
         contexto_recuperado(),
         previos,
         "Gestión catastral",
@@ -412,15 +561,125 @@ def test_sintesis_asigna_los_campos_deterministas():
     assert rf1.prioridad == historia.prioridad
     assert [e.id for e in rf1.criterios_aceptacion] == ["ESC-01", "ESC-02", "ESC-03"]
     assert rf1.requerimientos_relacionados == ["RF-02"]
+    assert [dato.nombre for dato in rf1.descripcion.datos_entrada] == [
+        "numero_predial",
+        "fecha_documento",
+    ]
     assert sintesis.referencias["RF-01"] == (
         "dom-002 v1.0 · Mutaciones catastrales",
         "eli-006 v1.0 · Guía de preguntas",
     )
 
 
+def conversacion_con(texto: str) -> Conversacion:
+    turno = Turno(emisor=Emisor.CLIENTE, texto=texto, fecha=AHORA)
+    completa = conversacion_completa()
+    return completa.model_copy(update={"turnos": (*completa.turnos, turno)})
+
+
+def test_sintesis_convierte_los_nombres_de_los_datos_en_identificadores():
+    entrada = DATOS_ENTRADA[0] | {"nombre": "Número predial"}
+    salida = salida_sintesis(requerimiento_modelo(datos_entrada=[entrada, DATOS_ENTRADA[1]]))
+    sintesis = validar_sintesis(
+        salida, conversacion_completa(), contexto_recuperado(), Requerimientos(), "Catastro"
+    )
+    assert sintesis.requerimientos[0].descripcion.datos_entrada[0].nombre == "numero_predial"
+
+
+def test_sintesis_descarta_las_reglas_que_no_dijo_el_cliente():
+    regla = (
+        "La solicitud se acepta únicamente si el número predial existe y el documento soporte "
+        f"no tiene fecha posterior a la radicación. {REGLA_DEL_DOMINIO}. Las mutaciones producen "
+        "efectos fiscales a partir de la vigencia siguiente a su inscripción."
+    )
+    sintesis = validar_sintesis(
+        salida_sintesis(requerimiento_modelo(regla_negocio=regla)),
+        conversacion_completa(),
+        contexto_recuperado(),
+        Requerimientos(),
+        "Catastro",
+    )
+    assert sintesis.requerimientos[0].descripcion.regla_negocio == (
+        "La solicitud se acepta únicamente si el número predial existe y el documento soporte "
+        "no tiene fecha posterior a la radicación."
+    )
+
+
+def test_sintesis_sin_nada_de_lo_dicho_se_rechaza():
+    with pytest.raises(ErrorValidacionSalida, match="regla_negocio no contiene nada"):
+        validar_sintesis(
+            salida_sintesis(requerimiento_modelo(regla_negocio=REGLA_DEL_DOMINIO)),
+            conversacion_completa(),
+            contexto_recuperado(),
+            Requerimientos(),
+            "Catastro",
+        )
+
+
+def test_sintesis_con_registro_incompleto_declara_lo_pendiente():
+    incompleta = conversacion_completa().model_copy(
+        update={"registro": registro_completo().model_copy(update={"reglas_negocio": ()})}
+    )
+    sintesis = validar_sintesis(
+        salida_sintesis(requerimiento_modelo(regla_negocio=REGLA_DEL_DOMINIO)),
+        incompleta,
+        contexto_recuperado(),
+        Requerimientos(),
+        "Catastro",
+    )
+    regla = sintesis.requerimientos[0].descripcion.regla_negocio
+    assert regla == POR_CONFIRMAR
+    requerimientos = Requerimientos(
+        historias=sintesis.historias,
+        requerimientos=sintesis.requerimientos,
+        referencias=sintesis.referencias,
+    )
+    defectos = verificar_conjunto(requerimientos)
+    assert any(defecto.requiere_cliente for defecto in defectos)
+
+
+def test_sintesis_une_los_saltos_de_linea_escapados():
+    salida = salida_sintesis(
+        requerimiento_modelo(regla_negocio="Primera regla.\\nSegunda regla.\n  Tercera.")
+    )
+    sintesis = validar_sintesis(
+        salida,
+        conversacion_con("Primera regla. Segunda regla. Tercera."),
+        contexto_recuperado(),
+        Requerimientos(),
+        "Catastro",
+    )
+    regla = sintesis.requerimientos[0].descripcion.regla_negocio
+    assert regla == "Primera regla. Segunda regla. Tercera."
+
+
+def test_preguntas_abiertas_requieren_al_cliente(cliente_falso):
+    contexto = contexto_recuperado()
+    sintesis = validar_sintesis(
+        salida_sintesis(), conversacion_completa(), contexto, Requerimientos(), "Catastro"
+    )
+    historia = sintesis.historias[0].model_copy(
+        update={"preguntas_abiertas": ["¿Qué tipos de documento se aceptan?"]}
+    )
+    requerimientos = Requerimientos(
+        historias=(historia,),
+        requerimientos=sintesis.requerimientos,
+        referencias=sintesis.referencias,
+    )
+    verificacion = agente(cliente_falso(), RegistroEnMemoria()).verificar_calidad(requerimientos)
+    assert verificacion.requiere_cliente
+    assert verificacion.defectos == (
+        "HU-01 · C4 Completo · preguntas_abiertas: quedan 1 preguntas sin resolver con el cliente",
+    )
+
+
 def test_sintesis_limpia_pasa_la_verificacion_de_calidad():
     sintesis = validar_sintesis(
-        salida_sintesis(), contexto_recuperado(), Requerimientos(), "Gestión catastral"
+        salida_sintesis(),
+        conversacion_completa(),
+        contexto_recuperado(),
+        Requerimientos(),
+        "Gestión catastral",
     )
     requerimientos = Requerimientos(
         historias=sintesis.historias,
@@ -444,6 +703,7 @@ def test_sintesis_invalida(cambios, mensaje):
     with pytest.raises(ErrorValidacionSalida, match=mensaje):
         validar_sintesis(
             salida_sintesis(requerimiento_modelo(**cambios)),
+            conversacion_completa(),
             contexto_recuperado(),
             Requerimientos(),
             "Gestión catastral",
@@ -452,7 +712,9 @@ def test_sintesis_invalida(cambios, mensaje):
 
 def test_mensajes_de_correccion_incluyen_los_defectos():
     contexto = contexto_recuperado()
-    sintesis = validar_sintesis(salida_sintesis(), contexto, Requerimientos(), "Catastro")
+    sintesis = validar_sintesis(
+        salida_sintesis(), conversacion_completa(), contexto, Requerimientos(), "Catastro"
+    )
     previos = Requerimientos(
         historias=sintesis.historias,
         requerimientos=sintesis.requerimientos,
@@ -484,40 +746,108 @@ def agente(cliente, registro: RegistroEnMemoria, recuperador=None) -> AgenteElic
         )
 
     return AgenteElicitador(
-        recuperador or RecuperadorFalso(), invocador("N3", "dialogo"), invocador("N5", "sintesis")
+        recuperador or RecuperadorFalso(),
+        invocador("N3", "extraccion"),
+        invocador("N3", "dialogo"),
+        invocador("N5", "sintesis"),
     )
 
 
+def pregunta(texto: str) -> SalidaPregunta:
+    return SalidaPregunta(siguiente_pregunta=texto)
+
+
 def test_los_prompts_del_elicitador_estan_versionados():
-    for nombre, nodo in (("dialogo", "N3"), ("sintesis", "N5")):
+    for nombre, nodo in (("extraccion", "N3"), ("dialogo", "N3"), ("sintesis", "N5")):
         prompt = cargar_prompt("elicitador", nombre)
         assert prompt.metadatos.nodo == nodo
-        assert prompt.identificador == f"elicitador.{nombre}@1.0"
+        assert prompt.identificador == f"elicitador.{nombre}@{prompt.metadatos.version}"
         assert CLAVE_PROBLEMAS in prompt.texto
+
+
+def test_n3_extrae_sin_contexto_y_pregunta_con_contexto(cliente_falso, completar_respuesta):
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion(funcionalidad="registrar solicitudes de mutación")),
+        completar_respuesta(pregunta("¿Qué cargo tiene quien registra las solicitudes?")),
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(abierta(), contexto_recuperado())
+    assert dialogo.registro.funcionalidad == "registrar solicitudes de mutación"
+    assert dialogo.siguiente_pregunta == "¿Qué cargo tiene quien registra las solicitudes?"
+    extraccion, siguiente = (llamada["messages"] for llamada in cliente.llamadas)
+    assert extraccion[0]["content"] == cargar_prompt("elicitador", "extraccion").texto
+    assert len(extraccion) == 2 and "contexto" not in json.loads(extraccion[1]["content"])
+    assert siguiente[0]["content"] == cargar_prompt("elicitador", "dialogo").texto
+    assert "contexto" in json.loads(siguiente[1]["content"])
+
+
+def test_n3_presenta_el_resumen_sin_pedir_pregunta(cliente_falso, completar_respuesta):
+    parcial = {k: v for k, v in COMPLETO.items() if k != "excepciones"}
+    registro_parcial = registro_desde_salida(
+        salida_extraccion(**parcial), RegistroCaptura(), raices(DICHO_POR_EL_CLIENTE)
+    )
+    conversacion = con_respuesta(
+        registro_parcial, "¿Qué pasa si hay un error?", "Si el número predial no existe, se rechaza"
+    )
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion(excepciones=COMPLETO["excepciones"]))
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
+    assert len(cliente.llamadas) == 1
+    assert dialogo.siguiente_pregunta == (
+        f"{resumen_para_confirmar(dialogo.registro)}\n{PREGUNTA_CIERRE}"
+    )
+
+
+def test_n3_cierra_sin_pregunta_al_confirmar(cliente_falso, completar_respuesta):
+    cliente = cliente_falso(completar_respuesta(salida_extraccion(confirma_resumen=True)))
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        esperando_confirmacion(), contexto_recuperado()
+    )
+    assert dialogo.registro.resumen_confirmado
+    assert dialogo.siguiente_pregunta is None
+    assert len(cliente.llamadas) == 1
+
+
+def test_n3_tras_un_rechazo_solo_pregunta(cliente_falso, completar_respuesta):
+    conversacion = esperando_confirmacion(None).model_copy(
+        update={"observaciones_revisor": ("Falta indicar si el radicado incluye el año",)}
+    )
+    cliente = cliente_falso(
+        completar_respuesta(pregunta("¿El radicado debe incluir el año de radicación?"))
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
+    [llamada] = cliente.llamadas
+    assert json.loads(llamada["messages"][2]["content"])["observaciones_revisor"] == [
+        "Falta indicar si el radicado incluye el año"
+    ]
+    assert dialogo.siguiente_pregunta.endswith("¿El radicado debe incluir el año de radicación?")
+    assert dialogo.siguiente_pregunta.startswith("Le resumo lo que entendí:")
 
 
 def test_reintento_con_los_problemas_del_intento_anterior(cliente_falso, completar_respuesta):
     cliente = cliente_falso(
-        completar_respuesta(salida_dialogo(siguiente_pregunta="¿Quién? ¿Cuándo?")),
-        completar_respuesta(salida_dialogo(siguiente_pregunta="¿Quién lo usa?")),
+        completar_respuesta(salida_extraccion()),
+        completar_respuesta(pregunta("¿Quién? ¿Cuándo?")),
+        completar_respuesta(pregunta("¿Quién lo usa?")),
     )
     registro = RegistroEnMemoria()
     dialogo = agente(cliente, registro).dialogar(abierta(), contexto_recuperado())
     assert dialogo.siguiente_pregunta == "¿Quién lo usa?"
-    reintento = cliente.llamadas[1]["messages"]
-    assert reintento[:-1] == cliente.llamadas[0]["messages"]
+    reintento = cliente.llamadas[2]["messages"]
+    assert reintento[:-1] == cliente.llamadas[1]["messages"]
     assert CLAVE_PROBLEMAS in json.loads(reintento[-1]["content"])
-    assert [llamada.prompt for llamada in registro.llamadas] == ["elicitador.dialogo@1.0"] * 2
+    extraccion = cargar_prompt("elicitador", "extraccion").identificador
+    dialogo_id = cargar_prompt("elicitador", "dialogo").identificador
+    assert [llamada.prompt for llamada in registro.llamadas] == [extraccion, *[dialogo_id] * 2]
 
 
 def test_reintento_agotado_propaga_el_error(cliente_falso, completar_respuesta):
-    invalida = completar_respuesta(salida_dialogo(siguiente_pregunta="¿Quién? ¿Cuándo?"))
+    invalida = completar_respuesta(pregunta("¿Quién? ¿Cuándo?"))
     registro = RegistroEnMemoria()
+    cliente = cliente_falso(completar_respuesta(salida_extraccion()), invalida, invalida)
     with pytest.raises(ErrorValidacionSalida, match="una sola"):
-        agente(cliente_falso(invalida, invalida), registro).dialogar(
-            abierta(), contexto_recuperado()
-        )
-    assert len(registro.llamadas) == 2
+        agente(cliente, registro).dialogar(abierta(), contexto_recuperado())
+    assert len(registro.llamadas) == 3
 
 
 def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
@@ -525,20 +855,16 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
 ):
     parcial = {k: COMPLETO[k] for k in ("rol", "funcionalidad", "beneficio", "reglas_negocio")}
     cliente = cliente_falso(
-        completar_respuesta(
-            salida_dialogo(
-                funcionalidad=COMPLETO["funcionalidad"],
-                siguiente_pregunta="¿Qué cargo tiene la persona que procesa estas solicitudes?",
-            )
-        ),
-        completar_respuesta(
-            salida_dialogo(
-                **parcial,
-                siguiente_pregunta="¿Qué información necesita tener a la mano para registrarla?",
-            )
-        ),
-        completar_respuesta(salida_dialogo(**COMPLETO, siguiente_pregunta=RESUMEN)),
-        completar_respuesta(salida_dialogo(**COMPLETO, confirma_resumen=True)),
+        # Necesidad: extracción y pregunta.
+        completar_respuesta(salida_extraccion(funcionalidad=COMPLETO["funcionalidad"])),
+        completar_respuesta(pregunta("¿Qué cargo tiene la persona que procesa las solicitudes?")),
+        # Rol, beneficio y reglas: extracción y pregunta por los datos.
+        completar_respuesta(salida_extraccion(**parcial)),
+        completar_respuesta(pregunta("¿Qué información necesita tener a la mano?")),
+        # Datos y errores: con todo capturado, el sistema presenta el resumen.
+        completar_respuesta(salida_extraccion(**COMPLETO)),
+        # Confirmación y síntesis.
+        completar_respuesta(salida_extraccion(confirma_resumen=True)),
         completar_respuesta(salida_sintesis()),
     )
     registro = RegistroEnMemoria()
@@ -555,14 +881,18 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
     )
 
     id_sesion, avance = iniciar_sesion(app, "Realtix", "Gestión catastral", NECESIDAD)
+    preguntas = []
     for respuesta in (
-        "El analista de conservación catastral, para tramitar el cambio y hacerle seguimiento",
-        "El número predial y la fecha del documento; entrega un radicado",
+        DICHO_POR_EL_CLIENTE,
+        "El número predial de 30 dígitos y la fecha del documento; entrega un radicado "
+        "RAD-AAAA-NNNNNN. Si el número predial no existe, la solicitud se rechaza.",
         "Sí, es correcto",
     ):
         assert avance.pausa.punto == "dialogo"
+        preguntas.append(avance.pausa.datos["pregunta"])
         avance = avanzar(app, id_sesion, respuesta)
 
+    assert preguntas[2].startswith("Le resumo lo que entendí:")
     assert avance.pausa.punto == "requerimientos"
     assert avance.pausa.datos["defectos"] == []
     assert avance.pausa.datos["referencias"]["RF-01"]
@@ -570,7 +900,7 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
     [requerimiento] = estado["requerimientos"].requerimientos
     assert requerimiento.proyecto == "Gestión catastral"
     assert estado["conversacion"].registro.resumen_confirmado
-    assert [llamada.nodo for llamada in registro.llamadas] == ["N3"] * 4 + ["N5"]
-    # El prompt y el contexto forman un prefijo idéntico en cada turno, apto para la caché.
-    assert cliente.llamadas[0]["messages"][:2] == cliente.llamadas[3]["messages"][:2]
+    assert [llamada.nodo for llamada in registro.llamadas] == ["N3"] * 6 + ["N5"]
+    # El prompt de pregunta y el contexto forman un prefijo idéntico, apto para la caché.
+    assert cliente.llamadas[1]["messages"][:2] == cliente.llamadas[3]["messages"][:2]
     assert avance.nodos == (Nodo.N3, Nodo.N4, Nodo.N5)

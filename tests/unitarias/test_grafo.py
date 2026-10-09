@@ -219,6 +219,17 @@ def test_errores_de_validacion_regresan_al_diseno_sin_humano():
     assert recorrido.final.fase is Fase.VALIDADO
 
 
+def test_defectos_que_requieren_al_cliente_escalan_sin_corregir():
+    simulacion = ServiciosSimulados(defectos_calidad=99, defectos_requieren_cliente=True)
+    app = compilar(simulacion)
+    id_sesion, avance = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
+    for respuesta in RESPUESTAS:
+        avance = avanzar(app, id_sesion, respuesta)
+    assert simulacion.llamadas["sintetizar"] == 1
+    assert avance.pausa.punto == "requerimientos"
+    assert avance.pausa.datos["defectos"] == ["Defecto simulado: la regla de negocio es ambigua"]
+
+
 def test_limite_de_turnos_cierra_la_elicitacion():
     app = compilar(ServiciosSimulados(), turnos=3)
     id_sesion, avance = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)

@@ -5,11 +5,7 @@ from psycopg import Connection
 
 from multiagente.agentes.elicitador.calidad import verificar_conjunto
 from multiagente.agentes.elicitador.contexto import recuperar_contexto
-from multiagente.agentes.elicitador.dialogo import (
-    SalidaDialogo,
-    mensajes_dialogo,
-    validar_dialogo,
-)
+from multiagente.agentes.elicitador.dialogo import dialogar
 from multiagente.agentes.elicitador.sintesis import (
     SalidaSintesis,
     mensajes_sintesis,
@@ -26,7 +22,7 @@ from multiagente.llm.invocador import InvocadorNodo, ParametrosNodo
 from multiagente.llm.prompts import cargar_prompt
 from multiagente.llm.traza import RegistradorLlamadas
 from multiagente.orquestador.estado import Contexto, Conversacion, Requerimientos
-from multiagente.orquestador.servicios import Dialogo, Sintesis
+from multiagente.orquestador.servicios import Dialogo, Sintesis, VerificacionCalidad
 from multiagente.rag.colecciones import Agente
 from multiagente.rag.embeddings import Vectorizador, VectorizadorTEI
 from multiagente.rag.recuperacion import Recuperador
@@ -36,17 +32,23 @@ class AgenteElicitador:
     """Implementa `ServiciosElicitador` con recuperación real, modelo de lenguaje y RF-07."""
 
     def __init__(
-        self, recuperador: Recuperador, dialogo: InvocadorNodo, sintesis: InvocadorNodo
+        self,
+        recuperador: Recuperador,
+        extraccion: InvocadorNodo,
+        pregunta: InvocadorNodo,
+        sintesis: InvocadorNodo,
     ) -> None:
         """Crea el agente con sus dependencias ya configuradas.
 
         Args:
             recuperador: Recuperador limitado a las colecciones del elicitador.
-            dialogo: Invocador del modelo de N3.
+            extraccion: Invocador de la extracción de N3, sin contexto de dominio.
+            pregunta: Invocador de la pregunta de N3, con el contexto recuperado.
             sintesis: Invocador del modelo de N5.
         """
         self.recuperador = recuperador
-        self.dialogo = dialogo
+        self.extraccion = extraccion
+        self.pregunta = pregunta
         self.sintesis = sintesis
 
     def recuperar_contexto(self, conversacion: Conversacion) -> Contexto:
@@ -55,11 +57,7 @@ class AgenteElicitador:
 
     def dialogar(self, conversacion: Conversacion, contexto: Contexto) -> Dialogo:
         """Procesa la respuesta nueva y formula la siguiente pregunta (N3)."""
-        return self.dialogo.invocar_validado(
-            mensajes_dialogo(conversacion, contexto),
-            SalidaDialogo,
-            lambda salida: validar_dialogo(salida, conversacion),
-        )
+        return dialogar(self.extraccion, self.pregunta, conversacion, contexto)
 
     def sintetizar(
         self,
@@ -72,12 +70,16 @@ class AgenteElicitador:
         return self.sintesis.invocar_validado(
             mensajes_sintesis(conversacion, contexto, previos, proyecto),
             SalidaSintesis,
-            lambda salida: validar_sintesis(salida, contexto, previos, proyecto),
+            lambda salida: validar_sintesis(salida, conversacion, contexto, previos, proyecto),
         )
 
-    def verificar_calidad(self, requerimientos: Requerimientos) -> list[str]:
-        """Devuelve los defectos de calidad de los requerimientos (N6, RF-07)."""
-        return [str(defecto) for defecto in verificar_conjunto(requerimientos)]
+    def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
+        """Verifica los atributos de calidad de los requerimientos (N6, RF-07)."""
+        defectos = verificar_conjunto(requerimientos)
+        return VerificacionCalidad(
+            defectos=tuple(str(defecto) for defecto in defectos),
+            requiere_cliente=any(defecto.requiere_cliente for defecto in defectos),
+        )
 
 
 def crear_agente_elicitador(
@@ -89,7 +91,8 @@ def crear_agente_elicitador(
     """Crea el agente elicitador con la configuración del entorno.
 
     Los despliegues salen de MODELO_N3_DIALOGO y MODELO_N5_SINTESIS, el esfuerzo y el límite de
-    salida de ESFUERZO_* y MAX_TOKENS_*, y los prompts de `prompts/elicitador/`.
+    salida de ESFUERZO_* y MAX_TOKENS_*, y los prompts de `prompts/elicitador/`. Las dos llamadas
+    de N3, extracción y pregunta, usan los parámetros del nodo.
 
     Args:
         conexion: Conexión con la base de conocimiento.
@@ -104,17 +107,17 @@ def crear_agente_elicitador(
     razonamiento = ConfiguracionRazonamiento()
     cliente = cliente or crear_cliente(ConfiguracionAzureOpenAI())
     tarifas = cargar_tarifas()
-    dialogo = InvocadorNodo(
-        cliente,
-        ParametrosNodo(
-            nodo="N3",
-            despliegue=modelos.n3_dialogo,
-            esfuerzo=razonamiento.esfuerzo_n3_dialogo,
-            max_tokens_salida=razonamiento.max_tokens_n3_dialogo,
-        ),
-        cargar_prompt("elicitador", "dialogo"),
-        registrador,
-        tarifas,
+    n3 = ParametrosNodo(
+        nodo="N3",
+        despliegue=modelos.n3_dialogo,
+        esfuerzo=razonamiento.esfuerzo_n3_dialogo,
+        max_tokens_salida=razonamiento.max_tokens_n3_dialogo,
+    )
+    extraccion = InvocadorNodo(
+        cliente, n3, cargar_prompt("elicitador", "extraccion"), registrador, tarifas
+    )
+    pregunta = InvocadorNodo(
+        cliente, n3, cargar_prompt("elicitador", "dialogo"), registrador, tarifas
     )
     sintesis = InvocadorNodo(
         cliente,
@@ -129,4 +132,4 @@ def crear_agente_elicitador(
         tarifas,
     )
     recuperador = Recuperador(conexion, vectorizador or VectorizadorTEI(), Agente.ELICITADOR)
-    return AgenteElicitador(recuperador, dialogo, sintesis)
+    return AgenteElicitador(recuperador, extraccion, pregunta, sintesis)

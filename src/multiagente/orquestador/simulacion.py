@@ -39,7 +39,14 @@ from multiagente.orquestador.estado import (
     VeredictoCaso,
     VersionCodigo,
 )
-from multiagente.orquestador.servicios import Dialogo, Dictamen, Diseno, Servicios, Sintesis
+from multiagente.orquestador.servicios import (
+    Dialogo,
+    Dictamen,
+    Diseno,
+    Servicios,
+    Sintesis,
+    VerificacionCalidad,
+)
 
 PREGUNTAS = {
     "rol": "¿Qué rol cumple la persona que usará esta funcionalidad?",
@@ -100,6 +107,7 @@ class ServiciosSimulados:
     Attributes:
         fallos_veredicto: Cuántos dictámenes iniciales marcan todos los casos como no cumplidos.
         defectos_calidad: Cuántas verificaciones de calidad iniciales reportan un defecto.
+        defectos_requieren_cliente: Si esos defectos solo se resuelven con el cliente.
         errores_validacion: Cuántas validaciones iniciales de la especificación fallan.
         fallos_ejecucion: Cuántas ejecuciones iniciales lanzan `ErrorSimulado`.
         llamadas: Conteo de llamadas por método, para las pruebas.
@@ -107,6 +115,7 @@ class ServiciosSimulados:
 
     fallos_veredicto: int = 1
     defectos_calidad: int = 0
+    defectos_requieren_cliente: bool = False
     errores_validacion: int = 0
     fallos_ejecucion: int = 0
     llamadas: Counter[str] = field(default_factory=Counter)
@@ -215,11 +224,14 @@ class ServiciosSimulados:
             referencias={"RF-01": referencias},
         )
 
-    def verificar_calidad(self, requerimientos: Requerimientos) -> list[str]:
+    def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
         """Reporta un defecto en las primeras verificaciones configuradas (N6)."""
         if self._contar("verificar_calidad") <= self.defectos_calidad:
-            return ["Defecto simulado: la regla de negocio es ambigua"]
-        return []
+            return VerificacionCalidad(
+                defectos=("Defecto simulado: la regla de negocio es ambigua",),
+                requiere_cliente=self.defectos_requieren_cliente,
+            )
+        return VerificacionCalidad()
 
     # Arquitecto ---------------------------------------------------------------------------
 

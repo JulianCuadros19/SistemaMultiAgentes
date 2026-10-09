@@ -61,6 +61,20 @@ class Sintesis(ModeloEstricto):
         return self
 
 
+class VerificacionCalidad(ModeloEstricto):
+    """Resultado de la verificación de calidad de los requerimientos (N6, RF-07).
+
+    Attributes:
+        defectos: Defectos encontrados; vacía si los requerimientos cumplen.
+        requiere_cliente: Algún defecto solo se resuelve con información del cliente (preguntas
+            abiertas o marcadores de pendiente): N5 no puede corregirlo sin inventar, así que
+            se escala al analista sin intentar la corrección automática.
+    """
+
+    defectos: tuple[TextoObligatorio, ...] = ()
+    requiere_cliente: bool = False
+
+
 class Diseno(ModeloEstricto):
     """Registro de decisión y especificación que produce el arquitecto (N8)."""
 
@@ -100,8 +114,8 @@ class ServiciosElicitador(Protocol):
         """Sintetiza historias y requerimientos formales; corrige los defectos previos (N5)."""
         ...
 
-    def verificar_calidad(self, requerimientos: Requerimientos) -> list[str]:
-        """Devuelve los defectos de calidad de los requerimientos (N6, RF-07)."""
+    def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
+        """Verifica los atributos de calidad de los requerimientos (N6, RF-07)."""
         ...
 
 

@@ -1,25 +1,46 @@
 """Diálogo de elicitación (N3): extrae lo que dijo el cliente y formula la siguiente pregunta.
 
-El modelo devuelve el registro completo actualizado y la siguiente pregunta. El código, no el
-prompt, garantiza las reglas que deben cumplirse siempre:
+N3 hace dos llamadas con propósitos distintos, para que el modelo no mezcle lo que dijo el
+cliente con lo que sabe del dominio:
+
+1. La extracción ve solo el registro, la pregunta anterior y la respuesta nueva, sin contexto
+   de dominio. Devuelve solo los atributos que la respuesta aporta o corrige, cada uno con su
+   valor completo y vigente, y `null` en los demás.
+2. La pregunta ve el contexto recuperado en N2 (RF-04), el registro y las observaciones del
+   revisor. No se pide cuando el cliente acaba de completar todo: entonces el sistema muestra el
+   resumen con la pregunta de cierre.
+
+El código, no el prompt, garantiza las reglas que deben cumplirse siempre:
 
 - lo ya capturado no se pierde por omisión del modelo;
+- solo entra al registro lo que está respaldado por lo que dijo el cliente
+  (`multiagente.agentes.elicitador.fidelidad`), y solo hay preguntas abiertas si el cliente dijo
+  no saber algo;
 - el resumen solo queda confirmado con una respuesta nueva del cliente, con el registro completo
   y sin cambios respecto del resumen que se le presentó;
-- hay pregunta si y solo si falta algo, y es una sola, en lenguaje de negocio (RNF-08).
+- hay pregunta si y solo si falta algo, y es una sola, en lenguaje de negocio (RNF-08);
+- el resumen que el cliente confirma se arma con el registro, de modo que confirma exactamente
+  lo que se va a sintetizar.
 """
 
 import json
 import re
+from typing import TypeVar
 
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict
 
 from multiagente.agentes.elicitador.calidad import normalizar
 from multiagente.agentes.elicitador.contexto import json_texto, mensaje_contexto
+from multiagente.agentes.elicitador.fidelidad import (
+    desconoce_algo,
+    raices,
+    raices_del_cliente,
+    respaldado,
+)
 from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida
-from multiagente.llm.invocador import ErrorValidacionSalida
-from multiagente.orquestador.estado import Contexto, Conversacion, RegistroCaptura
+from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo
+from multiagente.orquestador.estado import Contexto, Conversacion, Emisor, RegistroCaptura
 from multiagente.orquestador.servicios import Dialogo
 
 
@@ -44,50 +65,94 @@ class DatoSalidaModelo(BaseModel):
     formato: str | None
 
 
-class SalidaDialogo(BaseModel):
-    """Salida estructurada de N3: registro completo actualizado y siguiente pregunta."""
+class SalidaExtraccion(BaseModel):
+    """Salida de la extracción de N3: cambios al registro que aporta la respuesta nueva.
+
+    En los atributos capturados, `null` significa «sin cambios». Los supuestos y las preguntas
+    abiertas se devuelven siempre completos, porque el modelo los resuelve turno a turno.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     rol: str | None
     funcionalidad: str | None
     beneficio: str | None
-    reglas_negocio: list[str]
-    datos_entrada: list[DatoEntradaModelo]
-    datos_salida: list[DatoSalidaModelo]
-    excepciones: list[str]
+    reglas_negocio: list[str] | None
+    datos_entrada: list[DatoEntradaModelo] | None
+    datos_salida: list[DatoSalidaModelo] | None
+    excepciones: list[str] | None
     supuestos: list[str]
     preguntas_abiertas: list[str]
     confirma_resumen: bool
-    siguiente_pregunta: str | None
 
+
+class SalidaPregunta(BaseModel):
+    """Salida de la pregunta de N3."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    siguiente_pregunta: str
+
+
+D = TypeVar("D", DatoEntrada, DatoSalida)
+
+PREGUNTA_CIERRE = "¿Es correcto o falta algo?"
+"""Pregunta con que cierra el resumen que el cliente confirma."""
 
 TERMINOS_TECNICOS = re.compile(
     r"\b(?:endpoint|api|esquema|entidad(?:es)?|base de datos|json|backend|frontend"
-    r"|microservicio|servidor|framework|sql)\b"
+    r"|microservicio|servidor|framework|sql|\w+_\w+)\b"
 )
-"""Términos técnicos que no se usan con el cliente (eli-006, regla 2)."""
+"""Términos técnicos e identificadores que no se usan con el cliente (eli-006, regla 2)."""
+
+PIDE_CONFIRMAR = re.compile(r"\bresumen\b")
+"""Señal de que la pregunta pide confirmar el resumen; confirmar un dato puntual sí se admite."""
 
 
-def mensajes_dialogo(
-    conversacion: Conversacion, contexto: Contexto
-) -> list[ChatCompletionMessageParam]:
-    """Arma los mensajes de datos de N3: el contexto etiquetado y el estado del diálogo.
+def _transcripcion(conversacion: Conversacion) -> list[dict[str, str]]:
+    return [{"emisor": turno.emisor.value, "texto": turno.texto} for turno in conversacion.turnos]
+
+
+def mensajes_extraccion(conversacion: Conversacion) -> list[ChatCompletionMessageParam]:
+    """Arma el mensaje de datos de la extracción: sin contexto de dominio.
 
     Args:
-        conversacion: Conversación con la respuesta nueva del cliente, si la hay.
+        conversacion: Conversación con la respuesta nueva del cliente.
+
+    Returns:
+        Un mensaje de datos que acompaña al prompt de extracción.
+    """
+    anteriores = [
+        turno.texto
+        for turno in conversacion.turnos[: conversacion.turnos_procesados]
+        if turno.emisor is Emisor.ELICITADOR
+    ]
+    datos = {
+        "registro": conversacion.registro.model_dump(mode="json"),
+        "transcripcion": _transcripcion(conversacion),
+        "pregunta_anterior": anteriores[-1] if anteriores else None,
+        "respuesta_nueva": conversacion.respuesta_nueva,
+    }
+    return [{"role": "user", "content": json_texto(datos)}]
+
+
+def mensajes_pregunta(
+    conversacion: Conversacion, registro: RegistroCaptura, contexto: Contexto
+) -> list[ChatCompletionMessageParam]:
+    """Arma los mensajes de datos de la pregunta: el contexto etiquetado y el estado del diálogo.
+
+    Args:
+        conversacion: Conversación hasta la respuesta nueva.
+        registro: Registro ya actualizado por la extracción.
         contexto: Contexto recuperado en N2.
 
     Returns:
-        Dos mensajes de datos que acompañan al prompt de sistema.
+        Dos mensajes de datos que acompañan al prompt de la pregunta.
     """
     estado = {
-        "pendientes": conversacion.registro.pendientes,
-        "registro": conversacion.registro.model_dump(mode="json"),
-        "transcripcion": [
-            {"emisor": turno.emisor.value, "texto": turno.texto} for turno in conversacion.turnos
-        ],
-        "respuesta_nueva": conversacion.respuesta_nueva,
+        "pendientes": registro.pendientes,
+        "registro": registro.model_dump(mode="json"),
+        "transcripcion": _transcripcion(conversacion),
         "observaciones_revisor": list(conversacion.observaciones_revisor),
     }
     return [mensaje_contexto(contexto), {"role": "user", "content": json_texto(estado)}]
@@ -98,50 +163,157 @@ def _texto(valor: str | None) -> str | None:
     return limpio or None
 
 
-def _textos(valores: list[str]) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(limpio for valor in valores if (limpio := valor.strip())))
+def _textos(valores: list[str] | None) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(limpio for valor in valores or () if (limpio := valor.strip())))
 
 
-def registro_desde_salida(salida: SalidaDialogo, previo: RegistroCaptura) -> RegistroCaptura:
-    """Construye el registro sin confirmar a partir de la salida, sin perder lo ya capturado.
+class _Filtro:
+    """Acepta un texto si ya estaba en el registro o si lo respalda lo que dijo el cliente."""
 
-    Un atributo que el modelo deja vacío conserva el valor previo: el cliente corrige un dato
-    diciendo el nuevo, no callándolo. Los supuestos y las preguntas abiertas se toman tal cual,
-    porque el modelo los resuelve a medida que el cliente responde.
+    def __init__(self, fuente: set[str], previos: set[str]) -> None:
+        self.fuente = fuente
+        self.previos = {normalizar(texto) for texto in previos}
+
+    def acepta(self, texto: str) -> bool:
+        return normalizar(texto) in self.previos or respaldado(texto, self.fuente)
+
+
+def registro_desde_salida(
+    salida: SalidaExtraccion,
+    previo: RegistroCaptura,
+    fuente: set[str],
+    solo_agregar: bool = False,
+) -> RegistroCaptura:
+    """Aplica los cambios de la salida al registro, sin perder lo ya capturado.
+
+    Un atributo en `null` o vacío conserva el valor previo: el cliente corrige un dato diciendo
+    el nuevo, no callándolo. Un valor nuevo que no está respaldado por lo que dijo el cliente se
+    descarta, y un dato sin respaldo pierde su restricción o su formato. Los supuestos y las
+    preguntas abiertas se toman tal cual, porque son notas del elicitador para el cliente.
 
     Args:
         salida: Salida del modelo.
         previo: Registro antes de este turno.
+        fuente: Raíces léxicas de lo que dijo el cliente (`fidelidad.raices_del_cliente`).
+        solo_agregar: Las listas conservan lo previo y solo suman lo nuevo respaldado. Se usa
+            en la respuesta que confirma el resumen, para que una paráfrasis del modelo no
+            cuente como cambio.
 
     Returns:
         Registro actualizado, con `resumen_confirmado` en False.
     """
+    textos_previos = {
+        texto
+        for texto in (
+            previo.rol,
+            previo.funcionalidad,
+            previo.beneficio,
+            *previo.reglas_negocio,
+            *previo.excepciones,
+            *(dato.nombre for dato in previo.datos_entrada),
+            *(dato.nombre for dato in previo.datos_salida),
+            *(dato.restriccion for dato in previo.datos_entrada),
+            *(dato.formato for dato in previo.datos_salida),
+        )
+        if texto
+    }
+    filtro = _Filtro(fuente, textos_previos)
+
+    def escalar(valor: str | None) -> str | None:
+        limpio = _texto(valor)
+        return limpio if limpio and filtro.acepta(limpio) else None
+
+    def lista(valores: list[str] | None, previos: tuple[str, ...]) -> tuple[str, ...]:
+        nuevos = tuple(texto for texto in _textos(valores) if filtro.acepta(texto))
+        if not solo_agregar:
+            return nuevos or previos
+        vistos = {normalizar(texto) for texto in previos}
+        return (*previos, *(texto for texto in nuevos if normalizar(texto) not in vistos))
+
+    def datos(nuevos: tuple[D, ...], previos: tuple[D, ...]) -> tuple[D, ...]:
+        if not solo_agregar:
+            return nuevos or previos
+        # Un dato existente conserva todo, salvo la restricción o el formato que la respuesta
+        # precise con respaldo; los datos nuevos se agregan al final.
+        por_nombre = {normalizar(dato.nombre): dato for dato in nuevos}
+        actualizados = []
+        for previo_dato in previos:
+            nuevo = por_nombre.pop(normalizar(previo_dato.nombre), None)
+            precision = {
+                campo: valor
+                for campo in ("restriccion", "formato")
+                if nuevo is not None
+                and hasattr(previo_dato, campo)
+                and (valor := getattr(nuevo, campo))
+            }
+            actualizados.append(previo_dato.model_copy(update=precision))
+        return (*actualizados, *por_nombre.values())
+
     datos_entrada = tuple(
         DatoEntrada(
             nombre=dato.nombre,
             tipo=dato.tipo,
             obligatorio=dato.obligatorio,
-            restriccion=_texto(dato.restriccion),
+            restriccion=escalar(dato.restriccion),
         )
-        for dato in salida.datos_entrada
-        if dato.nombre.strip() and dato.tipo.strip()
+        for dato in salida.datos_entrada or ()
+        if dato.nombre.strip() and dato.tipo.strip() and filtro.acepta(dato.nombre)
     )
     datos_salida = tuple(
-        DatoSalida(nombre=dato.nombre, tipo=dato.tipo, formato=_texto(dato.formato))
-        for dato in salida.datos_salida
-        if dato.nombre.strip() and dato.tipo.strip()
+        DatoSalida(nombre=dato.nombre, tipo=dato.tipo, formato=escalar(dato.formato))
+        for dato in salida.datos_salida or ()
+        if dato.nombre.strip() and dato.tipo.strip() and filtro.acepta(dato.nombre)
     )
     return RegistroCaptura(
-        rol=_texto(salida.rol) or previo.rol,
-        funcionalidad=_texto(salida.funcionalidad) or previo.funcionalidad,
-        beneficio=_texto(salida.beneficio) or previo.beneficio,
-        reglas_negocio=_textos(salida.reglas_negocio) or previo.reglas_negocio,
-        datos_entrada=datos_entrada or previo.datos_entrada,
-        datos_salida=datos_salida or previo.datos_salida,
-        excepciones=_textos(salida.excepciones) or previo.excepciones,
+        rol=escalar(salida.rol) or previo.rol,
+        funcionalidad=escalar(salida.funcionalidad) or previo.funcionalidad,
+        beneficio=escalar(salida.beneficio) or previo.beneficio,
+        reglas_negocio=lista(salida.reglas_negocio, previo.reglas_negocio),
+        datos_entrada=datos(datos_entrada, previo.datos_entrada),
+        datos_salida=datos(datos_salida, previo.datos_salida),
+        excepciones=lista(salida.excepciones, previo.excepciones),
         supuestos=_textos(salida.supuestos),
         preguntas_abiertas=_textos(salida.preguntas_abiertas),
     )
+
+
+def resumen_para_confirmar(registro: RegistroCaptura) -> str:
+    """Arma el resumen del registro que el cliente confirma antes de cerrar (RNF-08, eli-006).
+
+    Args:
+        registro: Registro completo, pendiente solo de confirmación.
+
+    Returns:
+        Resumen en varias líneas, sin pregunta; el modelo aporta la pregunta de cierre.
+    """
+
+    def nombre(texto: str) -> str:
+        return texto.replace("_", " ")
+
+    entradas = "; ".join(
+        f"{nombre(dato.nombre)} ({'obligatorio' if dato.obligatorio else 'opcional'}"
+        f"{f', {dato.restriccion}' if dato.restriccion else ''})"
+        for dato in registro.datos_entrada
+    )
+    salidas = "; ".join(
+        f"{nombre(dato.nombre)}{f' ({dato.formato})' if dato.formato else ''}"
+        for dato in registro.datos_salida
+    )
+    lineas = [
+        "Le resumo lo que entendí:",
+        f"- Quién lo usa: {registro.rol}",
+        f"- Qué necesita: {registro.funcionalidad}",
+        f"- Para qué: {registro.beneficio}",
+        f"- Reglas: {'; '.join(registro.reglas_negocio)}",
+        f"- Datos que se reciben: {entradas}",
+        f"- Resultados que se entregan: {salidas}",
+        f"- Casos de error: {'; '.join(registro.excepciones)}",
+    ]
+    if registro.supuestos:
+        lineas.append(f"- Supuestos por confirmar: {'; '.join(registro.supuestos)}")
+    if registro.preguntas_abiertas:
+        lineas.append(f"- Preguntas abiertas: {'; '.join(registro.preguntas_abiertas)}")
+    return "\n".join(lineas)
 
 
 def _huella(registro: RegistroCaptura) -> str:
@@ -155,55 +327,109 @@ def _huella(registro: RegistroCaptura) -> str:
     return re.sub(r"\s+", " ", normalizar(texto))
 
 
-def validar_dialogo(salida: SalidaDialogo, conversacion: Conversacion) -> Dialogo:
-    """Aplica las reglas del diálogo a la salida del modelo.
+def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> RegistroCaptura:
+    """Aplica la extracción al registro con las reglas de fidelidad y de confirmación.
 
     Args:
-        salida: Salida del modelo.
+        salida: Salida de la extracción.
         conversacion: Conversación con la que se invocó al modelo.
 
     Returns:
-        Registro actualizado y siguiente pregunta.
-
-    Raises:
-        ErrorValidacionSalida: Si falta la pregunta cuando quedan pendientes, si la pregunta no
-            es una sola o si usa términos técnicos.
+        Registro actualizado; confirmado solo si la respuesta nueva confirma un registro
+        completo sin cambiarlo.
     """
     previo = conversacion.registro
-    registro = registro_desde_salida(salida, previo)
-    solo_falta_confirmar = registro.pendientes == ["confirmacion"]
-    sin_cambios = _huella(registro) == _huella(previo)
-    hay_respuesta = conversacion.respuesta_nueva is not None
-    confirmado = salida.confirma_resumen and hay_respuesta and solo_falta_confirmar and sin_cambios
+    nueva = conversacion.respuesta_nueva
+    if salida.confirma_resumen and nueva is not None:
+        # Una respuesta que confirma solo aporta lo que dice ella misma.
+        registro = registro_desde_salida(salida, previo, raices(nueva), solo_agregar=True)
+    else:
+        registro = registro_desde_salida(salida, previo, raices_del_cliente(conversacion))
+    if registro.preguntas_abiertas and not desconoce_algo(conversacion):
+        registro = registro.model_copy(update={"preguntas_abiertas": ()})
+    confirmado = (
+        salida.confirma_resumen
+        and nueva is not None
+        and registro.pendientes == ["confirmacion"]
+        and _huella(registro) == _huella(previo)
+    )
     if confirmado:
         registro = RegistroCaptura.model_validate(
             {**registro.model_dump(), "resumen_confirmado": True}
         )
+    return registro
 
-    problemas: list[str] = []
+
+def validar_pregunta(salida: SalidaPregunta, registro: RegistroCaptura) -> str:
+    """Verifica la pregunta del modelo y antepone el resumen si solo falta confirmar.
+
+    Args:
+        salida: Salida de la pregunta.
+        registro: Registro actualizado del turno.
+
+    Returns:
+        La pregunta que se muestra al cliente.
+
+    Raises:
+        ErrorValidacionSalida: Si la pregunta está vacía, no es una sola o usa términos
+            técnicos.
+    """
     pregunta = _texto(salida.siguiente_pregunta)
-    if not registro.pendientes:
-        pregunta = None
-    elif pregunta is None:
-        motivo = f"Quedan pendientes {registro.pendientes} y no formulaste la siguiente pregunta."
-        if salida.confirma_resumen and not confirmado:
-            if not hay_respuesta:
-                motivo += " La confirmación exige una respuesta nueva del cliente."
-            elif not solo_falta_confirmar:
-                motivo += " No se puede confirmar un resumen con atributos faltantes."
-            else:
-                motivo += (
-                    " El registro cambió respecto del resumen presentado: presenta el resumen "
-                    "actualizado y pide de nuevo la confirmación."
-                )
-        problemas.append(motivo)
+    problemas: list[str] = []
+    if pregunta is None:
+        problemas.append("Debes formular la siguiente pregunta.")
     else:
-        if pregunta.count("?") != 1:
+        if pregunta.count("?") != 1 or pregunta.count("¿") > 1:
             problemas.append(
                 "La siguiente pregunta debe ser una sola, con un único signo de interrogación."
             )
         if tecnicos := sorted(set(TERMINOS_TECNICOS.findall(normalizar(pregunta)))):
             problemas.append(f"La pregunta usa términos técnicos con el cliente: {tecnicos}.")
+        faltantes = [p for p in registro.pendientes if p != "confirmacion"]
+        if faltantes and PIDE_CONFIRMAR.search(normalizar(pregunta)):
+            problemas.append(
+                f"Aún faltan {faltantes}: pregunta por el primero y no pidas confirmar el resumen."
+            )
     if problemas:
         raise ErrorValidacionSalida(problemas)
-    return Dialogo(registro=registro, siguiente_pregunta=pregunta)
+    if registro.pendientes == ["confirmacion"]:
+        return f"{resumen_para_confirmar(registro)}\n{pregunta}"
+    return pregunta
+
+
+def dialogar(
+    extraccion: InvocadorNodo,
+    pregunta: InvocadorNodo,
+    conversacion: Conversacion,
+    contexto: Contexto,
+) -> Dialogo:
+    """Ejecuta un paso del diálogo: extrae la respuesta nueva y formula la siguiente pregunta.
+
+    Args:
+        extraccion: Invocador del prompt de extracción de N3.
+        pregunta: Invocador del prompt de pregunta de N3.
+        conversacion: Conversación con la respuesta nueva del cliente, si la hay.
+        contexto: Contexto recuperado en N2.
+
+    Returns:
+        Registro actualizado y siguiente pregunta, o None si la elicitación terminó.
+    """
+    registro = conversacion.registro
+    nueva = conversacion.respuesta_nueva
+    if nueva is not None:
+        registro = extraccion.invocar_validado(
+            mensajes_extraccion(conversacion),
+            SalidaExtraccion,
+            lambda salida: aplicar_extraccion(salida, conversacion),
+        )
+    if not registro.pendientes:
+        return Dialogo(registro=registro, siguiente_pregunta=None)
+    if registro.pendientes == ["confirmacion"] and nueva is not None:
+        resumen = f"{resumen_para_confirmar(registro)}\n{PREGUNTA_CIERRE}"
+        return Dialogo(registro=registro, siguiente_pregunta=resumen)
+    siguiente = pregunta.invocar_validado(
+        mensajes_pregunta(conversacion, registro, contexto),
+        SalidaPregunta,
+        lambda salida: validar_pregunta(salida, registro),
+    )
+    return Dialogo(registro=registro, siguiente_pregunta=siguiente)

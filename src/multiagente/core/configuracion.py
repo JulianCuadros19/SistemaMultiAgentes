@@ -102,8 +102,8 @@ class ConfiguracionRazonamiento(BaseSettings):
 
     esfuerzo_n3_dialogo: EsfuerzoRazonamiento = "low"
     max_tokens_n3_dialogo: PositiveInt = 4000
-    esfuerzo_n5_sintesis: EsfuerzoRazonamiento = "medium"
-    max_tokens_n5_sintesis: PositiveInt = 16000
+    esfuerzo_n5_sintesis: EsfuerzoRazonamiento = "low"
+    max_tokens_n5_sintesis: PositiveInt = 8000
 
 
 class ConfiguracionOrquestador(BaseSettings):

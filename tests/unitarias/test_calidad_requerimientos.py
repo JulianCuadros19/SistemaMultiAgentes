@@ -119,6 +119,21 @@ REGLA = ejemplo_plantilla()["descripcion"]["regla_negocio"]
             "razonable",
         ),
         ({"descripcion__datos_salida": []}, "COMPLETO", "ningún dato"),
+        (
+            {"criterios_aceptacion__0__cuando": "se invoca calcular_avaluo"},
+            "CONFORME",
+            "detalle de implementación",
+        ),
+        (
+            {"criterios_aceptacion__0__dado_que": "una fecha de documento <= la radicación"},
+            "CONFORME",
+            "«<=»",
+        ),
+        (
+            {"criterios_aceptacion__0__cuando": "la fecha del documento ≤ la de radicación"},
+            "CONFORME",
+            "«≤»",
+        ),
     ],
 )
 def test_senal_inyectada_es_detectada(cambios, caracteristica, senal):
@@ -136,6 +151,11 @@ def test_senal_inyectada_es_detectada(cambios, caracteristica, senal):
         {"criterios_aceptacion__1__entonces": "la tarifa es mejor que la del año anterior"},
         {"descripcion__regla_negocio": REGLA + " El titular y el predio deben existir."},
         {"titulo__quiero": "registrar la mutación con su titular y fecha"},
+        {"criterios_aceptacion__2__dado_que": "un numero_predial de 29 dígitos"},
+        {
+            "descripcion__datos_entrada__0__nombre": "Número predial",
+            "criterios_aceptacion__2__dado_que": "un numero_predial de 29 dígitos",
+        },
     ],
 )
 def test_usos_legitimos_no_son_defectos(cambios):

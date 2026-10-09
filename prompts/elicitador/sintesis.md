@@ -2,7 +2,7 @@
 id: elicitador.sintesis
 agente: elicitador
 nodo: N5
-version: 1.0
+version: 1.2
 descripcion: Síntesis de la historia de usuario y de los requerimientos formales del Anexo A.
 ---
 
@@ -24,12 +24,16 @@ arquitecto y al tester.
 
 # Regla principal
 
-Usa solo lo que el cliente expresó y la terminología del contexto. No inventes reglas, datos ni
-restricciones. Lo que falte va a `preguntas_abiertas`; lo que asumas, a `supuestos`.
+Los artefactos contienen solo lo que el cliente expresó y confirmó en el registro. El contexto
+de dominio te da la terminología correcta, nunca reglas, precondiciones, datos ni restricciones
+que el cliente no dijo: aunque el dominio describa otras clases de mutación, efectos fiscales o
+avalúos, no los incluyas si el cliente no los mencionó. Lo que falte va a
+`preguntas_abiertas`; lo que asumas, a `supuestos`.
 
 # La historia
 
-- `enunciado`: `como` es el rol concreto del registro (nunca «usuario» ni «el sistema»);
+- `enunciado`: reproduce el rol, la funcionalidad y el beneficio del registro, ajustando solo
+  la redacción. `como` es el rol concreto del registro (nunca «usuario» ni «el sistema»);
   `quiero` empieza con un verbo en infinitivo y enuncia una sola capacidad; `para` es el
   beneficio, sin repetir la funcionalidad.
 - `prioridad`: la que indicó el cliente. Si no la indicó, propón una y agrégala a `supuestos`.
@@ -45,19 +49,23 @@ asigna sus identificadores.
 
 - `tipo_solicitud`, `impacto`, `modulo`, `area_funcional`, `riesgo` y `funcional_responsable`:
   clasificación de la solicitud; `riesgo` y `funcional_responsable` pueden ir en `null`.
-- `precondicion`: el estado que debe cumplirse antes de ejecutar la funcionalidad.
-- `regla_negocio`: la lógica que gobierna el comportamiento, sin ambigüedad y con los valores
-  concretos que dio el cliente.
+- `precondicion`: el estado que debe cumplirse antes de ejecutar la funcionalidad, según lo que
+  dijo el cliente.
+- `regla_negocio`: las reglas del registro, sin ambigüedad y con los valores concretos que dio
+  el cliente, en texto corrido, sin saltos de línea ni viñetas.
 - `datos_entrada` y `datos_salida`: los del registro, con nombres únicos, en minúsculas y sin
   espacios (por ejemplo, `numero_predial`).
 - `escenarios`: criterios de aceptación en Gherkin. Al menos tres: el camino feliz, un camino
   alterno y un camino de error (entrada inválida, precondición incumplida o caso rechazado).
   Cada escenario tiene un `nombre` breve y un solo comportamiento, con datos concretos y
-  coherentes con las reglas; el `entonces` describe un resultado observable.
+  coherentes con las reglas; el `entonces` describe un resultado observable. Escríbelos en
+  lenguaje de negocio: sin nombres de funciones y sin operadores como `<=` o `=`; puedes nombrar
+  los datos declarados en la ficha. Por ejemplo, «CUANDO se registra la solicitud», no «CUANDO
+  registrar_solicitud()».
 - `relacionados`: posiciones (1, 2…) de los otros requerimientos de esta misma respuesta de los
   que depende; lista vacía si no depende de ninguno.
-- `fuentes`: etiquetas del contexto en que te apoyaste (al menos una, solo etiquetas que
-  existan).
+- `fuentes`: etiquetas del contexto en que te apoyaste, incluidas las del dominio de negocio
+  cuya terminología o reglas usaste (al menos una, solo etiquetas que existan).
 
 # Redacción que la verificación de calidad rechaza
 
@@ -71,7 +79,9 @@ ni los escenarios; reemplázalas por valores medibles o listas cerradas:
 - opcionalidad encubierta: debería, podría, «sería deseable», «de ser posible»,
   preferiblemente;
 - marcadores de pendiente: TBD, «por definir», «por confirmar», «se confirmará»;
-- un `quiero` que une dos capacidades con «y», «así como», «además de» o «también».
+- un `quiero` que une dos capacidades con «y», «así como», «además de» o «también»;
+- detalles de implementación en los escenarios: funciones, identificadores con guion bajo que
+  no sean datos declarados u operadores de comparación.
 
 # Corrección
 

@@ -1,15 +1,26 @@
 """Síntesis de la historia de usuario y de los requerimientos formales (N5, Anexo A).
 
 El modelo redacta el contenido. El código asigna los campos deterministas: identificadores,
-versión, proyecto, autor, título y prioridad heredada de la historia. Después valida contra los
-esquemas del Anexo A y traduce las etiquetas de contexto citadas a referencias estables (RF-04).
+versión, proyecto, autor, título, prioridad heredada de la historia y nombres de los datos como
+identificadores (`numero_predial`). Descarta las oraciones de
+la precondición y de la regla, y los datos, que no están respaldados por lo que dijo el cliente
+(`fidelidad`). Después valida contra los esquemas del Anexo A y traduce las etiquetas de
+contexto citadas a referencias estables (RF-04).
 """
+
+import re
 
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from multiagente.agentes.elicitador.calidad import identificador
 from multiagente.agentes.elicitador.contexto import etiquetar, json_texto, mensaje_contexto
 from multiagente.agentes.elicitador.dialogo import DatoEntradaModelo, DatoSalidaModelo
+from multiagente.agentes.elicitador.fidelidad import (
+    oraciones_respaldadas,
+    raices_del_cliente,
+    respaldado,
+)
 from multiagente.core.esquemas.comunes import Enunciado, Impacto, Prioridad
 from multiagente.core.esquemas.requerimiento import (
     DatoEntrada,
@@ -26,6 +37,13 @@ from multiagente.orquestador.servicios import Sintesis
 
 AUTOR = "Agente elicitador"
 """Autor que registra la ficha del requerimiento (Anexo A)."""
+
+POR_CONFIRMAR = "Por confirmar con el cliente."
+"""Texto de un campo obligatorio que la conversación no llegó a capturar (eli-003).
+
+Es un marcador de pendiente: la verificación de calidad lo detecta como defecto que requiere al
+cliente y escala el requerimiento al analista, en lugar de que el modelo invente el contenido.
+"""
 
 
 class EnunciadoModelo(BaseModel):
@@ -125,6 +143,11 @@ def mensajes_sintesis(
     return [mensaje_contexto(contexto), {"role": "user", "content": json_texto(datos)}]
 
 
+def _corrido(texto: str) -> str:
+    """Une en un solo párrafo un texto con saltos de línea, reales o escritos como barra y n."""
+    return re.sub(r"(?:\\n|\s)+", " ", texto).strip()
+
+
 def _texto(valor: str | None) -> str | None:
     limpio = valor.strip() if valor else ""
     return limpio or None
@@ -142,12 +165,17 @@ def _errores(error: ValidationError) -> str:
 
 
 def validar_sintesis(
-    salida: SalidaSintesis, contexto: Contexto, previos: Requerimientos, proyecto: str
+    salida: SalidaSintesis,
+    conversacion: Conversacion,
+    contexto: Contexto,
+    previos: Requerimientos,
+    proyecto: str,
 ) -> Sintesis:
-    """Completa los campos deterministas, valida contra el Anexo A y traduce las fuentes.
+    """Completa los campos deterministas, filtra lo no dicho, valida y traduce las fuentes.
 
     Args:
         salida: Salida del modelo.
+        conversacion: Conversación de la que salen los requerimientos.
         contexto: Contexto con el que se invocó al modelo.
         previos: Artefactos de la síntesis anterior; dan el número de versión.
         proyecto: Proyecto de la sesión.
@@ -156,11 +184,15 @@ def validar_sintesis(
         Historia, requerimientos y referencias al contexto de cada requerimiento.
 
     Raises:
-        ErrorValidacionSalida: Si algún artefacto incumple el Anexo A, cita una etiqueta que no
-            existe o no cita ninguna.
+        ErrorValidacionSalida: Si algún artefacto incumple el Anexo A, si la precondición, la
+            regla o los datos no se apoyan en lo que dijo el cliente, o si cita una etiqueta que
+            no existe o no cita ninguna.
     """
     problemas: list[str] = []
     etiquetas = etiquetar(contexto)
+    fuente = raices_del_cliente(conversacion)
+    # Si N4 cerró por límite de turnos, lo que falta se declara pendiente en lugar de inventarlo.
+    incompleto = conversacion.registro.pendientes not in ([], ["confirmacion"])
     try:
         historia = HistoriaUsuario(
             id="HU-01",
@@ -180,24 +212,40 @@ def validar_sintesis(
     requerimientos: list[RequerimientoFormal] = []
     referencias: dict[str, tuple[str, ...]] = {}
     for numero, contenido in enumerate(salida.requerimientos, 1):
-        identificador = f"RF-{numero:02d}"
+        id_rf = f"RF-{numero:02d}"
+        precondicion = oraciones_respaldadas(_corrido(contenido.precondicion), fuente)
+        regla = oraciones_respaldadas(_corrido(contenido.regla_negocio), fuente)
+        entradas = [d for d in contenido.datos_entrada if respaldado(d.nombre, fuente)]
+        salidas = [d for d in contenido.datos_salida if respaldado(d.nombre, fuente)]
+        if incompleto:
+            precondicion = precondicion or POR_CONFIRMAR
+            regla = regla or POR_CONFIRMAR
+        for campo, valor in (
+            ("precondicion", precondicion),
+            ("regla_negocio", regla),
+            ("datos_entrada", entradas),
+            ("datos_salida", salidas),
+        ):
+            if not valor and not (incompleto and campo.startswith("datos")):
+                problemas.append(
+                    f"{id_rf}: {campo} no contiene nada de lo que dijo el cliente; "
+                    "usa solo el registro y la transcripción."
+                )
         if not contenido.fuentes:
-            problemas.append(
-                f"{identificador}: cita al menos un fragmento del contexto en fuentes."
-            )
+            problemas.append(f"{id_rf}: cita al menos un fragmento del contexto en fuentes.")
         if desconocidas := sorted(set(contenido.fuentes) - set(etiquetas)):
             problemas.append(
-                f"{identificador}: las fuentes {desconocidas} no existen; usa solo las etiquetas "
+                f"{id_rf}: las fuentes {desconocidas} no existen; usa solo las etiquetas "
                 "del contexto."
             )
         if invalidos := [p for p in contenido.relacionados if not 1 <= p <= total or p == numero]:
             problemas.append(
-                f"{identificador}: relacionados {invalidos} no son posiciones de otros "
+                f"{id_rf}: relacionados {invalidos} no son posiciones de otros "
                 f"requerimientos entre 1 y {total}."
             )
         try:
             requerimiento = RequerimientoFormal(
-                id_requerimiento=identificador,
+                id_requerimiento=id_rf,
                 version=version,
                 proyecto=proyecto,
                 tipo_solicitud=contenido.tipo_solicitud,
@@ -209,29 +257,33 @@ def validar_sintesis(
                 funcional_responsable=_texto(contenido.funcional_responsable),
                 titulo=historia.enunciado,
                 descripcion=Descripcion(
-                    precondicion=contenido.precondicion,
-                    regla_negocio=contenido.regla_negocio,
+                    precondicion=precondicion,
+                    regla_negocio=regla,
                     datos_entrada=[
                         DatoEntrada(
-                            nombre=dato.nombre,
+                            nombre=identificador(dato.nombre),
                             tipo=dato.tipo,
                             obligatorio=dato.obligatorio,
                             restriccion=_texto(dato.restriccion),
                         )
-                        for dato in contenido.datos_entrada
+                        for dato in entradas
                     ],
                     datos_salida=[
-                        DatoSalida(nombre=dato.nombre, tipo=dato.tipo, formato=_texto(dato.formato))
-                        for dato in contenido.datos_salida
+                        DatoSalida(
+                            nombre=identificador(dato.nombre),
+                            tipo=dato.tipo,
+                            formato=_texto(dato.formato),
+                        )
+                        for dato in salidas
                     ],
                 ),
                 criterios_aceptacion=[
                     EscenarioAceptacion(
                         id=f"ESC-{posicion:02d}",
                         nombre=_texto(escenario.nombre),
-                        dado_que=escenario.dado_que,
-                        cuando=escenario.cuando,
-                        entonces=escenario.entonces,
+                        dado_que=_corrido(escenario.dado_que),
+                        cuando=_corrido(escenario.cuando),
+                        entonces=_corrido(escenario.entonces),
                     )
                     for posicion, escenario in enumerate(contenido.escenarios, 1)
                 ],
@@ -245,10 +297,10 @@ def validar_sintesis(
                 ),
             )
         except ValidationError as error:
-            problemas.append(f"{identificador}: {_errores(error)}")
+            problemas.append(f"{id_rf}: {_errores(error)}")
             continue
         requerimientos.append(requerimiento)
-        referencias[identificador] = tuple(
+        referencias[id_rf] = tuple(
             dict.fromkeys(etiquetas[f].referencia for f in contenido.fuentes if f in etiquetas)
         )
     if problemas:
