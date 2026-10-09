@@ -1,0 +1,293 @@
+{
+  "id": "caso-desarrollo-mutacion",
+  "titulo": "Registro de solicitudes de mutación de propietario",
+  "cliente": "Oficina de catastro municipal (sintética)",
+  "proyecto": "Gestión catastral municipal",
+  "necesidad": "Necesitamos registrar las solicitudes de mutación de propietario de los predios.",
+  "candidatas": [
+    "ARQ-01",
+    "ARQ-04"
+  ],
+  "criterio": "arq-003, paso 1: lo usa el analista por una interfaz (servicio) o concentra validaciones de negocio moderadas (dominio en capas); paso 4: simplicidad suficiente.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "analista de conservación catastral",
+          "quiero": "registrar las solicitudes de mutación de propietario de los predios",
+          "para": "evitar que las solicitudes que hoy llegan en papel se pierdan y hacerles seguimiento"
+        },
+        "epica": null,
+        "prioridad": "alta",
+        "supuestos": [],
+        "preguntas_abiertas": []
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.1",
+        "proyecto": "Gestión catastral municipal",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "conservacion",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "Conservación catastral",
+        "funcional_responsable": null,
+        "titulo": {
+          "como": "analista de conservación catastral",
+          "quiero": "registrar las solicitudes de mutación de propietario de los predios",
+          "para": "evitar que las solicitudes que hoy llegan en papel se pierdan y hacerles seguimiento"
+        },
+        "descripcion": {
+          "precondicion": "El analista de conservación catastral tiene los datos de la solicitud y del documento soporte.",
+          "regla_negocio": "La solicitud se acepta solo si el número predial existe en la base catastral. El documento soporte es obligatorio y debe ser escritura pública o sentencia judicial. La fecha del documento soporte no puede ser posterior a la fecha de radicación. Al aceptar la solicitud se asigna un radicado con formato RAD-año-consecutivo de seis dígitos y la solicitud queda en estado en trámite.",
+          "datos_entrada": [
+            {
+              "nombre": "numero_predial",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": "30 dígitos y existente en la base catastral"
+            },
+            {
+              "nombre": "tipo_documento_soporte",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": "escritura pública o sentencia judicial"
+            },
+            {
+              "nombre": "fecha_documento_soporte",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": "no posterior a la fecha de radicación"
+            },
+            {
+              "nombre": "identificacion_nuevo_propietario",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "nombre_completo_nuevo_propietario",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "radicado",
+              "tipo": "texto",
+              "formato": "RAD-año-consecutivo de seis dígitos"
+            },
+            {
+              "nombre": "fecha_radicacion",
+              "tipo": "fecha",
+              "formato": null
+            },
+            {
+              "nombre": "estado",
+              "tipo": "texto",
+              "formato": "en trámite"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "Solicitud aceptada",
+            "dado_que": "un predio registrado y una escritura pública con fecha anterior a la radicación",
+            "cuando": "se registra la solicitud",
+            "entonces": "el sistema asigna un radicado RAD-2026-000123 y deja la solicitud en trámite"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "Sentencia judicial del mismo día",
+            "dado_que": "una sentencia judicial con fecha igual a la de radicación",
+            "cuando": "se registra la solicitud",
+            "entonces": "el sistema acepta la solicitud y asigna el radicado"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "Predio inexistente",
+            "dado_que": "un número predial que no existe en la base catastral",
+            "cuando": "se registra la solicitud",
+            "entonces": "el sistema rechaza la solicitud e informa que el predio no existe"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal"
+      ]
+    }
+  },
+  "registro_decision": "---\nestado: propuesta\nfecha: 2026-10-09\ndecisores: [Agente arquitecto]\n---\n\n# Registro de decisión · Registro de solicitudes de mutación: elegir arquitectura en capas (ARQ-01)\n\n## Contexto y planteamiento del problema\n\nEsta decisión define la arquitectura del módulo de conservación para registrar solicitudes de mutación de propietario (RF-01). Afecta la estructura de capas, las dependencias entre módulos y la forma de encapsular la lógica de validación y la persistencia.\n\n## Factores de decisión\n\n- Naturaleza de servicio interno usado por una interfaz operada por analistas (RF-01)\n- Lógica de negocio moderada: validaciones de existencia del predio, tipo y fecha del documento, generación de radicado y cambio de estado (RF-01)\n- No hay requerimientos no funcionales que exijan contratos de interfaz documentados ni sustitución de persistencia\n- Aplicar simplicidad suficiente: evitar capas de transporte o indirecciones innecesarias\n\n## Opciones consideradas\n\n- ARQ-01 · Arquitectura en capas\n- ARQ-04 · Servicio de API REST por recursos\n- ARQ-02 · Arquitectura hexagonal o de puertos y adaptadores\n\n## Resultado de la decisión\n\nOpción elegida: «ARQ-01 · Arquitectura en capas», porque Se elige ARQ-01 porque RF-01 concentra validaciones y reglas de negocio de complejidad moderada (existencia del número predial, validación de tipo y fecha del documento, generación del radicado y estado) con un flujo predecible, sin requerimientos no funcionales que exijan contratos HTTP documentados ni sustitución de persistencia. Aplicando el criterio de simplicidad suficiente (arq-003 v1.0 · Criterios de selección de arquitectura › Paso 4 · Aplicar el criterio de simplicidad suficiente), ARQ-01 satisface RF-01 con menor complejidad que ARQ-04 o ARQ-02.\n\n### Consecuencias\n\n- Favorable, porque Estructura familiar y de fácil mantenimiento para implementar las validaciones y el registro de la solicitud (RF-01)\n- Favorable, porque Separación clara entre presentación, aplicación, dominio e infraestructura, facilitando pruebas por capa\n- Favorable, porque Reglas de dependencia simples y verificables automáticamente\n- Desfavorable, porque Posible acoplamiento del dominio a decisiones de infraestructura si no se controla la dirección de dependencias\n- Desfavorable, porque Cambios transversales (por ejemplo, nuevos estados o formatos de radicado) pueden requerir modificaciones en varias capas\n- Desfavorable, porque Riesgo de que el dominio se reduzca a modelos anémicos si no se definen invariantes explícitas\n\n### Confirmación\n\nEjecutar una verificación de dependencias que asegure: (1) presentacion solo importa de aplicacion; (2) aplicacion solo importa de dominio e infraestructura a través de interfaces; (3) dominio no importa de ninguna capa; (4) no existen importaciones directas de presentacion a infraestructura. La comprobación debe fallar si se detecta cualquier import no permitido entre capas.\n\n## Análisis de las opciones\n\n### ARQ-01 · Arquitectura en capas\n- Favorable, porque Adecuada para lógica moderada y flujo predecible de validación y registro (RF-01)\n- Favorable, porque Separación clara en presentación, aplicación, dominio e infraestructura, con baja curva de aprendizaje\n- Favorable, porque Fácil de verificar con reglas de importación entre capas\n- Desfavorable, porque Riesgo de capas anémicas si no se cuida el diseño del dominio\n- Desfavorable, porque Cambios transversales pueden requerir toques en varias capas\n- Desfavorable, porque Acopla la dirección de dependencia hacia infraestructura\n\n### ARQ-04 · Servicio de API REST por recursos\n- Favorable, porque Encaja cuando se expone un servicio HTTP con rutas y contratos explícitos\n- Favorable, porque Separa transporte de lógica y permite documentación automática de esquemas\n- Desfavorable, porque Introduce una capa de transporte y versionado que no se exige en RF-01\n- Desfavorable, porque Aumenta preocupaciones de autenticación y manejo de errores HTTP sin requerimiento explícito\n- Descartada, porque RF-01 solo valida y registra una solicitud operada por analista; no exige contrato de interfaz documentado ni consumo externo, por lo que una API REST añadiría complejidad innecesaria (criterio de simplicidad suficiente, arq-003 v1.0 · Criterios de selección de arquitectura › Paso 4 · Aplicar el criterio de simplicidad suficiente).\n\n### ARQ-02 · Arquitectura hexagonal o de puertos y adaptadores\n- Favorable, porque Aísla totalmente el dominio y facilita pruebas sin infraestructura\n- Desfavorable, porque Introduce más indirección y archivos para el mismo comportamiento\n- Desfavorable, porque Desproporcionada cuando no se prevé sustituir persistencia ni se exige probar el dominio aislado\n- Descartada, porque Según arq-003 v1.0 · Criterios de selección de arquitectura › Paso 2 · Evaluar el peso de la lógica de negocio, para lógica moderada como la de RF-01, la hexagonal sería sobreingeniería; RF-01 no exige sustituir persistencia ni pruebas del dominio sin BD.",
+  "especificacion": {
+    "id_especificacion": "ED-01",
+    "version": "0.1",
+    "arquitectura_base": "ARQ-01",
+    "requerimientos_cubiertos": [
+      "RF-01"
+    ],
+    "modulos": [
+      {
+        "nombre": "presentacion.registro_mutacion",
+        "ruta": "src/presentacion/registro_mutacion.py",
+        "responsabilidad": "Adaptador de entrada para registrar solicitudes de mutación de propietario, validando entradas básicas y delegando al caso de uso de aplicación.",
+        "capa": "presentacion",
+        "interfaces_publicas": [
+          {
+            "nombre": "registrar_solicitud_mutacion",
+            "tipo": "funcion",
+            "firma": "registrar_solicitud_mutacion(numero_predial: str, tipo_documento_soporte: str, fecha_documento_soporte: date, identificacion_nuevo_propietario: str, nombre_completo_nuevo_propietario: str, generar_radicado: Callable[[date], str], predio_existe: Callable[[str], bool], guardar_solicitud: Callable[[SolicitudMutacion], None], fecha_radicacion: Optional[date] = None) -> SolicitudMutacion",
+            "descripcion": "Punto de entrada para registrar la solicitud; orquesta la llamada al caso de uso y devuelve la solicitud registrada con radicado y estado en trámite.",
+            "excepciones": [
+              "PredioInexistente",
+              "TipoDocumentoInvalido",
+              "FechaDocumentoInvalida"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "aplicacion.registro_mutacion"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "aplicacion.registro_mutacion",
+        "ruta": "src/aplicacion/registro_mutacion.py",
+        "responsabilidad": "Caso de uso para registrar solicitudes de mutación de propietario: valida reglas de negocio, asigna radicado y establece estado.",
+        "capa": "aplicacion",
+        "interfaces_publicas": [
+          {
+            "nombre": "registrar_solicitud_mutacion",
+            "tipo": "funcion",
+            "firma": "registrar_solicitud_mutacion(numero_predial: str, tipo_documento_soporte: str, fecha_documento_soporte: date, identificacion_nuevo_propietario: str, nombre_completo_nuevo_propietario: str, generar_radicado: Callable[[date], str], predio_existe: Callable[[str], bool], guardar_solicitud: Callable[[SolicitudMutacion], None], fecha_radicacion: Optional[date] = None) -> SolicitudMutacion",
+            "descripcion": "Implementa el flujo de registro: verifica existencia del predio, valida tipo y fecha del documento soporte, determina fecha de radicación, genera radicado (RAD-año-consecutivo de seis dígitos), persiste la solicitud y la deja en estado en trámite.",
+            "excepciones": [
+              "PredioInexistente",
+              "TipoDocumentoInvalido",
+              "FechaDocumentoInvalida"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "dominio.solicitud"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "dominio.solicitud",
+        "ruta": "src/dominio/solicitud.py",
+        "responsabilidad": "Entidades y reglas del dominio para solicitudes de mutación de propietario, incluyendo validación del tipo de documento y consistencia de fechas.",
+        "capa": "dominio",
+        "interfaces_publicas": [
+          {
+            "nombre": "SolicitudMutacion",
+            "tipo": "clase",
+            "firma": "SolicitudMutacion(numero_predial: str, tipo_documento_soporte: str, fecha_documento_soporte: date, identificacion_nuevo_propietario: str, nombre_completo_nuevo_propietario: str, fecha_radicacion: date, radicado: str, estado: str)",
+            "descripcion": "Entidad del dominio que representa la solicitud de mutación de propietario con sus atributos e invariantes básicas.",
+            "excepciones": [
+              "TipoDocumentoInvalido",
+              "FechaDocumentoInvalida"
+            ]
+          },
+          {
+            "nombre": "validar_tipo_documento",
+            "tipo": "funcion",
+            "firma": "validar_tipo_documento(tipo_documento_soporte: str) -> None",
+            "descripcion": "Verifica que el tipo de documento soporte sea 'escritura pública' o 'sentencia judicial'.",
+            "excepciones": [
+              "TipoDocumentoInvalido"
+            ]
+          },
+          {
+            "nombre": "validar_fecha_documento_no_posterior",
+            "tipo": "funcion",
+            "firma": "validar_fecha_documento_no_posterior(fecha_documento_soporte: date, fecha_radicacion: date) -> None",
+            "descripcion": "Garantiza que la fecha del documento soporte no sea posterior a la fecha de radicación; permite igualdad para sentencias judiciales.",
+            "excepciones": [
+              "FechaDocumentoInvalida"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-01"
+        ]
+      }
+    ],
+    "modelo_datos": [
+      {
+        "nombre": "SolicitudMutacion",
+        "campos": [
+          {
+            "nombre": "numero_predial",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "Debe existir en la base catastral y tener exactamente 30 dígitos numéricos."
+          },
+          {
+            "nombre": "tipo_documento_soporte",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "Valor permitido: 'escritura pública' o 'sentencia judicial'."
+          },
+          {
+            "nombre": "fecha_documento_soporte",
+            "tipo": "date",
+            "obligatorio": true,
+            "restriccion": "No puede ser posterior a la fecha de radicación. Se permite igualdad para 'sentencia judicial'."
+          },
+          {
+            "nombre": "identificacion_nuevo_propietario",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "nombre_completo_nuevo_propietario",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "radicado",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "Formato RAD-AAAA-XXXXXX, donde A es año y X es consecutivo de seis dígitos con ceros a la izquierda."
+          },
+          {
+            "nombre": "fecha_radicacion",
+            "tipo": "date",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "estado",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "Valor fijo inicial: 'en trámite'."
+          }
+        ]
+      }
+    ],
+    "dependencias_externas": [],
+    "reglas_de_dependencia": [
+      "La capa de presentación importa únicamente de la capa de aplicación.",
+      "La capa de aplicación importa únicamente de la capa de dominio.",
+      "La capa de dominio no importa de ninguna otra capa.",
+      "No existen importaciones directas de presentación a infraestructura ni de aplicación a infraestructura."
+    ]
+  }
+}

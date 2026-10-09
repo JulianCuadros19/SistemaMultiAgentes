@@ -1,0 +1,308 @@
+{
+  "id": "caso-desarrollo-avaluo",
+  "titulo": "Cálculo del avalúo catastral de un predio",
+  "cliente": "Oficina de catastro municipal (sintética)",
+  "proyecto": "Gestión catastral municipal",
+  "necesidad": "Necesitamos calcular el avalúo de cada predio a partir de sus características físicas.",
+  "candidatas": [
+    "ARQ-01",
+    "ARQ-02"
+  ],
+  "criterio": "arq-003, paso 1: concentra reglas de negocio (dominio); paso 2: lógica moderada o compleja con invariantes.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "liquidador catastral",
+          "quiero": "calcular el avalúo de un predio a partir de sus características físicas",
+          "para": "emitir la liquidación del impuesto predial del periodo"
+        },
+        "epica": null,
+        "prioridad": "alta",
+        "supuestos": [],
+        "preguntas_abiertas": []
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.1",
+        "proyecto": "Gestión tributaria y catastral",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "liquidacion",
+        "riesgo": "Un cálculo con punto flotante alteraría el valor del avalúo",
+        "autor": "Agente elicitador",
+        "area_funcional": "Liquidación del impuesto predial",
+        "funcional_responsable": "Líder del área de liquidación",
+        "titulo": {
+          "como": "liquidador catastral",
+          "quiero": "calcular el avalúo de un predio a partir de sus características físicas",
+          "para": "emitir la liquidación del impuesto predial del periodo"
+        },
+        "descripcion": {
+          "precondicion": "El predio existe, tiene ficha catastral vigente y los valores unitarios de la vigencia están registrados",
+          "regla_negocio": "El avalúo total es la suma del avalúo del terreno, que resulta del área de terreno por el valor unitario de su zona homogénea geoeconómica, y del avalúo de la construcción, que resulta del área construida por el valor unitario de su tipología constructiva, ambos para la vigencia. Un predio sin construcción tiene avalúo igual al del terreno. Los valores se expresan en pesos colombianos sin decimales.",
+          "datos_entrada": [
+            {
+              "nombre": "numero_predial",
+              "tipo": "string",
+              "obligatorio": true,
+              "restriccion": "30 dígitos"
+            },
+            {
+              "nombre": "vigencia",
+              "tipo": "entero",
+              "obligatorio": true,
+              "restriccion": "año de cuatro dígitos, no superior a la vigencia actual más uno"
+            },
+            {
+              "nombre": "area_terreno",
+              "tipo": "decimal",
+              "obligatorio": true,
+              "restriccion": "mayor que cero, en metros cuadrados"
+            },
+            {
+              "nombre": "area_construida",
+              "tipo": "decimal",
+              "obligatorio": true,
+              "restriccion": "mayor o igual a cero; cero implica predio sin construcción"
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "avaluo_terreno",
+              "tipo": "decimal",
+              "formato": "pesos colombianos sin decimales"
+            },
+            {
+              "nombre": "avaluo_construccion",
+              "tipo": "decimal",
+              "formato": "pesos colombianos sin decimales"
+            },
+            {
+              "nombre": "avaluo_total",
+              "tipo": "decimal",
+              "formato": "pesos colombianos sin decimales"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "Predio con construcción",
+            "dado_que": "un predio con 200 m² de terreno a 500.000 pesos por m² y 100 m² construidos a 1.200.000 pesos por m² en la vigencia",
+            "cuando": "se calcula el avalúo",
+            "entonces": "el avalúo total es de 220.000.000 pesos"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "Predio sin construcción",
+            "dado_que": "un predio con área construida igual a cero",
+            "cuando": "se calcula el avalúo",
+            "entonces": "el avalúo total es igual al avalúo del terreno"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "Área de terreno inválida",
+            "dado_que": "un predio con área de terreno igual a cero",
+            "cuando": "se calcula el avalúo",
+            "entonces": "el sistema rechaza el cálculo e informa que el área de terreno debe ser mayor que cero"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal"
+      ]
+    }
+  },
+  "registro_decision": "---\nestado: propuesta\nfecha: 2026-10-09\ndecisores: [Agente arquitecto]\n---\n\n# Registro de decisión · Cálculo de avalúo con lógica moderada: arquitectura en capas (ARQ-01)\n\n## Contexto y planteamiento del problema\n\nLa decisión cubre el módulo liquidacion responsable de calcular el avalúo de un predio (RF-01). Afecta la organización interna en capas y las reglas de dependencia entre presentación, aplicación, dominio e infraestructura para este módulo.\n\n## Factores de decisión\n\n- Corrección en cálculos monetarios sin decimales y uso de tipos decimales (RF-01, riesgo declarado).\n- Lógica de negocio moderada con reglas claras de validación y cálculo (RF-01).\n- No se requiere exposición por red ni contratos de interfaz HTTP (RF-01).\n- Aplicar simplicidad suficiente evitando indirecciones innecesarias (criterio arq-003 v1.0 · Criterios de selección de arquitectura › Paso 4 · Aplicar el criterio de simplicidad suficiente).\n\n## Opciones consideradas\n\n- ARQ-01 · Arquitectura en capas\n- ARQ-02 · Arquitectura hexagonal o de puertos y adaptadores\n- ARQ-04 · Servicio de API REST por recursos\n\n## Resultado de la decisión\n\nOpción elegida: «ARQ-01 · Arquitectura en capas», porque Se elige ARQ-01 porque RF-01 concentra una lógica de negocio moderada con validaciones y un cálculo determinístico de avalúo, sin requerir sustitución de tecnologías ni pruebas del dominio sin infraestructura (arq-003 v1.0 · Criterios de selección de arquitectura › Paso 2 · Evaluar el peso de la lógica de negocio). No hay requerimiento en RF-01 que exija exposición de API ni contratos de interfaz (descarta ARQ-04). Aplicando simplicidad suficiente (arq-003 v1.0 · Criterios de selección de arquitectura › Paso 4 · Aplicar el criterio de simplicidad suficiente), ARQ-01 ofrece el mejor balance con menor complejidad estructural para RF-01.\n\n### Consecuencias\n\n- Favorable, porque Estructura familiar y mantenible con separación por capas, adecuada para implementar validaciones y cálculos de RF-01.\n- Favorable, porque Permite verificar automáticamente las dependencias entre capas, reduciendo errores arquitectónicos.\n- Favorable, porque Encapsula reglas de dominios como áreas y uso de decimales dentro del dominio y casos de uso.\n- Desfavorable, porque Riesgo de dominio anémico si no se modelan adecuadamente las invariantes en el dominio.\n- Desfavorable, porque Cambios transversales (p. ej., nuevos campos o formatos) pueden requerir modificaciones en varias capas.\n- Desfavorable, porque El dominio queda acoplado a la dirección de dependencia hacia infraestructura, dificultando su ejecución aislada si en el futuro se requiere.\n\n### Confirmación\n\nEjecutar una verificación de dependencias que asegure: (1) presentacion/ solo importa de aplicacion/, (2) aplicacion/ solo importa de dominio/ e infraestructura/, (3) dominio/ no importa de ninguna otra capa, (4) infraestructura/ no importa de presentacion/ ni de aplicacion/. Además, revisar automáticamente que en el cálculo de RF-01 las importaciones usan decimal de la biblioteca estándar y no tipos de punto flotante.\n\n## Análisis de las opciones\n\n### ARQ-01 · Arquitectura en capas\n- Favorable, porque Adecuada para lógica de negocio moderada con flujo predecible (arq-arq-01 v1.0 · Arquitectura en capas, arq-003 v1.0 · Criterios de selección de arquitectura › Paso 2 · Evaluar el peso de la lógica de negocio).\n- Favorable, porque Separación clara entre validaciones/casos de uso y reglas del dominio (arq-arq-01 v1.0 · Arquitectura en capas).\n- Favorable, porque Fácil verificación automática de dependencias por capas (arq-arq-01 v1.0 · Arquitectura en capas).\n- Desfavorable, porque Posible dominio anémico si no se vigilan las responsabilidades (arq-arq-01 v1.0 · Arquitectura en capas).\n- Desfavorable, porque Cambios transversales pueden requerir tocar varias capas (arq-arq-01 v1.0 · Arquitectura en capas).\n\n### ARQ-02 · Arquitectura hexagonal o de puertos y adaptadores\n- Favorable, porque Permite probar el dominio aislado de infraestructura (arq-arq-02 v1.0 · Arquitectura hexagonal o de puertos y adaptadores).\n- Favorable, porque Facilita sustituir tecnologías de salida si fuese necesario (arq-arq-02 v1.0 · Arquitectura hexagonal o de puertos y adaptadores).\n- Desfavorable, porque Mayor indirección y número de artefactos para el mismo comportamiento (arq-arq-02 v1.0 · Arquitectura hexagonal o de puertos y adaptadores).\n- Desfavorable, porque Sobreingeniería en lógica moderada sin NFR de sustitución de persistencia ni pruebas sin BD (arq-003 v1.0 · Criterios de selección de arquitectura › Paso 2 · Evaluar el peso de la lógica de negocio, arq-003 v1.0 · Criterios de selección de arquitectura › Paso 3 · Verificar restricciones no funcionales).\n- Descartada, porque La lógica de RF-01 es moderada y no exige reemplazar persistencia ni probar sin infraestructura; según arq-003 v1.0 · Criterios de selección de arquitectura › Paso 2 · Evaluar el peso de la lógica de negocio, la hexagonal sería sobreingeniería para RF-01.\n\n### ARQ-04 · Servicio de API REST por recursos\n- Favorable, porque Contrato de interfaz HTTP explícito y documentable (arq-arq-04 v1.0 · Servicio de API REST por recursos).\n- Desfavorable, porque Introduce capa de transporte innecesaria y gestión de versionado HTTP (arq-arq-04 v1.0 · Servicio de API REST por recursos).\n- Descartada, porque RF-01 no requiere ser consumido por otros sistemas vía HTTP ni expone una API; añadir transporte REST sería innecesario para RF-01.",
+  "especificacion": {
+    "id_especificacion": "ED-01",
+    "version": "0.1",
+    "arquitectura_base": "ARQ-01",
+    "requerimientos_cubiertos": [
+      "RF-01"
+    ],
+    "modulos": [
+      {
+        "nombre": "aplicacion.calculo_avaluo",
+        "ruta": "src/aplicacion/calculo_avaluo.py",
+        "responsabilidad": "Caso de uso para calcular el avalúo de un predio orquestando validaciones y acceso a valores unitarios de la vigencia.",
+        "capa": "aplicacion",
+        "interfaces_publicas": [
+          {
+            "nombre": "calcular_avaluo",
+            "tipo": "funcion",
+            "firma": "calcular_avaluo(numero_predial: str, vigencia: int, area_terreno: Decimal, area_construida: Decimal) -> ResultadoAvaluo",
+            "descripcion": "Calcula el avalúo del predio sumando el avalúo del terreno (área de terreno × valor unitario de terreno) y el avalúo de la construcción (área construida × valor unitario de construcción) para la vigencia indicada. Redondea/expresa el resultado en pesos sin decimales usando Decimal.",
+            "excepciones": [
+              "NumeroPredialInvalido",
+              "VigenciaInvalida",
+              "AreaTerrenoInvalida",
+              "AreaConstruidaInvalida",
+              "ValoresUnitariosNoEncontrados"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "dominio.avaluo",
+          "infraestructura.valores_unitarios_repositorio"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "dominio.avaluo",
+        "ruta": "src/dominio/avaluo.py",
+        "responsabilidad": "Entidades y objetos de valor del dominio de avalúos: Predio, ValoresUnitarios y ResultadoAvaluo, con sus invariantes y validaciones.",
+        "capa": "dominio",
+        "interfaces_publicas": [
+          {
+            "nombre": "Predio",
+            "tipo": "clase",
+            "firma": "Predio(numero_predial: str, area_terreno: Decimal, area_construida: Decimal)",
+            "descripcion": "Representa un predio con sus áreas y número predial, validando formato y rangos.",
+            "excepciones": [
+              "NumeroPredialInvalido",
+              "AreaTerrenoInvalida",
+              "AreaConstruidaInvalida"
+            ]
+          },
+          {
+            "nombre": "ValoresUnitarios",
+            "tipo": "clase",
+            "firma": "ValoresUnitarios(valor_terreno_m2: Decimal, valor_construccion_m2: Decimal)",
+            "descripcion": "Valores unitarios por metro cuadrado para terreno y construcción en una vigencia.",
+            "excepciones": []
+          },
+          {
+            "nombre": "ResultadoAvaluo",
+            "tipo": "clase",
+            "firma": "ResultadoAvaluo(avaluo_terreno: Decimal, avaluo_construccion: Decimal, avaluo_total: Decimal)",
+            "descripcion": "Resultado del cálculo de avalúo, expresado en pesos colombianos sin decimales.",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "infraestructura.valores_unitarios_repositorio",
+        "ruta": "src/infraestructura/valores_unitarios_repositorio.py",
+        "responsabilidad": "Acceso a los valores unitarios por vigencia para un predio dado (zona y tipología). Fuente de datos local o configurada; sin definir tecnología específica.",
+        "capa": "infraestructura",
+        "interfaces_publicas": [
+          {
+            "nombre": "obtener_valores_unitarios",
+            "tipo": "funcion",
+            "firma": "obtener_valores_unitarios(numero_predial: str, vigencia: int) -> ValoresUnitarios",
+            "descripcion": "Obtiene los valores unitarios por m² de terreno y construcción aplicables al predio y vigencia indicados.",
+            "excepciones": [
+              "ValoresUnitariosNoEncontrados",
+              "VigenciaInvalida",
+              "NumeroPredialInvalido"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "dominio.avaluo"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      }
+    ],
+    "modelo_datos": [
+      {
+        "nombre": "Predio",
+        "campos": [
+          {
+            "nombre": "numero_predial",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "exactamente 30 dígitos numéricos"
+          },
+          {
+            "nombre": "area_terreno",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "mayor que 0, en m²"
+          },
+          {
+            "nombre": "area_construida",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "mayor o igual a 0, en m²; 0 implica sin construcción"
+          }
+        ]
+      },
+      {
+        "nombre": "Vigencia",
+        "campos": [
+          {
+            "nombre": "anio",
+            "tipo": "int",
+            "obligatorio": true,
+            "restriccion": "año de cuatro dígitos, no superior al año actual + 1"
+          }
+        ]
+      },
+      {
+        "nombre": "ValoresUnitarios",
+        "campos": [
+          {
+            "nombre": "valor_terreno_m2",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "mayor que 0, en pesos por m²"
+          },
+          {
+            "nombre": "valor_construccion_m2",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "mayor o igual a 0, en pesos por m²"
+          }
+        ]
+      },
+      {
+        "nombre": "ResultadoAvaluo",
+        "campos": [
+          {
+            "nombre": "avaluo_terreno",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos colombianos sin decimales, >= 0"
+          },
+          {
+            "nombre": "avaluo_construccion",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos colombianos sin decimales, >= 0"
+          },
+          {
+            "nombre": "avaluo_total",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos colombianos sin decimales, >= 0"
+          }
+        ]
+      }
+    ],
+    "dependencias_externas": [],
+    "reglas_de_dependencia": [
+      "La capa de dominio no importa de ninguna otra capa.",
+      "La capa de aplicación puede importar de dominio e infraestructura, pero no de presentación.",
+      "La capa de infraestructura puede importar de dominio, pero no de presentación ni de aplicación.",
+      "Si existiera presentación, solo podría importar de aplicación."
+    ]
+  }
+}

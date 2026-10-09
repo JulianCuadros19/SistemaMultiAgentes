@@ -7,9 +7,13 @@ son simulados. Cada llamada al modelo se agrega a docs/mediciones/paso-08-arquit
 el contenido de los mensajes. Requiere `docker compose up -d --wait`, el corpus ingerido y el
 archivo .env. Tiene costo.
 
+Con `--exportar`, el diseño aprobado se guarda como caso de desarrollo para el paso 9.
+
 Uso:
     python scripts/disenar_arquitectura.py --requerimientos evaluacion/casos/diseno-avaluo.json
     python scripts/disenar_arquitectura.py --requerimientos CASO --rechazar "…" --aprobar
+    python scripts/disenar_arquitectura.py --requerimientos CASO --aprobar \
+        --exportar evaluacion/casos/desarrollo-avaluo.json
 """
 
 import argparse
@@ -26,12 +30,12 @@ import psycopg
 
 from multiagente.agentes.arquitecto.servicio import crear_agente_arquitecto
 from multiagente.core.configuracion import ConfiguracionAzureOpenAI, ConfiguracionBaseDatos
-from multiagente.interfaces.casos import cargar_caso_diseno
+from multiagente.interfaces.casos import cargar_caso_diseno, exportar_caso_desarrollo
 from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistroJsonl
-from multiagente.orquestador.ejecucion import avanzar, iniciar_sesion
+from multiagente.orquestador.ejecucion import avanzar, configuracion_hilo, iniciar_sesion
 from multiagente.orquestador.grafo import construir_grafo
-from multiagente.orquestador.servicios import Servicios
+from multiagente.orquestador.servicios import Diseno, Servicios
 from multiagente.orquestador.simulacion import ElicitadorFijo, ServiciosSimulados
 from multiagente.persistencia.puntos_control import abrir_checkpointer
 
@@ -99,6 +103,9 @@ def main() -> None:
     parser.add_argument("--requerimientos", type=Path, required=True, help="Caso de diseño.")
     parser.add_argument("--rechazar", help="Rechaza una vez en N9 con esta observación.")
     parser.add_argument("--aprobar", action="store_true", help="Aprueba en N9 sin preguntar.")
+    parser.add_argument(
+        "--exportar", type=Path, help="Guarda el diseño aprobado como caso de desarrollo."
+    )
     argumentos = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="(aviso) %(message)s")
 
@@ -143,6 +150,16 @@ def main() -> None:
                 if avance.pausa is not None and avance.pausa.punto == "especificacion":
                     continue
                 print("Especificación aprobada; la generación sigue con el desarrollador simulado.")
+                if argumentos.exportar:
+                    arquitectura = app.get_state(configuracion_hilo(id_sesion)).values[
+                        "arquitectura"
+                    ]
+                    diseno = Diseno(
+                        registro_decision=arquitectura.registro_decision,
+                        especificacion=arquitectura.especificacion,
+                    )
+                    exportado = exportar_caso_desarrollo(caso, diseno, argumentos.exportar)
+                    print(f"Caso de desarrollo guardado: {argumentos.exportar} ({exportado.id})")
                 break
             if decision.startswith("r"):
                 avance = avanzar(

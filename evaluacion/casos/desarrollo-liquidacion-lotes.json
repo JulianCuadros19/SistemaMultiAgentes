@@ -1,0 +1,543 @@
+{
+  "id": "caso-desarrollo-liquidacion-lotes",
+  "titulo": "Liquidación nocturna del impuesto predial por lotes",
+  "cliente": "Oficina de catastro municipal (sintética)",
+  "proyecto": "Gestión catastral municipal",
+  "necesidad": "Necesitamos liquidar cada noche el impuesto predial de todos los predios.",
+  "candidatas": [
+    "ARQ-03"
+  ],
+  "criterio": "arq-003, paso 1: transforma lotes de datos de origen a destino (procesamiento); paso 3: exige reintento por etapas.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "funcionario de la secretaría de hacienda",
+          "quiero": "liquidar cada noche el impuesto predial de los predios con avalúo vigente",
+          "para": "emitir a tiempo las facturas del periodo"
+        },
+        "epica": null,
+        "prioridad": "alta",
+        "supuestos": [],
+        "preguntas_abiertas": []
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.1",
+        "proyecto": "Gestión catastral municipal",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "liquidacion",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "Liquidación del impuesto predial",
+        "funcional_responsable": null,
+        "titulo": {
+          "como": "funcionario de la secretaría de hacienda",
+          "quiero": "liquidar cada noche el impuesto predial de los predios con avalúo vigente",
+          "para": "emitir a tiempo las facturas del periodo"
+        },
+        "descripcion": {
+          "precondicion": "Las tarifas por destino económico de la vigencia están registradas.",
+          "regla_negocio": "Cada noche el proceso lee los avalúos vigentes de la base catastral, aplica la tarifa del destino económico de cada predio y redondea el impuesto al peso. Un predio sin avalúo vigente se omite y queda en el reporte del lote. Si falta la tarifa de un destino económico, el lote se detiene sin liquidar y lo informa. El proceso se reintenta por etapas sin duplicar liquidaciones ya hechas. Al terminar deja un reporte del lote con los predios liquidados, los omitidos y el valor total.",
+          "datos_entrada": [
+            {
+              "nombre": "vigencia",
+              "tipo": "número entero",
+              "obligatorio": true,
+              "restriccion": "año de cuatro dígitos"
+            },
+            {
+              "nombre": "fecha_corte",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "reporte_lote",
+              "tipo": "texto",
+              "formato": "predios liquidados, omitidos y valor total en pesos"
+            },
+            {
+              "nombre": "valor_total_liquidado",
+              "tipo": "decimal",
+              "formato": "pesos colombianos sin decimales"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "Lote completo",
+            "dado_que": "1.000 predios con avalúo vigente y tarifas registradas",
+            "cuando": "se ejecuta el lote de la noche",
+            "entonces": "se liquidan los 1.000 predios y el reporte muestra el valor total"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "Predio sin avalúo vigente",
+            "dado_que": "un predio sin avalúo vigente",
+            "cuando": "se ejecuta el lote",
+            "entonces": "el predio se omite y aparece en el reporte como omitido"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "Tarifa faltante",
+            "dado_que": "un destino económico sin tarifa registrada",
+            "cuando": "se ejecuta el lote",
+            "entonces": "el lote se detiene sin liquidar e informa el destino sin tarifa"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal"
+      ]
+    }
+  },
+  "registro_decision": "---\nestado: propuesta\nfecha: 2026-10-09\ndecisores: [Agente arquitecto]\n---\n\n# Registro de decisión · Lote nocturno de liquidación predial con reintentos por etapas → Pipeline de procesamiento (ARQ-03)\n\n## Contexto y planteamiento del problema\n\nLa decisión abarca el módulo liquidacion responsable de ejecutar cada noche la liquidación del impuesto predial a partir de avalúos y tarifas, produciendo un reporte del lote. Se define la arquitectura base y la organización de módulos que soporten procesamiento por lotes con reintentos por etapas e idempotencia.\n\n## Factores de decisión\n\n- Procesamiento nocturno por lotes de predios (RF-01)\n- Reintento por etapas sin duplicar liquidaciones ya hechas (RF-01)\n- Necesidad de reporte del lote con trazabilidad de predios liquidados y omitidos (RF-01)\n- Cálculo monetario con redondeo al peso; requiere uso de decimales (RF-01, regla tecnológica de dinero)\n\n## Opciones consideradas\n\n- ARQ-03 · Pipeline de procesamiento por etapas\n- ARQ-05 · Aplicación de línea de comandos por subcomandos\n\n## Resultado de la decisión\n\nOpción elegida: «ARQ-03 · Pipeline de procesamiento por etapas», porque Se elige ARQ-03 porque RF-01 define un proceso nocturno por lotes que se reintenta por etapas, omite predios sin avalúo y detiene el lote si falta una tarifa, requiriendo orquestación por etapas con trazabilidad y idempotencia. ARQ-03 satisface estos requerimientos al estructurar extracción, validación, transformación y carga con contratos y reintentos por etapa (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas, arq-003 v1.0 · Criterios de selección de arquitectura › Paso 3 · Verificar restricciones no funcionales), mientras que alternativas como ARQ-05 carecen de estas capacidades sin desarrollo adicional.\n\n### Consecuencias\n\n- Favorable, porque Estructuración clara en etapas con contratos verificables, facilitando pruebas y reintentos aislados por etapa\n- Favorable, porque Instrumentación y reporte por etapa, mejorando la trazabilidad del lote y el cálculo del valor total\n- Favorable, porque Posibilidad de paralelizar etapas independientes si fuera necesario en el futuro\n- Desfavorable, porque Mayor número de módulos y orquestación respecto a una CLI simple, incrementando la complejidad estructural\n- Desfavorable, porque Necesidad de gestionar estado intermedio e idempotencia por etapa para no duplicar liquidaciones\n- Desfavorable, porque Definir y mantener políticas de compensación ante errores parciales y detenciones del lote\n\n### Confirmación\n\nEl tester verificará que: 1) existen módulos en rutas/paquetes contratos/, etapas/, orquestacion/ e io/; 2) ningún archivo en etapas/ importa de otro archivo en etapas/ ni de orquestacion/ (solo puede importar de contratos/); 3) orquestacion/ importa de etapas/ y no al revés; y 4) io/ no es importado por etapas/ (solo por orquestacion/). Una revisión automática de dependencias fallará si se detecta alguna importación prohibida.\n\n## Análisis de las opciones\n\n### ARQ-03 · Pipeline de procesamiento por etapas\n- Favorable, porque Candidata natural para transformar datos en lotes con etapas de extracción, validación, transformación y carga (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas; RF-01)\n- Favorable, porque Soporta explícitamente reintentos por etapa y manejo de errores por etapa (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas, arq-003 v1.0 · Criterios de selección de arquitectura › Paso 3 · Verificar restricciones no funcionales; RF-01)\n- Favorable, porque Facilita la trazabilidad del dato a lo largo de la transformación y la generación de reportes por etapa (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas; RF-01)\n- Favorable, porque Permite aislar idempotencia por etapa para no duplicar liquidaciones (RF-01)\n- Desfavorable, porque Obliga a gestionar estado intermedio y contratos entre etapas (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas)\n- Desfavorable, porque Introduce orquestación adicional y más módulos que una solución mínima (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas, arq-003 v1.0 · Criterios de selección de arquitectura › Paso 4 · Aplicar el criterio de simplicidad suficiente)\n- Desfavorable, porque Requiere una política clara de compensación ante errores parciales (arq-arq-03 v1.0 · Pipeline de procesamiento por etapas)\n\n### ARQ-05 · Aplicación de línea de comandos por subcomandos\n- Favorable, porque Se ejecuta fácilmente como tarea programada nocturna o invocación manual (arq-arq-05 v1.0 · Aplicación de línea de comandos por subcomandos; RF-01)\n- Favorable, porque Baja complejidad operativa y despliegue simple (arq-arq-05 v1.0 · Aplicación de línea de comandos por subcomandos)\n- Desfavorable, porque No provee de forma nativa contratos y reintentos por etapa; habría que construirlos ad hoc (arq-arq-05 v1.0 · Aplicación de línea de comandos por subcomandos; RF-01)\n- Desfavorable, porque Menor trazabilidad por etapa y mayor riesgo de mezclar análisis de argumentos con lógica de lote (arq-arq-05 v1.0 · Aplicación de línea de comandos por subcomandos; RF-01)\n- Desfavorable, porque Idempotencia por etapa no estructurada, aumentando riesgo de duplicación de liquidaciones (RF-01)\n- Descartada, porque RF-01 exige reintento por etapas y reporte detallado del lote; ARQ-05 no ofrece etapas con contratos y reintentos explícitos, resultando en sobrecarga ad hoc frente a ARQ-03.",
+  "especificacion": {
+    "id_especificacion": "ED-01",
+    "version": "0.1",
+    "arquitectura_base": "ARQ-03",
+    "requerimientos_cubiertos": [
+      "RF-01"
+    ],
+    "modulos": [
+      {
+        "nombre": "contratos.liquidacion",
+        "ruta": "src/contratos/liquidacion.py",
+        "responsabilidad": "Definir los contratos (esquemas) de datos que circulan entre etapas, incluyendo entidades del lote y excepciones de dominio del pipeline.",
+        "capa": "contratos",
+        "interfaces_publicas": [
+          {
+            "nombre": "PredioEntrada",
+            "tipo": "clase",
+            "firma": "PredioEntrada(id_predial: str, destino_economico: str, avaluo: Decimal | None)",
+            "descripcion": "Modelo de entrada por predio con su destino económico y avalúo vigente (si existe).",
+            "excepciones": []
+          },
+          {
+            "nombre": "Tarifa",
+            "tipo": "clase",
+            "firma": "Tarifa(destino_economico: str, porcentaje: Decimal)",
+            "descripcion": "Tarifa aplicable a un destino económico para una vigencia.",
+            "excepciones": []
+          },
+          {
+            "nombre": "InsumosLote",
+            "tipo": "clase",
+            "firma": "InsumosLote(vigencia: int, fecha_corte: date, predios: list[PredioEntrada], tarifas: list[Tarifa])",
+            "descripcion": "Paquete de insumos necesarios para preparar y ejecutar el lote de liquidación.",
+            "excepciones": []
+          },
+          {
+            "nombre": "PreparacionResultado",
+            "tipo": "clase",
+            "firma": "PreparacionResultado(predios_con_avaluo: list[PredioEntrada], predios_omitidos: list[str], tarifas_por_destino: dict[str, Tarifa])",
+            "descripcion": "Resultado de la etapa de preparación: partición de predios y mapa de tarifas por destino.",
+            "excepciones": []
+          },
+          {
+            "nombre": "Liquidacion",
+            "tipo": "clase",
+            "firma": "Liquidacion(id_predial: str, vigencia: int, base: Decimal, tarifa_aplicada: Decimal, impuesto: Decimal)",
+            "descripcion": "Resultado de liquidación por predio, con valores en Decimal y redondeo al peso aplicado en etapas posteriores.",
+            "excepciones": []
+          },
+          {
+            "nombre": "ResultadoLiquidacion",
+            "tipo": "clase",
+            "firma": "ResultadoLiquidacion(liquidaciones: list[Liquidacion], predios_omitidos: list[str], valor_total: Decimal)",
+            "descripcion": "Resultado agregado de la etapa de liquidación con total acumulado.",
+            "excepciones": []
+          },
+          {
+            "nombre": "ReporteLote",
+            "tipo": "clase",
+            "firma": "ReporteLote(texto: str, valor_total: Decimal)",
+            "descripcion": "Reporte final del lote con secciones de predios liquidados, omitidos y total en pesos.",
+            "excepciones": []
+          },
+          {
+            "nombre": "TarifaFaltanteError",
+            "tipo": "clase",
+            "firma": "TarifaFaltanteError(destino_economico: str)",
+            "descripcion": "Excepción que indica ausencia de tarifa para un destino económico requerido por la preparación del lote.",
+            "excepciones": []
+          },
+          {
+            "nombre": "EtapaError",
+            "tipo": "clase",
+            "firma": "EtapaError(nombre_etapa: str, detalle: str | None = None)",
+            "descripcion": "Excepción genérica para errores de ejecución de etapas, usada por la orquestación para manejo uniforme.",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "etapas.preparacion",
+        "ruta": "src/etapas/preparacion.py",
+        "responsabilidad": "Preparar el lote: validar cobertura de tarifas por destino, separar predios con y sin avalúo, y producir el insumo estructurado para liquidación.",
+        "capa": "etapas",
+        "interfaces_publicas": [
+          {
+            "nombre": "preparar_lote",
+            "tipo": "funcion",
+            "firma": "preparar_lote(insumos: InsumosLote) -> PreparacionResultado",
+            "descripcion": "Valida tarifas y particiona predios con base en la existencia de avalúo vigente; lanza si falta alguna tarifa requerida.",
+            "excepciones": [
+              "TarifaFaltanteError",
+              "EtapaError"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "contratos.liquidacion"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "etapas.liquidacion",
+        "ruta": "src/etapas/liquidacion.py",
+        "responsabilidad": "Calcular el impuesto por predio aplicando la tarifa según destino económico, con redondeo al peso y acumulación del total.",
+        "capa": "etapas",
+        "interfaces_publicas": [
+          {
+            "nombre": "liquidar",
+            "tipo": "funcion",
+            "firma": "liquidar(preparacion: PreparacionResultado) -> ResultadoLiquidacion",
+            "descripcion": "Calcula las liquidaciones por predio a partir de la preparación, aplicando redondeo al peso y sumando el valor total.",
+            "excepciones": [
+              "EtapaError"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "contratos.liquidacion"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "etapas.reporte",
+        "ruta": "src/etapas/reporte.py",
+        "responsabilidad": "Construir el reporte textual del lote con predios liquidados, omitidos y el valor total en pesos.",
+        "capa": "etapas",
+        "interfaces_publicas": [
+          {
+            "nombre": "construir_reporte",
+            "tipo": "funcion",
+            "firma": "construir_reporte(resultado: ResultadoLiquidacion) -> ReporteLote",
+            "descripcion": "Genera el reporte final en texto y replica el total calculado.",
+            "excepciones": [
+              "EtapaError"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "contratos.liquidacion"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "orquestacion.ejecucion",
+        "ruta": "src/orquestacion/ejecucion.py",
+        "responsabilidad": "Encadenar las etapas, manejar reintentos por etapa, gestionar errores e idempotencia a nivel de etapa, y coordinar la lectura y escritura de datos.",
+        "capa": "orquestacion",
+        "interfaces_publicas": [
+          {
+            "nombre": "ejecutar_lote",
+            "tipo": "funcion",
+            "firma": "ejecutar_lote(vigencia: int, fecha_corte: date) -> ReporteLote",
+            "descripcion": "Orquesta el pipeline: obtiene insumos, ejecuta preparación, liquidación y reporte; persiste resultados y maneja reintentos por etapa sin duplicar liquidaciones.",
+            "excepciones": [
+              "EtapaError",
+              "TarifaFaltanteError"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "contratos.liquidacion",
+          "etapas.preparacion",
+          "etapas.liquidacion",
+          "etapas.reporte",
+          "acceso.datos"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      },
+      {
+        "nombre": "acceso.datos",
+        "ruta": "src/acceso/datos.py",
+        "responsabilidad": "Proveer funciones de acceso a datos para leer insumos del lote (predios, avalúos, tarifas) y persistir resultados (liquidaciones y reporte).",
+        "capa": "acceso",
+        "interfaces_publicas": [
+          {
+            "nombre": "obtener_predios",
+            "tipo": "funcion",
+            "firma": "obtener_predios(vigencia: int, fecha_corte: date) -> list[PredioEntrada]",
+            "descripcion": "Lee los predios con su destino económico y avalúo vigente a la fecha de corte.",
+            "excepciones": []
+          },
+          {
+            "nombre": "obtener_tarifas",
+            "tipo": "funcion",
+            "firma": "obtener_tarifas(vigencia: int) -> list[Tarifa]",
+            "descripcion": "Lee las tarifas por destino económico para la vigencia.",
+            "excepciones": []
+          },
+          {
+            "nombre": "guardar_liquidaciones",
+            "tipo": "funcion",
+            "firma": "guardar_liquidaciones(liquidaciones: list[Liquidacion]) -> None",
+            "descripcion": "Persiste el conjunto de liquidaciones calculadas.",
+            "excepciones": []
+          },
+          {
+            "nombre": "guardar_reporte",
+            "tipo": "funcion",
+            "firma": "guardar_reporte(reporte: ReporteLote) -> None",
+            "descripcion": "Persiste el reporte final del lote.",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [
+          "contratos.liquidacion"
+        ],
+        "requerimientos": [
+          "RF-01"
+        ]
+      }
+    ],
+    "modelo_datos": [
+      {
+        "nombre": "PredioEntrada",
+        "campos": [
+          {
+            "nombre": "id_predial",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "identificador catastral, no vacío"
+          },
+          {
+            "nombre": "destino_economico",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "clave del destino económico registrado en tarifas"
+          },
+          {
+            "nombre": "avaluo",
+            "tipo": "Decimal",
+            "obligatorio": false,
+            "restriccion": "mayor o igual a 0 si presente"
+          }
+        ]
+      },
+      {
+        "nombre": "Tarifa",
+        "campos": [
+          {
+            "nombre": "destino_economico",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "clave única de destino económico para la vigencia"
+          },
+          {
+            "nombre": "porcentaje",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "tasa entre 0 y 1 (proporción)"
+          }
+        ]
+      },
+      {
+        "nombre": "InsumosLote",
+        "campos": [
+          {
+            "nombre": "vigencia",
+            "tipo": "int",
+            "obligatorio": true,
+            "restriccion": "año de cuatro dígitos"
+          },
+          {
+            "nombre": "fecha_corte",
+            "tipo": "date",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "predios",
+            "tipo": "list[PredioEntrada]",
+            "obligatorio": true,
+            "restriccion": "lista puede ser vacía"
+          },
+          {
+            "nombre": "tarifas",
+            "tipo": "list[Tarifa]",
+            "obligatorio": true,
+            "restriccion": "al menos una si existen destinos a liquidar"
+          }
+        ]
+      },
+      {
+        "nombre": "PreparacionResultado",
+        "campos": [
+          {
+            "nombre": "predios_con_avaluo",
+            "tipo": "list[PredioEntrada]",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "predios_omitidos",
+            "tipo": "list[str]",
+            "obligatorio": true,
+            "restriccion": "identificadores de predios sin avalúo vigente"
+          },
+          {
+            "nombre": "tarifas_por_destino",
+            "tipo": "dict[str, Tarifa]",
+            "obligatorio": true,
+            "restriccion": "todas las claves de destinos presentes en predios_con_avaluo"
+          }
+        ]
+      },
+      {
+        "nombre": "Liquidacion",
+        "campos": [
+          {
+            "nombre": "id_predial",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "vigencia",
+            "tipo": "int",
+            "obligatorio": true,
+            "restriccion": "año de cuatro dígitos"
+          },
+          {
+            "nombre": "base",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "igual al avalúo vigente"
+          },
+          {
+            "nombre": "tarifa_aplicada",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "tasa entre 0 y 1 (proporción)"
+          },
+          {
+            "nombre": "impuesto",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "valor en pesos colombianos, redondeado al peso"
+          }
+        ]
+      },
+      {
+        "nombre": "ResultadoLiquidacion",
+        "campos": [
+          {
+            "nombre": "liquidaciones",
+            "tipo": "list[Liquidacion]",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "predios_omitidos",
+            "tipo": "list[str]",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "valor_total",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "suma de impuestos de liquidaciones"
+          }
+        ]
+      },
+      {
+        "nombre": "ReporteLote",
+        "campos": [
+          {
+            "nombre": "texto",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "incluye secciones de liquidados, omitidos y total"
+          },
+          {
+            "nombre": "valor_total",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos colombianos sin decimales"
+          }
+        ]
+      },
+      {
+        "nombre": "TarifaFaltanteError",
+        "campos": [
+          {
+            "nombre": "destino_economico",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "destino económico sin tarifa registrada"
+          }
+        ]
+      },
+      {
+        "nombre": "EtapaError",
+        "campos": [
+          {
+            "nombre": "nombre_etapa",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": null
+          },
+          {
+            "nombre": "detalle",
+            "tipo": "str",
+            "obligatorio": false,
+            "restriccion": null
+          }
+        ]
+      }
+    ],
+    "dependencias_externas": [
+      {
+        "paquete": "pydantic",
+        "proposito": "validación de esquemas de datos y contratos entre etapas"
+      }
+    ],
+    "reglas_de_dependencia": [
+      "Cada etapa (src/etapas/) importa exclusivamente de contratos (src/contratos/).",
+      "Las etapas no se importan entre sí.",
+      "La orquestación (src/orquestacion/) importa de etapas y contratos, y no es importada por etapas.",
+      "El acceso a datos (src/acceso/) no es importado por etapas; solo por orquestación.",
+      "Los contratos (src/contratos/) no importan de otros módulos de esta especificación.",
+      "El grafo de dependencias entre módulos es acíclico y respeta la dirección definida por ARQ-03."
+    ]
+  }
+}

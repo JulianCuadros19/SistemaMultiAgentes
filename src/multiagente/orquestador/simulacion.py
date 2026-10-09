@@ -388,6 +388,37 @@ class ElicitadorFijo:
         return VerificacionCalidad()
 
 
+@dataclass
+class ArquitectoFijo:
+    """Arquitecto que entrega un diseño ya aprobado, sin diseñar.
+
+    Sirve para probar al desarrollador con especificaciones conocidas y sin el costo del diseño:
+    N7 no recupera nada, N8 devuelve el diseño dado y N9 no encuentra errores, de modo que la
+    sesión llega a la aprobación humana de la especificación.
+
+    Attributes:
+        diseno: Registro de decisión y especificación que se entregan en N8.
+    """
+
+    diseno: Diseno
+
+    def recuperar_catalogo(self, requerimientos: Requerimientos) -> Contexto:
+        """No recupera nada: el diseño ya está hecho (N7)."""
+        return Contexto()
+
+    def disenar(
+        self, requerimientos: Requerimientos, contexto: Contexto, previa: Arquitectura
+    ) -> Diseno:
+        """Devuelve el diseño dado (N8)."""
+        return self.diseno
+
+    def validar(
+        self, especificacion: EspecificacionDiseno, requerimientos: Requerimientos
+    ) -> list[str]:
+        """No reporta errores: el diseño dado ya pasó las validaciones del Anexo B (N9)."""
+        return []
+
+
 def aprobar(revisor: str = "Revisor simulado") -> dict[str, str]:
     """Respuesta de aprobación para un punto de control."""
     return {"decision": "aprobado", "revisor": revisor}
