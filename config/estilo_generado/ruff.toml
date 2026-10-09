@@ -1,0 +1,40 @@
+# Estilo del código que genera el agente desarrollador (N10), no del código del sistema.
+# El del sistema se configura en pyproject.toml; no se mezclan (decisión 3 de CLAUDE.md).
+#
+# Es configuración, no conocimiento (decisión 2): N10 recibe este archivo tal cual como dato y
+# N12 lo aplica con Ruff. Nunca se recupera por RAG. Ver docs/decisiones/0011-agente-desarrollador.md.
+
+# Versión mínima del catálogo tecnológico (arq-004) y del RNF-07.
+target-version = "py311"
+line-length = 100
+# El módulo generado sigue el diseño src/: así `dominio`, `aplicacion`… son propios.
+src = ["src"]
+
+[lint]
+select = [
+    "E",    # estilo de pycodestyle
+    "W",    # advertencias de pycodestyle
+    "F",    # código no utilizado y errores lógicos (CAL-MT-004)
+    "I",    # orden de importaciones
+    "N",    # convención de nombres (CAL-MT-007)
+    "D",    # documentación de lo público (CAL-MT-001, RF-18)
+    "ANN",  # anotación de tipos (CAL-MT-002)
+    "S",    # seguridad: secretos, eval, subprocesos, consultas (CAL-SG-001 a CAL-SG-004)
+    "BLE",  # captura genérica de excepciones (CAL-SG-006)
+    "B",    # errores probables
+    "UP",   # sintaxis vigente para Python 3.11
+    "C90",  # complejidad ciclomática (CAL-MT-003)
+]
+# N818 exige el sufijo inglés «Error»; las excepciones del dominio van en español, como
+# `NumeroPredialInvalido` en el esquema de la especificación (arq-002).
+ignore = ["N818"]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.per-file-ignores]
+# Las pruebas no son interfaces públicas; pytest se basa en assert.
+"tests/**" = ["D", "ANN", "S101"]
