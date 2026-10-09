@@ -1,0 +1,100 @@
+{
+  "id": "caso-diseno-liquidacion-lotes",
+  "titulo": "Liquidación nocturna del impuesto predial por lotes",
+  "cliente": "Oficina de catastro municipal (sintética)",
+  "proyecto": "Gestión catastral municipal",
+  "necesidad": "Necesitamos liquidar cada noche el impuesto predial de todos los predios.",
+  "candidatas": [
+    "ARQ-03"
+  ],
+  "criterio": "arq-003, paso 1: transforma lotes de datos de origen a destino (procesamiento); paso 3: exige reintento por etapas.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "funcionario de la secretaría de hacienda",
+          "quiero": "liquidar cada noche el impuesto predial de los predios con avalúo vigente",
+          "para": "emitir a tiempo las facturas del periodo"
+        },
+        "prioridad": "alta"
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.1",
+        "proyecto": "Gestión catastral municipal",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "liquidacion",
+        "autor": "Agente elicitador",
+        "area_funcional": "Liquidación del impuesto predial",
+        "titulo": {
+          "como": "funcionario de la secretaría de hacienda",
+          "quiero": "liquidar cada noche el impuesto predial de los predios con avalúo vigente",
+          "para": "emitir a tiempo las facturas del periodo"
+        },
+        "descripcion": {
+          "precondicion": "Las tarifas por destino económico de la vigencia están registradas.",
+          "regla_negocio": "Cada noche el proceso lee los avalúos vigentes de la base catastral, aplica la tarifa del destino económico de cada predio y redondea el impuesto al peso. Un predio sin avalúo vigente se omite y queda en el reporte del lote. Si falta la tarifa de un destino económico, el lote se detiene sin liquidar y lo informa. El proceso se reintenta por etapas sin duplicar liquidaciones ya hechas. Al terminar deja un reporte del lote con los predios liquidados, los omitidos y el valor total.",
+          "datos_entrada": [
+            {
+              "nombre": "vigencia",
+              "tipo": "número entero",
+              "obligatorio": true,
+              "restriccion": "año de cuatro dígitos"
+            },
+            {
+              "nombre": "fecha_corte",
+              "tipo": "fecha",
+              "obligatorio": true
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "reporte_lote",
+              "tipo": "texto",
+              "formato": "predios liquidados, omitidos y valor total en pesos"
+            },
+            {
+              "nombre": "valor_total_liquidado",
+              "tipo": "decimal",
+              "formato": "pesos colombianos sin decimales"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "Lote completo",
+            "dado_que": "1.000 predios con avalúo vigente y tarifas registradas",
+            "cuando": "se ejecuta el lote de la noche",
+            "entonces": "se liquidan los 1.000 predios y el reporte muestra el valor total"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "Predio sin avalúo vigente",
+            "dado_que": "un predio sin avalúo vigente",
+            "cuando": "se ejecuta el lote",
+            "entonces": "el predio se omite y aparece en el reporte como omitido"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "Tarifa faltante",
+            "dado_que": "un destino económico sin tarifa registrada",
+            "cuando": "se ejecuta el lote",
+            "entonces": "el lote se detiene sin liquidar e informa el destino sin tarifa"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal"
+      ]
+    }
+  }
+}

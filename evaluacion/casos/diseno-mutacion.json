@@ -1,0 +1,122 @@
+{
+  "id": "caso-diseno-mutacion",
+  "titulo": "Registro de solicitudes de mutación de propietario",
+  "cliente": "Oficina de catastro municipal (sintética)",
+  "proyecto": "Gestión catastral municipal",
+  "necesidad": "Necesitamos registrar las solicitudes de mutación de propietario de los predios.",
+  "candidatas": [
+    "ARQ-01",
+    "ARQ-04"
+  ],
+  "criterio": "arq-003, paso 1: lo usa el analista por una interfaz (servicio) o concentra validaciones de negocio moderadas (dominio en capas); paso 4: simplicidad suficiente.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "analista de conservación catastral",
+          "quiero": "registrar las solicitudes de mutación de propietario de los predios",
+          "para": "evitar que las solicitudes que hoy llegan en papel se pierdan y hacerles seguimiento"
+        },
+        "prioridad": "alta"
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.1",
+        "proyecto": "Gestión catastral municipal",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "conservacion",
+        "autor": "Agente elicitador",
+        "area_funcional": "Conservación catastral",
+        "titulo": {
+          "como": "analista de conservación catastral",
+          "quiero": "registrar las solicitudes de mutación de propietario de los predios",
+          "para": "evitar que las solicitudes que hoy llegan en papel se pierdan y hacerles seguimiento"
+        },
+        "descripcion": {
+          "precondicion": "El analista de conservación catastral tiene los datos de la solicitud y del documento soporte.",
+          "regla_negocio": "La solicitud se acepta solo si el número predial existe en la base catastral. El documento soporte es obligatorio y debe ser escritura pública o sentencia judicial. La fecha del documento soporte no puede ser posterior a la fecha de radicación. Al aceptar la solicitud se asigna un radicado con formato RAD-año-consecutivo de seis dígitos y la solicitud queda en estado en trámite.",
+          "datos_entrada": [
+            {
+              "nombre": "numero_predial",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": "30 dígitos y existente en la base catastral"
+            },
+            {
+              "nombre": "tipo_documento_soporte",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": "escritura pública o sentencia judicial"
+            },
+            {
+              "nombre": "fecha_documento_soporte",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": "no posterior a la fecha de radicación"
+            },
+            {
+              "nombre": "identificacion_nuevo_propietario",
+              "tipo": "texto",
+              "obligatorio": true
+            },
+            {
+              "nombre": "nombre_completo_nuevo_propietario",
+              "tipo": "texto",
+              "obligatorio": true
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "radicado",
+              "tipo": "texto",
+              "formato": "RAD-año-consecutivo de seis dígitos"
+            },
+            {
+              "nombre": "fecha_radicacion",
+              "tipo": "fecha"
+            },
+            {
+              "nombre": "estado",
+              "tipo": "texto",
+              "formato": "en trámite"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "Solicitud aceptada",
+            "dado_que": "un predio registrado y una escritura pública con fecha anterior a la radicación",
+            "cuando": "se registra la solicitud",
+            "entonces": "el sistema asigna un radicado RAD-2026-000123 y deja la solicitud en trámite"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "Sentencia judicial del mismo día",
+            "dado_que": "una sentencia judicial con fecha igual a la de radicación",
+            "cuando": "se registra la solicitud",
+            "entonces": "el sistema acepta la solicitud y asigna el radicado"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "Predio inexistente",
+            "dado_que": "un número predial que no existe en la base catastral",
+            "cuando": "se registra la solicitud",
+            "entonces": "el sistema rechaza la solicitud e informa que el predio no existe"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal"
+      ]
+    }
+  }
+}

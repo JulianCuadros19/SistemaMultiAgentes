@@ -19,6 +19,7 @@ Uso:
 """
 
 import argparse
+import logging
 import statistics
 import time
 import uuid
@@ -227,6 +228,7 @@ def main() -> None:
     parser.add_argument("--rechazar", help="Con --simulado, rechaza una vez en N6 con esto.")
     parser.add_argument("--aprobar", action="store_true", help="Con --simulado, aprueba en N6.")
     argumentos = parser.parse_args()
+    logging.basicConfig(level=logging.WARNING, format="(aviso) %(message)s")
     guion = Guion(argumentos.pausar_tras, argumentos.rechazar, argumentos.aprobar)
 
     id_sesion = argumentos.sesion or str(uuid.uuid4())
