@@ -7,7 +7,12 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
-from multiagente.orquestador.ejecucion import avanzar, configuracion_hilo, iniciar_sesion
+from multiagente.orquestador.ejecucion import (
+    avanzar,
+    configuracion_hilo,
+    iniciar_sesion,
+    validaciones,
+)
 from multiagente.orquestador.estado import (
     Contexto,
     Conversacion,
@@ -16,6 +21,7 @@ from multiagente.orquestador.estado import (
     Fase,
     PuntoControl,
     Requerimientos,
+    Veredicto,
 )
 from multiagente.orquestador.grafo import Nodo, construir_grafo
 from multiagente.orquestador.servicios import Servicios
@@ -363,3 +369,25 @@ def test_reanudacion_tras_una_caida_sin_repetir_pasos():
     assert recorrido.final.fase is Fase.VALIDADO
     assert simulacion.llamadas["generar"] == 1
     assert simulacion.llamadas["sintetizar"] == 1
+
+
+def test_validaciones_de_cada_version_en_orden():
+    # Un veredicto fallido y una corrección pedida en N17: tres versiones dictaminadas.
+    app = compilar(ServiciosSimulados(fallos_veredicto=1))
+    recorrido = recorrer(app, guion_completo())
+
+    historial = validaciones(app, recorrido.id_sesion)
+    assert [version.numero for version, _ in historial] == [1, 2, 3]
+    assert [validacion.veredicto for _, validacion in historial] == [
+        Veredicto.RECHAZADO,
+        Veredicto.APROBADO,
+        Veredicto.APROBADO,
+    ]
+    assert historial[0][1].retroalimentacion == (
+        "CP-RF-01-ESC-01: no cumple",
+        "CP-RF-01-ESC-02: no cumple",
+    )
+    assert (
+        historial[-1][1]
+        == app.get_state(configuracion_hilo(recorrido.id_sesion)).values["validacion"]
+    )

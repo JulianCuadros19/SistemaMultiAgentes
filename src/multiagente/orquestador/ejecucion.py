@@ -1,4 +1,4 @@
-"""Ejecución de sesiones sobre el grafo compilado: iniciar, avanzar y consultar la pausa."""
+"""Ejecución de sesiones sobre el grafo compilado: iniciar, avanzar y consultar su historia."""
 
 import uuid
 from typing import Any
@@ -8,7 +8,8 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from pydantic import BaseModel, ConfigDict
 
-from multiagente.orquestador.estado import Fase
+from multiagente.orquestador.estado import Fase, Validacion, VersionCodigo
+from multiagente.orquestador.grafo import Nodo
 
 RespuestaPausa = str | dict[str, str]
 """Respuesta a una pausa: texto del cliente en el diálogo o decisión en un punto de control."""
@@ -121,3 +122,24 @@ def avanzar(
     """
     entrada = None if respuesta is None else Command(resume=respuesta)
     return _ejecutar(app, entrada, id_sesion)
+
+
+def validaciones(app: CompiledStateGraph, id_sesion: str) -> list[tuple[VersionCodigo, Validacion]]:
+    """Devuelve cada versión dictaminada del módulo con su validación, en orden (RF-33).
+
+    El estado solo conserva la validación vigente; las de las versiones anteriores se leen de
+    los puntos de control guardados justo después de cada veredicto (N14).
+
+    Args:
+        app: Grafo compilado con checkpointer.
+        id_sesion: Identificador de la sesión.
+
+    Returns:
+        Pares de versión y validación, de la primera versión dictaminada a la última.
+    """
+    tras_veredicto = [
+        punto.values
+        for punto in app.get_state_history(configuracion_hilo(id_sesion))
+        if punto.next == (Nodo.N15.value,)
+    ]
+    return [(valores["codigo"].vigente, valores["validacion"]) for valores in tras_veredicto[::-1]]
