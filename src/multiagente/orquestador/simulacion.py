@@ -295,10 +295,11 @@ class ServiciosSimulados:
         requerimientos: Requerimientos,
         especificacion: EspecificacionDiseno,
         validacion: Validacion,
-        numero: int,
+        previa: VersionCodigo | None,
     ) -> VersionCodigo:
         """Genera una versión que declara los defectos que atiende (N10)."""
         self._contar("generar")
+        numero = previa.numero + 1 if previa is not None else 1
         return VersionCodigo(
             numero=numero,
             archivos={RUTA_MODULO: f'"""Versión {numero} simulada."""\n'},

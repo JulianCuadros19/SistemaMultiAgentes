@@ -432,13 +432,16 @@ class NodosGrafo:
         }
 
     def n10_generacion(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Genera una nueva versión del módulo sin recuperación de contexto."""
+        """Genera una nueva versión del módulo sin recuperación de contexto.
+
+        Recibe la versión vigente, si la hay, para corregirla en lugar de reescribirla (RF-19).
+        """
         codigo = estado["codigo"]
         version = self.servicios.desarrollador.generar(
             estado["requerimientos"],
             estado["arquitectura"].especificacion,
             estado["validacion"],
-            len(codigo.versiones) + 1,
+            codigo.vigente,
         )
         return {"codigo": codigo.model_copy(update={"versiones": (*codigo.versiones, version)})}
 

@@ -6,6 +6,7 @@ requerimientos aprobados y la pertenencia al catálogo tecnológico necesitan da
 la especificación y se verifican en el nodo N9.
 """
 
+import ast
 from enum import StrEnum
 from typing import Annotated, Self
 
@@ -139,6 +140,30 @@ class EspecificacionDiseno(ModeloEstricto):
         if ciclo := buscar_ciclo({m.nombre: m.dependencias_permitidas for m in self.modulos}):
             raise ValueError(f"Dependencias circulares entre módulos: {' -> '.join(ciclo)}")
         return self
+
+
+def firma_como_funcion(interfaz: InterfazPublica) -> ast.FunctionDef:
+    """Interpreta la firma de una interfaz como una definición de función, aunque sea de clase.
+
+    La firma de una clase es la de su constructor sin `self`, p. ej.
+    `Predio(numero_predial: str, area_terreno: Decimal)`. Se admiten los prefijos `def` y
+    `class` y los dos puntos finales, que el modelo a veces agrega.
+
+    Args:
+        interfaz: Interfaz pública declarada en la especificación.
+
+    Returns:
+        La definición de función equivalente, con sus parámetros y su retorno.
+
+    Raises:
+        SyntaxError: Si la firma no es una firma de Python válida.
+    """
+    firma = interfaz.firma.strip().removeprefix("def ").removeprefix("class ").rstrip(":").strip()
+    arbol = ast.parse(f"def {firma}: ...")
+    funcion = arbol.body[0]
+    if len(arbol.body) != 1 or not isinstance(funcion, ast.FunctionDef):
+        raise SyntaxError("no es una firma")
+    return funcion
 
 
 def buscar_ciclo(dependencias: dict[str, list[str]]) -> list[str] | None:

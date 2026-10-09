@@ -25,6 +25,7 @@ from multiagente.core.esquemas.especificacion_diseno import (
     EspecificacionDiseno,
     InterfazPublica,
     TipoInterfaz,
+    firma_como_funcion,
 )
 from multiagente.orquestador.estado import Requerimientos
 
@@ -40,20 +41,10 @@ MONETARIO = re.compile(
 """Raíces de los nombres de campos y parámetros que representan dinero o avalúos."""
 
 
-def _firma_como_funcion(interfaz: InterfazPublica) -> ast.FunctionDef:
-    """Interpreta la firma como una definición de función, aunque sea de una clase."""
-    firma = interfaz.firma.strip().removeprefix("def ").removeprefix("class ").rstrip(":").strip()
-    arbol = ast.parse(f"def {firma}: ...")
-    funcion = arbol.body[0]
-    if not isinstance(funcion, ast.FunctionDef):
-        raise SyntaxError("no es una firma")
-    return funcion
-
-
 def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
     ubicacion = f"{modulo}.{interfaz.nombre}"
     try:
-        funcion = _firma_como_funcion(interfaz)
+        funcion = firma_como_funcion(interfaz)
     except SyntaxError:
         return [f"{ESQUEMA}: la firma de {ubicacion} no es una firma de Python válida"]
     errores = []

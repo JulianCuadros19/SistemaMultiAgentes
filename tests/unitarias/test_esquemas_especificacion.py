@@ -11,7 +11,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno, buscar_ciclo
+from multiagente.core.esquemas.especificacion_diseno import (
+    EspecificacionDiseno,
+    InterfazPublica,
+    TipoInterfaz,
+    buscar_ciclo,
+    firma_como_funcion,
+)
 
 RAIZ = Path(__file__).resolve().parents[2]
 PLANTILLA = RAIZ / "knowledge_base" / "arquitecturas_referencia" / "02-especificacion-de-diseno.md"
@@ -148,3 +154,28 @@ def test_buscar_ciclo_devuelve_el_recorrido():
     ciclo = buscar_ciclo({"a": ["b"], "b": ["c"], "c": ["a"], "d": []})
     assert ciclo == ["a", "b", "c", "a"]
     assert buscar_ciclo({"a": ["b"], "b": [], "c": ["a", "b"]}) is None
+
+
+@pytest.mark.parametrize(
+    "firma",
+    [
+        "Predio(numero_predial: str, area: Decimal)",
+        "class Predio(numero_predial: str, area: Decimal):",
+        "def Predio(numero_predial: str, area: Decimal) -> None",
+    ],
+)
+def test_firma_como_funcion_admite_clases_y_prefijos(firma):
+    interfaz = InterfazPublica(
+        nombre="Predio", tipo=TipoInterfaz.CLASE, firma=firma, descripcion="Predio"
+    )
+    funcion = firma_como_funcion(interfaz)
+    assert funcion.name == "Predio"
+    assert [argumento.arg for argumento in funcion.args.args] == ["numero_predial", "area"]
+
+
+def test_firma_como_funcion_rechaza_texto_que_no_es_firma():
+    interfaz = InterfazPublica(
+        nombre="f", tipo=TipoInterfaz.FUNCION, firma="calcula el avalúo", descripcion="f"
+    )
+    with pytest.raises(SyntaxError):
+        firma_como_funcion(interfaz)

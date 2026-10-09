@@ -147,9 +147,13 @@ class ServiciosDesarrollador(Protocol):
         requerimientos: Requerimientos,
         especificacion: EspecificacionDiseno,
         validacion: Validacion,
-        numero: int,
+        previa: VersionCodigo | None,
     ) -> VersionCodigo:
-        """Genera una versión del módulo atendiendo la retroalimentación vigente (N10)."""
+        """Genera una versión del módulo atendiendo la retroalimentación vigente (N10).
+
+        Sin versión previa genera el módulo completo; con ella, corrige solo lo necesario para
+        atender la retroalimentación (RF-19). La versión nueva lleva el número siguiente.
+        """
         ...
 
 
