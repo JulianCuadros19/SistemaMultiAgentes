@@ -98,7 +98,7 @@ class ConfiguracionRazonamiento(BaseSettings):
 
     El límite incluye los tokens de razonamiento ocultos: si se agota antes de producir texto, la
     respuesta llega vacía y se cobra igual (ADR-0003). Los valores por defecto se fijaron con las
-    mediciones del paso 7 (ADR-0008).
+    mediciones de los pasos 7, 8 y 9 (ADR-0008, ADR-0010 y ADR-0011).
     """
 
     model_config = SettingsConfigDict(
@@ -115,6 +115,10 @@ class ConfiguracionRazonamiento(BaseSettings):
     max_tokens_n8_arquitectura: PositiveInt = 16000
     tiempo_espera_n8_arquitectura: PositiveInt = 300
     """Segundos de espera de cada llamada de N8; la parametrización supera los 60 s."""
+    esfuerzo_n10_generacion: EsfuerzoRazonamiento = "low"
+    max_tokens_n10_generacion: PositiveInt = 32000
+    tiempo_espera_n10_generacion: PositiveInt = 600
+    """Segundos de espera de la llamada de N10, que produce el módulo completo con sus pruebas."""
 
 
 class ConfiguracionOrquestador(BaseSettings):

@@ -240,11 +240,23 @@ class Arquitectura(Particion):
 
 
 class VersionCodigo(ModeloEstricto):
-    """Versión del módulo generada por el desarrollador (RF-19)."""
+    """Versión del módulo generada por el desarrollador (RF-19).
+
+    Attributes:
+        numero: Número de la versión; la primera es 1.
+        archivos: Contenido de cada archivo por su ruta: módulos, pruebas y `USO.md`.
+        defectos_atendidos: Retroalimentación que esta versión atiende.
+        huella_estilo: SHA-256 de la configuración de estilo que rigió la generación (RF-36).
+    """
+
+    # El contenido de los archivos se conserva tal cual: recortarlo quitaría el salto de línea
+    # final que exige el estilo y cambiaría el código que se ejecuta y se analiza.
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
 
     numero: PositiveInt
     archivos: dict[str, str] = Field(min_length=1)
     defectos_atendidos: tuple[TextoObligatorio, ...] = ()
+    huella_estilo: TextoObligatorio | None = None
 
 
 class Codigo(Particion):

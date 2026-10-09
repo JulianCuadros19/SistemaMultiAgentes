@@ -248,3 +248,12 @@ def test_lista_blanca_incluye_particiones_y_enumeraciones():
     permitidos = set(tipos_permitidos())
     for clase in (*PARTICIONES, Fase, PuntoControl, Decision, Emisor, TipoInterfaz):
         assert (clase.__module__, clase.__name__) in permitidos
+
+
+def test_version_de_codigo_conserva_el_contenido_tal_cual():
+    contenido = '"""Módulo."""\n\n\ndef f() -> None:\n    """Nada."""\n'
+    version = VersionCodigo(
+        numero=1, archivos={"src/a.py": contenido}, defectos_atendidos=(" D1 ",)
+    )
+    assert version.archivos["src/a.py"] == contenido
+    assert version.defectos_atendidos == ("D1",)
