@@ -17,9 +17,15 @@ from multiagente.core.esquemas.comunes import (
     IdRequerimiento,
     ModeloEstricto,
     TextoObligatorio,
+    Version,
 )
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
-from multiagente.core.esquemas.requerimiento import HistoriaUsuario, RequerimientoFormal
+from multiagente.core.esquemas.requerimiento import (
+    DatoEntrada,
+    DatoSalida,
+    HistoriaUsuario,
+    RequerimientoFormal,
+)
 
 
 class Fase(StrEnum):
@@ -80,6 +86,7 @@ class Sesion(Particion):
 
     id_sesion: TextoObligatorio
     cliente: TextoObligatorio
+    proyecto: TextoObligatorio
     fase: Fase
     creada: datetime
     aprobaciones: tuple[AprobacionHumana, ...] = ()
@@ -113,7 +120,12 @@ class Turno(ModeloEstricto):
 
 
 class RegistroCaptura(ModeloEstricto):
-    """Información capturada durante la elicitación (RF-03)."""
+    """Información capturada durante la elicitación (RF-03).
+
+    El criterio de suficiencia sigue la guía de preguntas estratégicas (eli-006): rol,
+    funcionalidad, beneficio, reglas de negocio, datos de entrada y de salida, al menos un caso
+    de error o excepción y la confirmación explícita del resumen por el cliente (RNF-08).
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -121,40 +133,103 @@ class RegistroCaptura(ModeloEstricto):
     funcionalidad: TextoObligatorio | None = None
     beneficio: TextoObligatorio | None = None
     reglas_negocio: tuple[TextoObligatorio, ...] = ()
+    datos_entrada: tuple[DatoEntrada, ...] = ()
+    datos_salida: tuple[DatoSalida, ...] = ()
+    excepciones: tuple[TextoObligatorio, ...] = ()
+    supuestos: tuple[TextoObligatorio, ...] = ()
+    preguntas_abiertas: tuple[TextoObligatorio, ...] = ()
+    resumen_confirmado: bool = False
 
-    @property
-    def pendientes(self) -> list[str]:
-        """Atributos mínimos que aún faltan, en el orden en que se preguntan."""
+    @model_validator(mode="after")
+    def _confirmacion_con_registro_completo(self) -> Self:
+        if self.resumen_confirmado and self._faltantes():
+            raise ValueError("El resumen solo puede confirmarse cuando no falta ningún atributo")
+        return self
+
+    def _faltantes(self) -> list[str]:
         faltantes = [
             nombre
             for nombre in ("rol", "funcionalidad", "beneficio")
             if getattr(self, nombre) is None
         ]
-        if not self.reglas_negocio:
-            faltantes.append("reglas_negocio")
+        faltantes.extend(
+            nombre
+            for nombre in ("reglas_negocio", "datos_entrada", "datos_salida", "excepciones")
+            if not getattr(self, nombre)
+        )
         return faltantes
+
+    @property
+    def pendientes(self) -> list[str]:
+        """Atributos que aún faltan, en el orden en que se preguntan; la confirmación al final."""
+        faltantes = self._faltantes()
+        if not self.resumen_confirmado:
+            faltantes.append("confirmacion")
+        return faltantes
+
+    def mismo_contenido(self, otro: "RegistroCaptura") -> bool:
+        """Indica si dos registros capturan la misma información, sin mirar la confirmación.
+
+        Args:
+            otro: Registro con el que se compara.
+
+        Returns:
+            True si todos los atributos, salvo la confirmación, coinciden.
+        """
+        excluir = {"resumen_confirmado"}
+        return self.model_dump(exclude=excluir) == otro.model_dump(exclude=excluir)
 
 
 class Conversacion(Particion):
-    """Historial del diálogo, registro capturado y observaciones del revisor."""
+    """Historial del diálogo, registro capturado y observaciones del revisor.
+
+    El primer turno es la necesidad con que el cliente abrió la sesión. `turnos_procesados`
+    cuenta los turnos que el elicitador ya tuvo en cuenta, de modo que una respuesta nueva del
+    cliente se distingue de una ya procesada.
+    """
 
     turnos: tuple[Turno, ...] = ()
+    turnos_procesados: NonNegativeInt = 0
     registro: RegistroCaptura = Field(default_factory=RegistroCaptura)
     pregunta_pendiente: TextoObligatorio | None = None
     observaciones_revisor: tuple[TextoObligatorio, ...] = ()
 
     @property
     def turnos_cliente(self) -> int:
-        """Número de respuestas que ha dado el cliente."""
+        """Número de intervenciones del cliente, incluida la necesidad inicial."""
         return sum(1 for turno in self.turnos if turno.emisor is Emisor.CLIENTE)
+
+    @property
+    def necesidad(self) -> str | None:
+        """Necesidad con que el cliente abrió la sesión, o None si aún no hay turnos."""
+        return next((turno.texto for turno in self.turnos if turno.emisor is Emisor.CLIENTE), None)
+
+    @property
+    def respuesta_nueva(self) -> str | None:
+        """Última intervención del cliente que el elicitador aún no ha procesado, si la hay."""
+        nuevos = self.turnos[self.turnos_procesados :]
+        clientes = [turno.texto for turno in nuevos if turno.emisor is Emisor.CLIENTE]
+        return clientes[-1] if clientes else None
 
 
 class Requerimientos(Particion):
-    """Historias y requerimientos formales producidos por el elicitador."""
+    """Historias y requerimientos formales producidos por el elicitador.
+
+    Attributes:
+        referencias: Fragmentos de contexto que sustentan cada requerimiento (RF-04).
+        defectos: Defectos de calidad que N5 debe corregir (RF-07).
+        sintesis: Síntesis producidas en la sesión; da la versión de los requerimientos.
+        correcciones: Retornos automáticos de N6 a N5 desde la última decisión humana.
+        defectos_escalados: Defectos que seguían sin corregir cuando la persona decidió.
+    """
 
     historias: tuple[HistoriaUsuario, ...] = ()
     requerimientos: tuple[RequerimientoFormal, ...] = ()
+    referencias: dict[IdRequerimiento, tuple[TextoObligatorio, ...]] = Field(default_factory=dict)
     defectos: tuple[TextoObligatorio, ...] = ()
+    sintesis: NonNegativeInt = 0
+    correcciones: NonNegativeInt = 0
+    defectos_escalados: tuple[TextoObligatorio, ...] = ()
 
 
 class Arquitectura(Particion):
@@ -220,10 +295,27 @@ class Validacion(Particion):
         return bool(self.plan_pruebas) and all(caso.id in cumplidos for caso in self.plan_pruebas)
 
 
+class FragmentoContexto(ModeloEstricto):
+    """Fragmento recuperado de una base de conocimiento, con su fuente (RF-04, RF-30)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    documento_id: TextoObligatorio
+    version_documento: Version
+    titulo: TextoObligatorio
+    contenido: TextoObligatorio
+    similitud: float
+
+    @property
+    def referencia(self) -> str:
+        """Referencia estable al fragmento: documento, versión y título de la sección."""
+        return f"{self.documento_id} v{self.version_documento} · {self.titulo}"
+
+
 class Contexto(Particion):
     """Fragmentos recuperados por colección y contexto descartado."""
 
-    fragmentos: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    fragmentos: dict[str, tuple[FragmentoContexto, ...]] = Field(default_factory=dict)
     descartados: tuple[str, ...] = ()
 
     def combinar(self, otro: "Contexto") -> "Contexto":
@@ -247,6 +339,7 @@ class Control(Particion):
     iteracion: NonNegativeInt = 0
     limite_iteraciones: PositiveInt
     limite_turnos: PositiveInt
+    limite_correcciones: PositiveInt
     costo_acumulado_usd: Decimal = Decimal(0)
 
 
@@ -264,15 +357,23 @@ PARTICIONES: tuple[type[Particion], ...] = (
 
 
 class EntradaSesion(TypedDict):
-    """Datos con los que se abre una sesión; los consume N1."""
+    """Datos con los que se abre una sesión; los consume N1.
+
+    La necesidad es la primera intervención del cliente: con ella N2 recupera el contexto de
+    dominio antes de la primera pregunta (RF-04).
+    """
 
     cliente: str
+    proyecto: str
+    necesidad: str
 
 
 class EstadoGrafo(TypedDict, total=False):
     """Estado compartido del grafo: entrada de la sesión y ocho particiones."""
 
     cliente: str
+    proyecto: str
+    necesidad: str
     sesion: Sesion
     conversacion: Conversacion
     requerimientos: Requerimientos

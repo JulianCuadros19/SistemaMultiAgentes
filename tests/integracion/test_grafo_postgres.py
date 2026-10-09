@@ -52,7 +52,7 @@ def test_conversacion_se_reanuda_desde_el_ultimo_turno(id_sesion, caplog):
     guion = guion_completo()
     with abrir_checkpointer() as checkpointer:
         app = compilar(checkpointer, ServiciosSimulados())
-        _, avance = iniciar_sesion(app, "Realtix", id_sesion)
+        _, avance = iniciar_sesion(app, "Realtix", guion.proyecto, guion.necesidad, id_sesion)
         primero = avanzar(app, id_sesion, guion.responder("dialogo"))
         assert primero.pausa.punto == "dialogo"
         visitados = [*avance.nodos, *primero.nodos]
@@ -62,8 +62,8 @@ def test_conversacion_se_reanuda_desde_el_ultimo_turno(id_sesion, caplog):
         pausa = pausa_pendiente(app, id_sesion)
         estado = app.get_state(configuracion_hilo(id_sesion)).values
         assert pausa.punto == "dialogo"
-        assert pausa.datos["turno"] == 2
-        assert estado["conversacion"].turnos_cliente == 1
+        assert pausa.datos["turno"] == 3
+        assert estado["conversacion"].turnos_cliente == 2
         assert estado["conversacion"].registro.rol == "Analista de conservación catastral"
 
         reanudado = Avance(nodos=(), pausa=pausa, fase=estado["sesion"].fase)
@@ -78,7 +78,7 @@ def test_ejecucion_se_reanuda_tras_una_caida(id_sesion):
     guion = guion_completo()
     with abrir_checkpointer() as checkpointer:
         app = compilar(checkpointer, ServiciosSimulados(fallos_ejecucion=1))
-        _, avance = iniciar_sesion(app, "Realtix", id_sesion)
+        _, avance = iniciar_sesion(app, "Realtix", guion.proyecto, guion.necesidad, id_sesion)
         with pytest.raises(ErrorSimulado):
             continuar(app, id_sesion, guion, avance)
 

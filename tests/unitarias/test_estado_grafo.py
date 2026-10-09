@@ -11,7 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno, TipoInterfaz
-from multiagente.core.esquemas.requerimiento import RequerimientoFormal
+from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida, RequerimientoFormal
 from multiagente.orquestador.estado import (
     PARTICIONES,
     AprobacionHumana,
@@ -24,6 +24,7 @@ from multiagente.orquestador.estado import (
     Decision,
     Emisor,
     Fase,
+    FragmentoContexto,
     PuntoControl,
     RegistroCaptura,
     Requerimientos,
@@ -61,12 +62,59 @@ def test_rechazo_exige_observaciones():
     RespuestaHumana(decision=Decision.APROBADO, revisor="Analista")
 
 
+def registro_completo(**cambios) -> RegistroCaptura:
+    datos = {
+        "rol": "analista de conservación catastral",
+        "funcionalidad": "registrar solicitudes de mutación",
+        "beneficio": "tramitar el cambio del predio",
+        "reglas_negocio": ("La solicitud se acepta solo si el predio existe",),
+        "datos_entrada": (DatoEntrada(nombre="numero_predial", tipo="texto", obligatorio=True),),
+        "datos_salida": (DatoSalida(nombre="radicado", tipo="texto", formato="RAD-AAAA-NNNN"),),
+        "excepciones": ("Si el predio no existe, la solicitud se rechaza",),
+    }
+    return RegistroCaptura(**(datos | cambios))
+
+
 def test_registro_declara_pendientes_en_orden():
-    assert RegistroCaptura().pendientes == ["rol", "funcionalidad", "beneficio", "reglas_negocio"]
-    parcial = RegistroCaptura(rol="analista", beneficio="ahorrar tiempo")
-    assert parcial.pendientes == ["funcionalidad", "reglas_negocio"]
-    completo = parcial.model_copy(update={"funcionalidad": "registrar", "reglas_negocio": ("r",)})
-    assert completo.pendientes == []
+    assert RegistroCaptura().pendientes == [
+        "rol",
+        "funcionalidad",
+        "beneficio",
+        "reglas_negocio",
+        "datos_entrada",
+        "datos_salida",
+        "excepciones",
+        "confirmacion",
+    ]
+    parcial = registro_completo(funcionalidad=None, datos_salida=())
+    assert parcial.pendientes == ["funcionalidad", "datos_salida", "confirmacion"]
+    assert registro_completo().pendientes == ["confirmacion"]
+    assert registro_completo(resumen_confirmado=True).pendientes == []
+
+
+def test_confirmacion_exige_registro_completo():
+    with pytest.raises(ValidationError, match="confirmarse"):
+        registro_completo(excepciones=(), resumen_confirmado=True)
+
+
+def test_mismo_contenido_ignora_la_confirmacion():
+    registro = registro_completo()
+    assert registro.mismo_contenido(registro.model_copy(update={"resumen_confirmado": True}))
+    assert not registro.mismo_contenido(registro_completo(beneficio="otro beneficio"))
+
+
+def test_respuesta_nueva_distingue_lo_ya_procesado():
+    necesidad = Turno(emisor=Emisor.CLIENTE, texto="Necesito liquidar", fecha=AHORA)
+    pregunta = Turno(emisor=Emisor.ELICITADOR, texto="¿Quién lo usa?", fecha=AHORA)
+    respuesta = Turno(emisor=Emisor.CLIENTE, texto="El liquidador", fecha=AHORA)
+
+    inicial = Conversacion(turnos=(necesidad,))
+    assert inicial.necesidad == inicial.respuesta_nueva == "Necesito liquidar"
+    esperando = Conversacion(turnos=(necesidad, pregunta), turnos_procesados=2)
+    assert esperando.respuesta_nueva is None
+    respondida = esperando.model_copy(update={"turnos": (necesidad, pregunta, respuesta)})
+    assert respondida.respuesta_nueva == "El liquidador"
+    assert respondida.turnos_cliente == 2
 
 
 @pytest.mark.parametrize(
@@ -98,6 +146,7 @@ def test_ultima_aprobacion_por_punto():
     sesion = Sesion(
         id_sesion="s1",
         cliente="Realtix",
+        proyecto="Gestión catastral",
         fase="diseno",
         creada=AHORA,
         aprobaciones=(
@@ -109,11 +158,27 @@ def test_ultima_aprobacion_por_punto():
     assert sesion.ultima_aprobacion(PuntoControl.FINAL) is None
 
 
+def fragmento(documento_id: str, titulo: str = "Sección") -> FragmentoContexto:
+    return FragmentoContexto(
+        documento_id=documento_id,
+        version_documento="1.0",
+        titulo=titulo,
+        contenido="contenido",
+        similitud=0.61,
+    )
+
+
 def test_contexto_combina_colecciones():
-    elicitacion = Contexto(fragmentos={"elicitacion": ("a",)}, descartados=("x",))
-    combinado = elicitacion.combinar(Contexto(fragmentos={"criterios_calidad": ("b",)}))
-    assert combinado.fragmentos == {"elicitacion": ("a",), "criterios_calidad": ("b",)}
+    a, b = fragmento("eli-006"), fragmento("cal-001")
+    elicitacion = Contexto(fragmentos={"elicitacion": (a,)}, descartados=("x",))
+    combinado = elicitacion.combinar(Contexto(fragmentos={"criterios_calidad": (b,)}))
+    assert combinado.fragmentos == {"elicitacion": (a,), "criterios_calidad": (b,)}
     assert combinado.descartados == ("x",)
+
+
+def test_referencia_estable_del_fragmento():
+    referencia = fragmento("dom-002", "Mutaciones catastrales › Primera clase").referencia
+    assert referencia == "dom-002 v1.0 · Mutaciones catastrales › Primera clase"
 
 
 def estado_completo() -> list:
@@ -128,6 +193,7 @@ def estado_completo() -> list:
         Sesion(
             id_sesion="s1",
             cliente="Realtix",
+            proyecto="Gestión catastral",
             fase=Fase.DISENO,
             creada=AHORA,
             aprobaciones=(
@@ -142,18 +208,30 @@ def estado_completo() -> list:
         ),
         Conversacion(
             turnos=(Turno(emisor=Emisor.CLIENTE, texto="Necesito liquidar", fecha=AHORA),),
-            registro=RegistroCaptura(rol="liquidador", reglas_negocio=("regla",)),
+            turnos_procesados=1,
+            registro=registro_completo(resumen_confirmado=True),
             pregunta_pendiente="¿Para qué lo necesita?",
         ),
-        Requerimientos(requerimientos=(RequerimientoFormal.model_validate(datos),)),
+        Requerimientos(
+            requerimientos=(RequerimientoFormal.model_validate(datos),),
+            referencias={"RF-27": ("eli-003 v1.1 · Plantilla",)},
+            sintesis=2,
+            correcciones=1,
+            defectos_escalados=("RF-27 · C9 Conforme",),
+        ),
         Arquitectura(
             registro_decision="# ADR",
             especificacion=EspecificacionDiseno.model_validate(especificacion),
         ),
         Codigo(versiones=(VersionCodigo(numero=1, archivos={"src/a.py": "x = 1\n"}),)),
         Validacion(plan_pruebas=(caso(1),), veredictos=(veredicto(1, True),)),
-        Contexto(fragmentos={"criterios_calidad": ("CAL-MT-001",)}),
-        Control(limite_iteraciones=3, limite_turnos=15, costo_acumulado_usd=Decimal("0.000825")),
+        Contexto(fragmentos={"criterios_calidad": (fragmento("cal-002", "CAL-MT-001"),)}),
+        Control(
+            limite_iteraciones=3,
+            limite_turnos=15,
+            limite_correcciones=2,
+            costo_acumulado_usd=Decimal("0.000825"),
+        ),
     ]
 
 

@@ -32,7 +32,8 @@ from multiagente.orquestador.estado import (
     CasoPrueba,
     Contexto,
     Conversacion,
-    Emisor,
+    FragmentoContexto,
+    RegistroCaptura,
     Requerimientos,
     Validacion,
     VeredictoCaso,
@@ -43,11 +44,49 @@ from multiagente.orquestador.servicios import Dialogo, Dictamen, Diseno, Servici
 PREGUNTAS = {
     "rol": "¿Qué rol cumple la persona que usará esta funcionalidad?",
     "funcionalidad": "¿Qué necesita poder hacer?",
-    "beneficio": "¿Para qué le sirve? ¿Qué gana con ello?",
+    "beneficio": "¿Qué gana con ello?",
     "reglas_negocio": "¿Qué regla de negocio gobierna este proceso?",
+    "datos_entrada": "¿Qué información necesita tener a la mano?",
+    "datos_salida": "¿Qué debe entregar el sistema como resultado?",
+    "excepciones": "¿Qué pasa si el dato llega incompleto o equivocado?",
+    "confirmacion": "Le resumo lo que entendí; ¿es correcto?",
 }
+AFIRMACION = "Sí"
+"""Inicio de una respuesta que confirma el resumen en la simulación."""
 SIN_DATO = "No especificado"
 RUTA_MODULO = "src/simulado/modulo.py"
+
+
+def _fragmento(documento_id: str, titulo: str) -> FragmentoContexto:
+    return FragmentoContexto(
+        documento_id=documento_id,
+        version_documento="1.0",
+        titulo=titulo,
+        contenido=f"Contenido simulado de {titulo}",
+        similitud=1.0,
+    )
+
+
+def _asignar(registro: RegistroCaptura, respuesta: str) -> RegistroCaptura:
+    """Asigna la respuesta al primer atributo pendiente, como haría el modelo al extraerla."""
+    pendientes = registro.pendientes
+    if not pendientes:
+        return registro
+    atributo = pendientes[0]
+    if atributo == "confirmacion":
+        if respuesta.startswith(AFIRMACION):
+            return registro.model_copy(update={"resumen_confirmado": True})
+        atributo = "reglas_negocio"
+    if atributo in ("reglas_negocio", "excepciones"):
+        return registro.model_copy(update={atributo: (*getattr(registro, atributo), respuesta)})
+    if atributo == "datos_entrada":
+        dato = DatoEntrada(nombre=respuesta, tipo="texto", obligatorio=True)
+        return registro.model_copy(update={"datos_entrada": (dato,)})
+    if atributo == "datos_salida":
+        return registro.model_copy(
+            update={"datos_salida": (DatoSalida(nombre=respuesta, tipo="texto"),)}
+        )
+    return registro.model_copy(update={atributo: respuesta})
 
 
 class ErrorSimulado(RuntimeError):
@@ -91,33 +130,36 @@ class ServiciosSimulados:
         self._contar("recuperar_contexto")
         return Contexto(
             fragmentos={
-                "elicitacion": ("Plantilla de historia de usuario (simulada)",),
-                "dominio_negocio": ("Glosario catastral (simulado)",),
+                "elicitacion": (_fragmento("eli-006", "Guía de preguntas (simulada)"),),
+                "dominio_negocio": (_fragmento("dom-001", "Glosario catastral (simulado)"),),
             }
         )
 
     def dialogar(self, conversacion: Conversacion, contexto: Contexto) -> Dialogo:
-        """Asigna la respuesta al primer atributo pendiente y pregunta por el siguiente (N3)."""
+        """Asigna la respuesta nueva al primer atributo pendiente y pregunta el siguiente (N3).
+
+        La necesidad inicial se toma como la funcionalidad.
+        """
         self._contar("dialogar")
-        respuesta = next(
-            turno.texto for turno in reversed(conversacion.turnos) if turno.emisor is Emisor.CLIENTE
-        )
         registro = conversacion.registro
-        pendientes = registro.pendientes
-        atributo = pendientes[0] if pendientes else "reglas_negocio"
-        if atributo == "reglas_negocio":
-            registro = registro.model_copy(
-                update={"reglas_negocio": (*registro.reglas_negocio, respuesta)}
-            )
-        else:
-            registro = registro.model_copy(update={atributo: respuesta})
+        respuesta = conversacion.respuesta_nueva
+        if respuesta is not None and conversacion.turnos_procesados == 0:
+            registro = registro.model_copy(update={"funcionalidad": respuesta})
+        elif respuesta is not None:
+            registro = _asignar(registro, respuesta)
         siguientes = registro.pendientes
         return Dialogo(
             registro=registro,
             siguiente_pregunta=PREGUNTAS[siguientes[0]] if siguientes else None,
         )
 
-    def sintetizar(self, conversacion: Conversacion, contexto: Contexto) -> Sintesis:
+    def sintetizar(
+        self,
+        conversacion: Conversacion,
+        contexto: Contexto,
+        previos: Requerimientos,
+        proyecto: str,
+    ) -> Sintesis:
         """Construye una historia y un requerimiento formal válidos (N5)."""
         self._contar("sintetizar")
         registro = conversacion.registro
@@ -128,8 +170,8 @@ class ServiciosSimulados:
         )
         requerimiento = RequerimientoFormal(
             id_requerimiento="RF-01",
-            version="0.1",
-            proyecto="Simulación del esqueleto",
+            version=f"0.{previos.sintesis + 1}",
+            proyecto=proyecto,
             tipo_solicitud=TipoSolicitud.NUEVO,
             impacto=Impacto.MEDIO,
             modulo="simulado",
@@ -139,8 +181,10 @@ class ServiciosSimulados:
             descripcion=Descripcion(
                 precondicion="La sesión de simulación está abierta",
                 regla_negocio="; ".join(registro.reglas_negocio) or SIN_DATO,
-                datos_entrada=[DatoEntrada(nombre="dato", tipo="texto", obligatorio=True)],
-                datos_salida=[DatoSalida(nombre="resultado", tipo="texto")],
+                datos_entrada=list(registro.datos_entrada)
+                or [DatoEntrada(nombre="dato", tipo="texto", obligatorio=True)],
+                datos_salida=list(registro.datos_salida)
+                or [DatoSalida(nombre="resultado", tipo="texto")],
             ),
             criterios_aceptacion=[
                 EscenarioAceptacion(
@@ -160,9 +204,15 @@ class ServiciosSimulados:
             ],
             prioridad=Prioridad.MEDIA,
         )
+        referencias = tuple(
+            fragmento.referencia
+            for fragmentos in contexto.fragmentos.values()
+            for fragmento in fragmentos
+        )
         return Sintesis(
             historias=(HistoriaUsuario(id="HU-01", enunciado=enunciado),),
             requerimientos=(requerimiento,),
+            referencias={"RF-01": referencias},
         )
 
     def verificar_calidad(self, requerimientos: Requerimientos) -> list[str]:
@@ -176,7 +226,9 @@ class ServiciosSimulados:
     def recuperar_catalogo(self, requerimientos: Requerimientos) -> Contexto:
         """Simula la recuperación del catálogo de arquitecturas (N7)."""
         self._contar("recuperar_catalogo")
-        return Contexto(fragmentos={"arquitecturas_referencia": ("ARQ-01 (simulado)",)})
+        return Contexto(
+            fragmentos={"arquitecturas_referencia": (_fragmento("ARQ-01", "Capas (simulada)"),)}
+        )
 
     def disenar(
         self, requerimientos: Requerimientos, contexto: Contexto, previa: Arquitectura
@@ -257,7 +309,9 @@ class ServiciosSimulados:
     def recuperar_criterios(self, version: VersionCodigo) -> Contexto:
         """Simula la recuperación de criterios de calidad (N13)."""
         self._contar("recuperar_criterios")
-        return Contexto(fragmentos={"criterios_calidad": ("CAL-AF-001 (simulado)",)})
+        return Contexto(
+            fragmentos={"criterios_calidad": (_fragmento("cal-001", "CAL-AF-001 (simulado)"),)}
+        )
 
     def dictaminar(
         self, plan: tuple[CasoPrueba, ...], validacion: Validacion, contexto: Contexto
@@ -284,16 +338,20 @@ def rechazar(observaciones: str, revisor: str = "Revisor simulado") -> dict[str,
 
 @dataclass
 class Guion:
-    """Respuestas que se entregan, en orden, en cada tipo de pausa.
+    """Necesidad inicial y respuestas que se entregan, en orden, en cada tipo de pausa.
 
     Attributes:
+        necesidad: Necesidad con que el cliente abre la sesión.
         respuestas_cliente: Respuestas del cliente en las pausas de diálogo (N3).
         decisiones: Decisiones por punto de control: `requerimientos`, `especificacion` y
             `final`.
+        proyecto: Proyecto de la sesión.
     """
 
+    necesidad: str
     respuestas_cliente: list[str]
     decisiones: dict[str, list[dict[str, str]]]
+    proyecto: str = "Proyecto simulado"
 
     def responder(self, punto: str) -> RespuestaPausa:
         """Toma la siguiente respuesta del guion para la pausa indicada.
@@ -363,19 +421,25 @@ def recorrer(
     Returns:
         El recorrido completo de la sesión.
     """
-    id_sesion, avance = iniciar_sesion(app, cliente, id_sesion)
+    id_sesion, avance = iniciar_sesion(app, cliente, guion.proyecto, guion.necesidad, id_sesion)
     return continuar(app, id_sesion, guion, avance)
 
 
 def guion_completo() -> Guion:
     """Guion que ejercita ambos ciclos y los retornos de los tres puntos de control."""
     return Guion(
+        necesidad="Registrar solicitudes de mutación con su documento soporte",
         respuestas_cliente=[
             "Analista de conservación catastral",
-            "Registrar solicitudes de mutación con su documento soporte",
             "Tramitar el cambio del predio y hacerle seguimiento",
             "La solicitud se acepta solo si el predio existe",
+            "Número predial",
+            "Radicado",
+            "Si el predio no existe, la solicitud se rechaza",
+            "Sí, el resumen es correcto",
+            # Tras el rechazo de los requerimientos, la regla que faltaba y una nueva confirmación.
             "El documento soporte no puede tener fecha posterior a la radicación",
+            "Sí, el resumen es correcto",
         ],
         decisiones={
             "requerimientos": [rechazar("Falta la regla sobre la fecha del documento"), aprobar()],

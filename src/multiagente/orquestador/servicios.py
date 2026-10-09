@@ -6,9 +6,11 @@ agente real reemplaza a su versión simulada sin modificar el grafo (RNF-05).
 """
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, Self
 
-from multiagente.core.esquemas.comunes import ModeloEstricto, TextoObligatorio
+from pydantic import Field, model_validator
+
+from multiagente.core.esquemas.comunes import IdRequerimiento, ModeloEstricto, TextoObligatorio
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.esquemas.requerimiento import HistoriaUsuario, RequerimientoFormal
 from multiagente.orquestador.estado import (
@@ -25,10 +27,23 @@ from multiagente.orquestador.estado import (
 
 
 class Dialogo(ModeloEstricto):
-    """Resultado de procesar una respuesta del cliente (N3)."""
+    """Resultado de un paso del diálogo (N3): registro actualizado y siguiente pregunta.
+
+    Hay pregunta si y solo si queda algún atributo pendiente: así el ciclo N3–N4 siempre se
+    detiene a esperar al cliente o avanza a la síntesis.
+    """
 
     registro: RegistroCaptura
     siguiente_pregunta: TextoObligatorio | None
+
+    @model_validator(mode="after")
+    def _pregunta_si_hay_pendientes(self) -> Self:
+        if (self.siguiente_pregunta is None) != (not self.registro.pendientes):
+            raise ValueError(
+                "Debe haber una siguiente pregunta si y solo si quedan atributos pendientes: "
+                f"{self.registro.pendientes}"
+            )
+        return self
 
 
 class Sintesis(ModeloEstricto):
@@ -36,6 +51,14 @@ class Sintesis(ModeloEstricto):
 
     historias: tuple[HistoriaUsuario, ...]
     requerimientos: tuple[RequerimientoFormal, ...]
+    referencias: dict[IdRequerimiento, tuple[TextoObligatorio, ...]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _referencias_de_requerimientos_propios(self) -> Self:
+        propios = {requerimiento.id_requerimiento for requerimiento in self.requerimientos}
+        if ajenos := sorted(set(self.referencias) - propios):
+            raise ValueError(f"Referencias de requerimientos que no existen: {ajenos}")
+        return self
 
 
 class Diseno(ModeloEstricto):
@@ -60,11 +83,21 @@ class ServiciosElicitador(Protocol):
         ...
 
     def dialogar(self, conversacion: Conversacion, contexto: Contexto) -> Dialogo:
-        """Extrae la información de la última respuesta y formula la siguiente pregunta (N3)."""
+        """Procesa la respuesta nueva del cliente, si la hay, y formula la siguiente pregunta (N3).
+
+        Sin respuesta nueva (tras un rechazo en N6) solo formula la pregunta que atiende las
+        observaciones del revisor; la confirmación del resumen exige una respuesta nueva.
+        """
         ...
 
-    def sintetizar(self, conversacion: Conversacion, contexto: Contexto) -> Sintesis:
-        """Sintetiza historias de usuario y requerimientos formales (N5)."""
+    def sintetizar(
+        self,
+        conversacion: Conversacion,
+        contexto: Contexto,
+        previos: Requerimientos,
+        proyecto: str,
+    ) -> Sintesis:
+        """Sintetiza historias y requerimientos formales; corrige los defectos previos (N5)."""
         ...
 
     def verificar_calidad(self, requerimientos: Requerimientos) -> list[str]:

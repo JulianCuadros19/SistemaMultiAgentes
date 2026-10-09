@@ -107,7 +107,11 @@ class ConfiguracionRazonamiento(BaseSettings):
 
 
 class ConfiguracionOrquestador(BaseSettings):
-    """Límites de los ciclos del grafo (MAX_ITERACIONES_CORRECCION y MAX_TURNOS_ELICITACION)."""
+    """Límites de los ciclos del grafo.
+
+    MAX_ITERACIONES_CORRECCION acota el ciclo N10–N15, MAX_TURNOS_ELICITACION el ciclo N3–N4 y
+    MAX_CORRECCIONES_CALIDAD los retornos automáticos de N6 a N5 antes de escalar al analista.
+    """
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -117,6 +121,7 @@ class ConfiguracionOrquestador(BaseSettings):
 
     max_iteraciones_correccion: PositiveInt = 3
     max_turnos_elicitacion: PositiveInt = 15
+    max_correcciones_calidad: PositiveInt = 2
 
 
 class ConfiguracionEmbeddings(BaseSettings):

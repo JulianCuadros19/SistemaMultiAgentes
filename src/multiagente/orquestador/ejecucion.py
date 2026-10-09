@@ -79,9 +79,13 @@ def _ejecutar(
 
 
 def iniciar_sesion(
-    app: CompiledStateGraph, cliente: str, id_sesion: str | None = None
+    app: CompiledStateGraph,
+    cliente: str,
+    proyecto: str,
+    necesidad: str,
+    id_sesion: str | None = None,
 ) -> tuple[str, Avance]:
-    """Abre una sesión nueva y la ejecuta hasta la primera pausa.
+    """Abre una sesión nueva con la necesidad del cliente y la ejecuta hasta la primera pausa.
 
     Cada paso se guarda antes de ejecutar el siguiente (`durability="sync"`), de modo que una
     interrupción del proceso no pierde trabajo ya hecho (RNF-02).
@@ -89,13 +93,16 @@ def iniciar_sesion(
     Args:
         app: Grafo compilado con checkpointer.
         cliente: Nombre del cliente de la sesión.
+        proyecto: Proyecto al que pertenecen los requerimientos.
+        necesidad: Primera intervención del cliente, con la que se abre la elicitación.
         id_sesion: Identificador a usar; si se omite, se genera uno.
 
     Returns:
         El identificador de la sesión y el avance hasta la primera pausa.
     """
     id_sesion = id_sesion or str(uuid.uuid4())
-    return id_sesion, _ejecutar(app, {"cliente": cliente}, id_sesion)
+    entrada = {"cliente": cliente, "proyecto": proyecto, "necesidad": necesidad}
+    return id_sesion, _ejecutar(app, entrada, id_sesion)
 
 
 def avanzar(

@@ -97,8 +97,8 @@ def ruta_tras_requerimientos(estado: EstadoGrafo) -> Nodo | list[Nodo]:
         estado: Estado tras N6.
 
     Returns:
-        N5 si hay defectos de calidad (RF-07); N3 si la persona rechazó; N7 y N16 en paralelo
-        si aprobó.
+        N5 si hay defectos de calidad por corregir (RF-07); N3 si la persona rechazó; N7 y N16
+        en paralelo si aprobó.
     """
     if estado["requerimientos"].defectos:
         return Nodo.N5
@@ -168,15 +168,23 @@ class NodosGrafo:
         self.configuracion = configuracion
 
     def n1_apertura(self, estado: EstadoGrafo, config: RunnableConfig) -> dict[str, Any]:
-        """Abre la sesión: identificador, particiones iniciales y límites configurados."""
+        """Abre la sesión: identificador, necesidad del cliente y límites configurados.
+
+        La necesidad queda como primer turno del cliente, para que N2 recupere con ella el
+        contexto de dominio (RF-01, RF-04).
+        """
+        momento = _ahora()
         return {
             "sesion": Sesion(
                 id_sesion=config["configurable"]["thread_id"],
                 cliente=estado["cliente"],
+                proyecto=estado["proyecto"],
                 fase=Fase.ELICITACION,
-                creada=_ahora(),
+                creada=momento,
             ),
-            "conversacion": Conversacion(),
+            "conversacion": Conversacion(
+                turnos=(Turno(emisor=Emisor.CLIENTE, texto=estado["necesidad"], fecha=momento),)
+            ),
             "requerimientos": Requerimientos(),
             "arquitectura": Arquitectura(),
             "codigo": Codigo(),
@@ -185,6 +193,7 @@ class NodosGrafo:
             "control": Control(
                 limite_iteraciones=self.configuracion.max_iteraciones_correccion,
                 limite_turnos=self.configuracion.max_turnos_elicitacion,
+                limite_correcciones=self.configuracion.max_correcciones_calidad,
             ),
         }
 
@@ -194,36 +203,37 @@ class NodosGrafo:
         return {"contexto": estado["contexto"].combinar(recuperado)}
 
     def n3_dialogo(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Espera la respuesta del cliente, la registra y formula la siguiente pregunta.
+        """Espera la respuesta a la pregunta pendiente, la procesa y formula la siguiente.
 
-        La espera va al inicio: al reanudar, LangGraph repite el nodo desde el principio, y así
-        el trabajo del modelo de lenguaje se ejecuta una sola vez por respuesta.
+        Sin pregunta pendiente (al abrir la sesión o tras un rechazo en N6) no espera: procesa
+        la necesidad inicial o las observaciones del revisor y formula la primera pregunta. La
+        espera va al inicio: al reanudar, LangGraph repite el nodo desde el principio, y así el
+        trabajo del modelo de lenguaje se ejecuta una sola vez por respuesta.
         """
         conversacion = estado["conversacion"]
-        respuesta = interrupt(
-            {
-                "punto": "dialogo",
-                "pregunta": conversacion.pregunta_pendiente,
-                "observaciones_revisor": list(conversacion.observaciones_revisor),
-                "turno": conversacion.turnos_cliente + 1,
-            }
-        )
-        momento = _ahora()
-        turnos = (
-            *conversacion.turnos,
-            Turno(emisor=Emisor.CLIENTE, texto=respuesta, fecha=momento),
-        )
-        con_respuesta = conversacion.model_copy(update={"turnos": turnos})
-        dialogo = self.servicios.elicitador.dialogar(con_respuesta, estado["contexto"])
+        if conversacion.pregunta_pendiente is not None:
+            respuesta = interrupt(
+                {
+                    "punto": "dialogo",
+                    "pregunta": conversacion.pregunta_pendiente,
+                    "observaciones_revisor": list(conversacion.observaciones_revisor),
+                    "turno": conversacion.turnos_cliente + 1,
+                }
+            )
+            turno = Turno(emisor=Emisor.CLIENTE, texto=respuesta, fecha=_ahora())
+            conversacion = conversacion.model_copy(update={"turnos": (*conversacion.turnos, turno)})
+        dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
+        turnos = conversacion.turnos
         if dialogo.siguiente_pregunta is not None:
             pregunta = Turno(
-                emisor=Emisor.ELICITADOR, texto=dialogo.siguiente_pregunta, fecha=momento
+                emisor=Emisor.ELICITADOR, texto=dialogo.siguiente_pregunta, fecha=_ahora()
             )
             turnos = (*turnos, pregunta)
         return {
-            "conversacion": con_respuesta.model_copy(
+            "conversacion": conversacion.model_copy(
                 update={
                     "turnos": turnos,
+                    "turnos_procesados": len(turnos),
                     "registro": dialogo.registro,
                     "pregunta_pendiente": dialogo.siguiente_pregunta,
                 }
@@ -235,21 +245,35 @@ class NodosGrafo:
         return {}
 
     def n5_sintesis(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Sintetiza historias de usuario y requerimientos formales."""
-        sintesis = self.servicios.elicitador.sintetizar(estado["conversacion"], estado["contexto"])
+        """Sintetiza historias y requerimientos formales, corrigiendo los defectos previos."""
+        previos = estado["requerimientos"]
+        sintesis = self.servicios.elicitador.sintetizar(
+            estado["conversacion"], estado["contexto"], previos, estado["sesion"].proyecto
+        )
         return {
             "requerimientos": Requerimientos(
-                historias=sintesis.historias, requerimientos=sintesis.requerimientos
+                historias=sintesis.historias,
+                requerimientos=sintesis.requerimientos,
+                referencias=sintesis.referencias,
+                sintesis=previos.sintesis + 1,
+                correcciones=previos.correcciones,
             )
         }
 
     def n6_aprobacion_requerimientos(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Verifica la calidad (RF-07) y somete los requerimientos a aprobación humana."""
+        """Verifica la calidad (RF-07) y somete los requerimientos a aprobación humana.
+
+        Con defectos, los devuelve a N5 sin intervención humana hasta agotar el límite de
+        correcciones; al agotarlo, escala a la persona con los defectos a la vista. Un rechazo
+        devuelve el flujo al diálogo con las observaciones y exige confirmar un nuevo resumen.
+        """
         requerimientos = estado["requerimientos"]
-        defectos = self.servicios.elicitador.verificar_calidad(requerimientos)
-        if defectos:
+        defectos = tuple(self.servicios.elicitador.verificar_calidad(requerimientos))
+        if defectos and requerimientos.correcciones < estado["control"].limite_correcciones:
             return {
-                "requerimientos": requerimientos.model_copy(update={"defectos": tuple(defectos)})
+                "requerimientos": requerimientos.model_copy(
+                    update={"defectos": defectos, "correcciones": requerimientos.correcciones + 1}
+                )
             }
         respuesta = interrupt(
             {
@@ -258,6 +282,11 @@ class NodosGrafo:
                 "requerimientos": [
                     r.model_dump(mode="json") for r in requerimientos.requerimientos
                 ],
+                "referencias": {
+                    id_requerimiento: list(referencias)
+                    for id_requerimiento, referencias in requerimientos.referencias.items()
+                },
+                "defectos": list(defectos),
             }
         )
         sesion = estado["sesion"]
@@ -265,7 +294,9 @@ class NodosGrafo:
         aprobado = aprobacion.decision is Decision.APROBADO
         cambios: dict[str, Any] = {
             "sesion": _con_aprobacion(sesion, aprobacion, Fase.DISENO if aprobado else None),
-            "requerimientos": requerimientos.model_copy(update={"defectos": ()}),
+            "requerimientos": requerimientos.model_copy(
+                update={"defectos": (), "correcciones": 0, "defectos_escalados": defectos}
+            ),
         }
         if not aprobado:
             conversacion = estado["conversacion"]
@@ -274,7 +305,11 @@ class NodosGrafo:
                     "observaciones_revisor": (
                         *conversacion.observaciones_revisor,
                         aprobacion.observaciones,
-                    )
+                    ),
+                    "pregunta_pendiente": None,
+                    "registro": conversacion.registro.model_copy(
+                        update={"resumen_confirmado": False}
+                    ),
                 }
             )
         return cambios
