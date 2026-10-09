@@ -15,12 +15,12 @@ Además, el dinero y los avalúos usan `Decimal` (decisión 10 de `CLAUDE.md`, r
 """
 
 import ast
-import re
 import sys
 
 from pydantic import ValidationError
 
 from multiagente.agentes.arquitecto.catalogo import CatalogoTecnologico
+from multiagente.core.dinero import es_monetario
 from multiagente.core.esquemas.especificacion_diseno import (
     EspecificacionDiseno,
     InterfazPublica,
@@ -33,12 +33,6 @@ ESQUEMA = "Validación 1 · esquema"
 COBERTURA = "Validación 2 · cobertura"
 CATALOGO = "Validación 3 · catálogo"
 DINERO = "Dinero en Decimal"
-
-MONETARIO = re.compile(
-    r"(?:avaluo|valor|monto|tarifa|impuesto|precio|pago|saldo|deuda|liquidacion|costo|interes"
-    r"|descuento|recargo|multa|cuota)"
-)
-"""Raíces de los nombres de campos y parámetros que representan dinero o avalúos."""
 
 
 def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
@@ -62,7 +56,7 @@ def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
         if (
             argumento.annotation is not None
             and ast.unparse(argumento.annotation) == "float"
-            and MONETARIO.search(argumento.arg.lower())
+            and es_monetario(argumento.arg)
         ):
             errores.append(
                 f"{DINERO}: el parámetro {argumento.arg} de {ubicacion} es monetario y usa float"
@@ -148,7 +142,7 @@ def validar_especificacion(
 
     for entidad in especificacion.modelo_datos:
         for campo in entidad.campos:
-            if campo.tipo.strip().lower() == "float" and MONETARIO.search(campo.nombre.lower()):
+            if campo.tipo.strip().lower() == "float" and es_monetario(campo.nombre):
                 errores.append(
                     f"{DINERO}: el campo {entidad.nombre}.{campo.nombre} es monetario y usa float"
                 )

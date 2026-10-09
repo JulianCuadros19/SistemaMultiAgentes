@@ -7,6 +7,8 @@ from multiagente.agentes.desarrollador.verificacion import (
     nombre_de_prueba,
     verificar_version,
 )
+from multiagente.core.conformidad import TipoProblema, analizar_conformidad
+from multiagente.core.dinero import es_monetario
 from multiagente.core.esquemas.comunes import Enunciado, Impacto, Prioridad
 from multiagente.core.esquemas.especificacion_diseno import (
     DependenciaExterna,
@@ -382,3 +384,61 @@ def test_dependencia_externa_declarada_se_admite():
         archivos
     )
     assert verificar(archivos, externas=("pydantic",)) == []
+
+
+# Informe compartido con el tester (core.conformidad) -------------------------------------------
+
+
+def informe(archivos):
+    return analizar_conformidad(archivos, especificacion(), REQUERIMIENTOS.requerimientos)
+
+
+def test_informe_resume_cada_modulo_y_las_pruebas():
+    resultado = informe(archivos_validos())
+    assert resultado.problemas == ()
+    resumen = {modulo.nombre: modulo for modulo in resultado.modulos}
+    assert resumen["dominio.predio"].existe
+    assert resumen["aplicacion.avaluo"].interfaces_conformes == ("calcular_avaluo",)
+    (pruebas,) = resultado.pruebas
+    assert pruebas.ruta == "tests/test_avaluo.py"
+    assert pruebas.modulos_importados == {"aplicacion.avaluo", "dominio.predio"}
+    assert set(resultado.arboles) == {
+        "src/dominio/predio.py",
+        "src/aplicacion/avaluo.py",
+        "tests/test_avaluo.py",
+    }
+
+
+def test_informe_marca_el_modulo_faltante_y_sus_interfaces_divergentes():
+    archivos = archivos_validos()
+    quitar("src/aplicacion/avaluo.py")(archivos)
+    resumen = {modulo.nombre: modulo for modulo in informe(archivos).modulos}
+    assert not resumen["aplicacion.avaluo"].existe
+    assert resumen["aplicacion.avaluo"].interfaces_divergentes == ("calcular_avaluo",)
+
+
+def test_informe_detecta_nombres_privados_importados_de_otro_modulo():
+    archivos = archivos_validos()
+    reemplazar(
+        "src/aplicacion/avaluo.py",
+        "from dominio.predio import Predio",
+        "from dominio.predio import Predio, _validar",
+    )(archivos)
+    privados = informe(archivos).de_tipo(TipoProblema.IMPORTACION_PRIVADA)
+    assert [problema.ubicacion for problema in privados] == ["src/aplicacion/avaluo.py:6"]
+    assert privados[0].modulo == "aplicacion.avaluo"
+
+
+def test_las_pruebas_pueden_importar_nombres_privados():
+    archivos = archivos_validos()
+    reemplazar(
+        "tests/test_avaluo.py",
+        "from dominio.predio import Predio",
+        "from dominio.predio import Predio, _validar",
+    )(archivos)
+    assert informe(archivos).de_tipo(TipoProblema.IMPORTACION_PRIVADA) == []
+
+
+def test_nombres_monetarios():
+    assert es_monetario("avaluo_total") and es_monetario("valorM2") and es_monetario("Tarifa")
+    assert not es_monetario("area_terreno") and not es_monetario("vigencia")
