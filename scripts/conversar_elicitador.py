@@ -28,7 +28,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
 
 import psycopg
 from langgraph.graph.state import CompiledStateGraph
@@ -40,6 +39,7 @@ from multiagente.core.configuracion import (
     ConfiguracionModelos,
 )
 from multiagente.interfaces.cliente_simulado import ClienteSimulado, cargar_caso
+from multiagente.interfaces.consola import mostrar_requerimientos
 from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistroJsonl
 from multiagente.orquestador.ejecucion import (
@@ -64,49 +64,6 @@ def medir(accion: Callable[[], Avance]) -> tuple[Avance, float]:
     inicio = time.perf_counter()
     avance = accion()
     return avance, time.perf_counter() - inicio
-
-
-def mostrar_requerimientos(datos: dict[str, Any]) -> None:
-    """Imprime los artefactos que la persona revisa en N6."""
-    print("\n=== Punto de control N6: requerimientos ===")
-    for historia in datos["historias"]:
-        enunciado = historia["enunciado"]
-        print(
-            f"\n{historia['id']} · Como {enunciado['como']}, quiero {enunciado['quiero']}, "
-            f"para {enunciado['para']} (prioridad {historia['prioridad']})"
-        )
-        for supuesto in historia["supuestos"]:
-            print(f"  Supuesto: {supuesto}")
-        for pregunta in historia["preguntas_abiertas"]:
-            print(f"  Pregunta abierta: {pregunta}")
-    for requerimiento in datos["requerimientos"]:
-        descripcion = requerimiento["descripcion"]
-        print(
-            f"\n{requerimiento['id_requerimiento']} v{requerimiento['version']} · "
-            f"módulo {requerimiento['modulo']} · impacto {requerimiento['impacto']}"
-        )
-        print(f"  Precondición: {descripcion['precondicion']}")
-        print(f"  Regla de negocio: {descripcion['regla_negocio']}")
-        for dato in descripcion["datos_entrada"]:
-            obligatorio = "obligatorio" if dato["obligatorio"] else "opcional"
-            restriccion = f", {dato['restriccion']}" if dato["restriccion"] else ""
-            print(f"  Entrada: {dato['nombre']} ({dato['tipo']}, {obligatorio}{restriccion})")
-        for dato in descripcion["datos_salida"]:
-            formato = f", {dato['formato']}" if dato["formato"] else ""
-            print(f"  Salida: {dato['nombre']} ({dato['tipo']}{formato})")
-        for escenario in requerimiento["criterios_aceptacion"]:
-            print(
-                f"  {escenario['id']} · {escenario['nombre']}: DADO QUE {escenario['dado_que']}, "
-                f"CUANDO {escenario['cuando']}, ENTONCES {escenario['entonces']}"
-            )
-        for referencia in datos["referencias"].get(requerimiento["id_requerimiento"], []):
-            print(f"  Fuente: {referencia}")
-    if datos["defectos"]:
-        print("\nDefectos de calidad sin corregir (escalados al analista):")
-        for defecto in datos["defectos"]:
-            print(f"  - {defecto}")
-    else:
-        print("\nVerificación de calidad (RF-07): sin defectos.")
 
 
 def resumir(registro: RegistroJsonl, turnos: list[float]) -> None:

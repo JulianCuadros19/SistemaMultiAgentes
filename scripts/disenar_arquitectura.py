@@ -24,13 +24,13 @@ import uuid
 from collections import defaultdict
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
 
 import psycopg
 
 from multiagente.agentes.arquitecto.servicio import crear_agente_arquitecto
 from multiagente.core.configuracion import ConfiguracionAzureOpenAI, ConfiguracionBaseDatos
 from multiagente.interfaces.casos import cargar_caso_diseno, exportar_caso_desarrollo
+from multiagente.interfaces.consola import mostrar_especificacion
 from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistroJsonl
 from multiagente.orquestador.ejecucion import avanzar, configuracion_hilo, iniciar_sesion
@@ -41,41 +41,6 @@ from multiagente.persistencia.puntos_control import abrir_checkpointer
 
 RAIZ = Path(__file__).resolve().parents[1]
 ARCHIVO_MEDICIONES = RAIZ / "docs" / "mediciones" / "paso-08-arquitecto.jsonl"
-
-
-def mostrar_especificacion(datos: dict[str, Any]) -> None:
-    """Imprime lo que la persona revisa en N9."""
-    print("\n=== Punto de control N9: especificación de diseño ===\n")
-    print(datos["registro_decision"])
-    especificacion = datos["especificacion"]
-    cubiertos = especificacion["requerimientos_cubiertos"]
-    print(
-        f"{especificacion['id_especificacion']} v{especificacion['version']} · "
-        f"{especificacion['arquitectura_base']} · cubre {cubiertos}"
-    )
-    for modulo in especificacion["modulos"]:
-        dependencias = ", ".join(modulo["dependencias_permitidas"]) or "ninguna"
-        print(
-            f"\n  {modulo['nombre']} ({modulo['ruta']}, capa {modulo['capa']}) · "
-            f"{modulo['requerimientos']} · importa: {dependencias}"
-        )
-        print(f"    {modulo['responsabilidad']}")
-        for interfaz in modulo["interfaces_publicas"]:
-            excepciones = f" · lanza {interfaz['excepciones']}" if interfaz["excepciones"] else ""
-            print(f"    {interfaz['tipo']} {interfaz['firma']}{excepciones}")
-    for entidad in especificacion["modelo_datos"]:
-        campos = ", ".join(f"{c['nombre']}: {c['tipo']}" for c in entidad["campos"])
-        print(f"\n  Entidad {entidad['nombre']}({campos})")
-    paquetes = ", ".join(d["paquete"] for d in especificacion["dependencias_externas"])
-    print(f"\n  Dependencias externas: {paquetes or 'ninguna'}")
-    for regla in especificacion["reglas_de_dependencia"]:
-        print(f"  Regla: {regla}")
-    if datos["errores"]:
-        print("\nErrores de validación (Anexo B); solo se admite el rechazo:")
-        for error in datos["errores"]:
-            print(f"  - {error}")
-    else:
-        print("\nValidaciones del Anexo B: sin errores.")
 
 
 def resumir(registro: RegistroJsonl, segundos: float) -> None:
