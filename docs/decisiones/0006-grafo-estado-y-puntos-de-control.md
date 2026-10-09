@@ -13,6 +13,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 > respuesta humana inválida vuelva a pausar con un aviso en lugar de detener la sesión.
 > El ADR-0011 (paso 9) entrega a N10 la versión vigente del código para corregirla y hace que
 > `VersionCodigo` conserve el contenido de los archivos tal cual.
+> El ADR-0012 (paso 10) estructura la validación (ejecución, hallazgos, conformidad, veredicto y
+> reporte), cambia el protocolo del tester y hace que N15 exija el veredicto aprobado.
 
 ## Contexto y planteamiento del problema
 

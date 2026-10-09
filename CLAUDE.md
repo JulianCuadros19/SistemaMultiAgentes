@@ -98,7 +98,7 @@ durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse
   - `gpt-5.4-mini`, para N3 y N5, del perfil intermedio;
   - `gpt-5`, para N8, del perfil alto (ADR-0010);
   - `gpt-6.1-sol`, para N10, el perfil más alto disponible (ADR-0011);
-  - `gpt-5-nano`, para N14, del perfil económico.
+  - `gpt-6-luna`, para N14, del perfil económico, elegido con el corpus de defectos (ADR-0012).
 - Usar el paquete `openai` con la API OpenAI/v1. El paquete `azure-ai-inference` está retirado.
 - **Los modelos GPT-5 son de razonamiento.** Generan tokens de razonamiento ocultos que se
   facturan como salida. En la primera prueba, una respuesta corta consumió cerca de 4.700
@@ -263,7 +263,33 @@ Mantener esta sección actualizada al cerrar cada paso.
   Pendiente para el paso 10:
   - N12 debe aplicar la misma noción de firma compatible y clasificar los hallazgos de Ruff;
   - el código generado importa funciones privadas de otros módulos.
-- **Paso actual: 10.** Agente tester: detecta defectos inyectados a propósito en código de prueba.
+- **Paso 10: cerrado el 2026-10-09.** Agente tester real en `agentes/tester/` (ADR-0012):
+  - todo lo verificable se decide en código:
+    - N11 ejecuta en el entorno aislado, con resultado por prueba;
+    - N12 aplica Ruff y la conformidad compartida con N10 (`core/conformidad.py`), además de
+      trazabilidad, dinero y secretos;
+    - N14 dictamina cada caso y aplica la regla de cal-sv con `UMBRAL_HALLAZGOS_MEDIA=0`;
+  - el modelo de N14 (`gpt-6-luna`) solo juzga si las pruebas que pasaron verifican su
+    escenario, con los archivos de prueba completos a la vista;
+  - cada hallazgo cita su regla con la severidad de la base; las reglas sin comprobación quedan
+    como no evaluadas;
+  - CAL-MT-009 (estilo) y CAL-MT-010 (nombres privados) entran a criterios_calidad. El corpus
+    pasa a 186 fragmentos y 33 reglas;
+  - corpus de defectos en `evaluacion/defectos/`: dos controles limpios y 16 inyecciones, 3 de
+    ellas solo detectables por el juez.
+
+  Verificado:
+  - 433 pruebas unitarias, 27 de integración, 19 de embeddings y 25 del entorno aislado;
+  - `pytest -m "nube and embeddings and sandbox" tests/integracion/test_tester_nube.py`: en 3 de
+    3 corridas detecta los 16 defectos con su regla, aprueba los controles sin hallazgos y el juez
+    no tiene rechazos falsos, a 0,003 USD por corrida;
+  - `python scripts/evaluar_tester.py` da la matriz de confusión y los aciertos del juez por caso.
+
+  Pendiente:
+  - las pruebas propias de la persona en N17 (RF-38) se conectan en el paso 12;
+  - el paso 11 medirá cuántas iteraciones gasta el umbral 0 con módulos reales.
+- **Paso actual: 11.** Integración de extremo a extremo: un módulo completo sale aprobado por el
+  tester.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
@@ -273,8 +299,10 @@ Mantener esta sección actualizada al cerrar cada paso.
   - `gpt-5.4-mini` (versión 2026-03-17): entrada 0,75, caché 0,075 y salida 4,50 USD;
   - `gpt-5` (versión 2025-08-07): entrada 1,25, caché 0,125 y salida 10 USD;
   - `gpt-6.1-sol` (versión 2026-09-29): entrada 2,00, caché 0,10, escritura de caché 2,50 y salida
-    10 USD. Es el único que cobra aparte la escritura en caché, que la API reporta en
-    `cache_write_tokens` (ADR-0011).
+    10 USD. Los GPT-6 cobran aparte la escritura en caché, que la API reporta en
+    `cache_write_tokens` (ADR-0011);
+  - `gpt-6-luna` (versión 2026-09-22): entrada 0,10, caché 0,01, escritura de caché 0,125 y
+    salida 0,50 USD.
 
   Endpoint y clave solo en `.env`. Las tarifas están en `config/tarifas_modelos.toml`. Para
   `gpt-5-nano`, medido con el mismo mensaje: minimal 80 tokens de salida y 1,7 s; low

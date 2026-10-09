@@ -7,6 +7,10 @@ modifica: ADR-0003 (costo con escritura en caché) y ADR-0006 (entrada de N10 y 
 
 # ADR-0011 · Agente desarrollador: gpt-6.1-sol, verificación estructural y entorno aislado
 
+> El ADR-0012 (paso 10) mueve el análisis de conformidad a `core/conformidad.py`, compartido con
+> N12, y alinea N10 con el umbral 0: su verificación rechaza las importaciones privadas y el
+> prompt de generación pasa a la versión 1.1.
+
 ## Contexto y planteamiento del problema
 
 El paso 9 exige que el código generado se importe sin error y cubra las interfaces de la
