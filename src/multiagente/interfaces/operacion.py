@@ -73,6 +73,11 @@ NOMBRES_DE_NODO = {
 }
 """Nombre legible de cada nodo, para mostrar dónde está o dónde se detuvo una sesión."""
 
+ACUSE_CONFIRMACION = (
+    "Gracias. Con lo conversado estoy redactando los requerimientos; tarda unos segundos…"
+)
+"""Acuse de la respuesta que confirma el resumen: la síntesis que sigue tarda de 6 a 16 s."""
+
 ESPERAS = {
     "dialogo": "Espera la respuesta del cliente",
     "requerimientos": "Espera la aprobación de los requerimientos (N6)",
@@ -312,10 +317,17 @@ class Operador:
         )
 
     def sesiones(self) -> list[VistaSesion]:
-        """Lista las sesiones guardadas, de la más reciente a la más antigua."""
-        return [
-            self.vista(id_sesion) for id_sesion in identificadores_de_sesion(self.app.checkpointer)
-        ]
+        """Lista las sesiones guardadas, de la más reciente a la más antigua.
+
+        Omite los hilos sin estado de sesión, como uno que se cayó antes de abrirse.
+        """
+        vistas = []
+        for id_sesion in identificadores_de_sesion(self.app.checkpointer):
+            try:
+                vistas.append(self.vista(id_sesion))
+            except ErrorOperacion:
+                continue
+        return vistas
 
     def historial(self, id_sesion: str) -> list[tuple[VersionCodigo, Validacion]]:
         """Cada versión dictaminada del módulo con su validación (RF-33)."""

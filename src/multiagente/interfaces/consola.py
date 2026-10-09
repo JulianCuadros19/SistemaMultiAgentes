@@ -10,6 +10,7 @@ Uso:
     multiagente sesiones
     multiagente ver ID
     multiagente exportar ID CARPETA
+    multiagente web
 """
 
 import argparse
@@ -34,6 +35,7 @@ from multiagente.interfaces.documentos import (
     requerimientos_md,
 )
 from multiagente.interfaces.operacion import (
+    ACUSE_CONFIRMACION,
     ErrorOperacion,
     Operador,
     VistaSesion,
@@ -49,11 +51,6 @@ SALIR = "/salir"
 
 REVISORES = {"requerimientos": "Analista", "especificacion": "Arquitecto", "final": "Revisor"}
 """Rol que decide en cada punto de control, si la persona no da su nombre."""
-
-ACUSE_CONFIRMACION = (
-    "Gracias. Con lo conversado estoy redactando los requerimientos; tarda unos segundos…"
-)
-"""Acuse de la respuesta que confirma el resumen: la síntesis que sigue tarda de 6 a 16 s."""
 
 REPORTE = "REPORTE_VALIDACION.md"
 
@@ -475,6 +472,8 @@ def _parser() -> argparse.ArgumentParser:
     exportar = comandos.add_parser("exportar", help="Exporta el módulo validado (RF-35).")
     exportar.add_argument("sesion")
     exportar.add_argument("carpeta", type=Path)
+    web = comandos.add_parser("web", help="Levanta la interfaz web en la máquina local.")
+    web.add_argument("--puerto", type=int, help="Puerto; por defecto, INTERFAZ_PUERTO_WEB.")
     return parser
 
 
@@ -559,6 +558,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     logging.basicConfig(level=logging.WARNING, format="(aviso) %(message)s")
     configuracion = ConfiguracionInterfaces()
     try:
+        if argumentos.comando == "web":
+            # FastAPI y uvicorn se cargan solo para la web: la consola no los necesita.
+            from multiagente.interfaces.web.servidor import servir
+
+            servir(configuracion, argumentos.puerto)
+            return 0
         with abrir_operador(configuracion) as operador:
             return ejecutar(operador, argumentos, configuracion)
     except (psycopg.OperationalError, ValidationError) as error:

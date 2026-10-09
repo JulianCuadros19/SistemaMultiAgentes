@@ -7,14 +7,13 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionInterfaces, ConfiguracionOrquestador
 from multiagente.interfaces.consola import (
-    ACUSE_CONFIRMACION,
     _parser,
     ejecutar,
     mostrar_especificacion,
     mostrar_requerimientos,
     mostrar_validacion,
 )
-from multiagente.interfaces.operacion import Operador
+from multiagente.interfaces.operacion import ACUSE_CONFIRMACION, Operador
 from multiagente.orquestador.ejecucion import avanzar, iniciar_sesion
 from multiagente.orquestador.estado import Decision, Fase, PuntoControl, ResultadoPrueba
 from multiagente.orquestador.grafo import construir_grafo

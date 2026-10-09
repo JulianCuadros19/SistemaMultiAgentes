@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% import "comunes.html" as comunes %}
+{% block titulo %}{{ vista.cliente if vista else 'Sesión' }}{% endblock %}
+
+{% macro formulario_decision(id_sesion, revisor, puede_aprobar=True, sugeridas='', con_pruebas=False) %}
+<form method="post" action="/sesiones/{{ id_sesion }}/decision" class="formulario decision">
+  <label>Observaciones para el agente (obligatorias al rechazar)
+    <textarea name="observaciones" rows="4">{{ sugeridas }}</textarea>
+  </label>
+  <label>Su nombre, como revisor
+    <input name="revisor" placeholder="{{ revisor }}">
+  </label>
+  {% if con_pruebas %}
+  <label class="casilla">
+    <input type="checkbox" name="registrar_pruebas" value="si" checked>
+    Registrar mis pruebas propias con la decisión
+  </label>
+  {% endif %}
+  <div class="botones">
+    {% if puede_aprobar %}<button name="decision" value="aprobado">Aprobar</button>{% endif %}
+    <button name="decision" value="rechazado" class="secundario">Rechazar con observaciones</button>
+  </div>
+</form>
+{% endmacro %}
+
+{% block contenido %}
+{% if vista %}
+<header class="encabezado">
+  <h1>{{ vista.cliente }} · {{ vista.proyecto }}</h1>
+  <p class="detalle">
+    Sesión {{ id_sesion }} · abierta el {{ vista.creada.strftime('%Y-%m-%d %H:%M') }} UTC ·
+    fase {{ vista.fase.value }} · iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }}
+  </p>
+  <p><span class="etiqueta {{ vista.fase.value }}">{{ vista.describir() }}</span></p>
+  <nav class="enlaces">
+    <a href="/conversacion/{{ id_sesion }}">Vista del cliente</a>
+    <a href="/sesiones/{{ id_sesion }}/trazabilidad">Trazabilidad</a>
+    {% if vista.fase.value == 'validado' %}
+    <a href="/sesiones/{{ id_sesion }}/exportar.zip">Exportar el módulo (.zip)</a>
+    {% endif %}
+  </nav>
+</header>
+{% else %}
+<h1>Sesión {{ id_sesion }}</h1>
+{% endif %}
+
+{{ comunes.error_de_tarea(error) }}
+
+{% if tarea %}
+  {{ comunes.procesando(id_sesion, tarea) }}
+
+{% elif vista and vista.detenida %}
+<section class="aviso error">
+  <strong>{{ vista.describir() }}.</strong>
+  {% if vista.error %}<pre class="texto">{{ vista.error }}</pre>{% endif %}
+  <p>La sesión conserva todo lo hecho hasta el último punto de control.</p>
+  <form method="post" action="/sesiones/{{ id_sesion }}/reanudar">
+    <button type="submit">Reanudar</button>
+  </form>
+</section>
+
+{% elif vista and vista.pausa %}
+{% set pausa = vista.pausa %}
+{% if pausa.datos.aviso %}<p class="aviso" role="alert">{{ pausa.datos.aviso }}</p>{% endif %}
+
+{# --- Diálogo (N3) --------------------------------------------------------------------- #}
+{% if pausa.punto == 'dialogo' %}
+<section class="tarjeta">
+  <h2>Conversación con el cliente</h2>
+  <p class="detalle">
+    Normalmente responde el cliente en su <a href="/conversacion/{{ id_sesion }}">propia vista</a>.
+  </p>
+  {{ comunes.turnos_de(conversacion.turnos) }}
+  {% for observacion in pausa.datos.observaciones_revisor %}
+  <p class="aviso">Observación del revisor: {{ observacion }}</p>
+  {% endfor %}
+  <form method="post" action="/sesiones/{{ id_sesion }}/respuesta" class="formulario">
+    <input type="hidden" name="origen" value="operacion">
+    <label>Respuesta del cliente <textarea name="texto" rows="3" required></textarea></label>
+    <button type="submit">Enviar</button>
+  </form>
+</section>
+
+{# --- N6: requerimientos ---------------------------------------------------------------- #}
+{% elif pausa.punto == 'requerimientos' %}
+<section class="tarjeta">
+  <h2>N6 · Requerimientos para aprobar</h2>
+  <h3>Historias de usuario</h3>
+  <ul>
+    {% for historia in historias %}
+    <li>
+      <strong>{{ historia.id }}</strong> · Como {{ historia.enunciado.como }}, quiero
+      {{ historia.enunciado.quiero }}, para {{ historia.enunciado.para }}
+      {% if historia.prioridad %}(prioridad {{ historia.prioridad.value }}){% endif %}
+      {% for supuesto in historia.supuestos %}<br><em>Supuesto:</em> {{ supuesto }}{% endfor %}
+      {% for pregunta in historia.preguntas_abiertas %}<br><em>Pregunta abierta:</em> {{ pregunta }}{% endfor %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% for rf in requerimientos %}
+  <h3>{{ rf.id_requerimiento }} · versión {{ rf.version }}</h3>
+  <table class="tabla ficha">
+    <tr><th>Título</th><td>Como {{ rf.titulo.como }}, quiero {{ rf.titulo.quiero }}, para {{ rf.titulo.para }}</td></tr>
+    <tr><th>Proyecto · módulo</th><td>{{ rf.proyecto }} · {{ rf.modulo }}</td></tr>
+    <tr><th>Tipo · impacto · prioridad</th><td>{{ rf.tipo_solicitud.value }} · {{ rf.impacto.value }} · {{ rf.prioridad.value }}</td></tr>
+    <tr><th>Precondición</th><td>{{ rf.descripcion.precondicion }}</td></tr>
+    <tr><th>Regla de negocio</th><td>{{ rf.descripcion.regla_negocio }}</td></tr>
+    <tr><th>Datos de entrada</th><td>
+      {% for dato in rf.descripcion.datos_entrada %}
+      {{ dato.nombre }} ({{ dato.tipo }}, {{ 'obligatorio' if dato.obligatorio else 'opcional' }}{% if dato.restriccion %}, {{ dato.restriccion }}{% endif %}){% if not loop.last %}; {% endif %}
+      {% endfor %}
+    </td></tr>
+    <tr><th>Datos de salida</th><td>
+      {% for dato in rf.descripcion.datos_salida %}
+      {{ dato.nombre }} ({{ dato.tipo }}{% if dato.formato %}, {{ dato.formato }}{% endif %}){% if not loop.last %}; {% endif %}
+      {% endfor %}
+    </td></tr>
+    {% for escenario in rf.criterios_aceptacion %}
+    <tr><th>{{ escenario.id }}{% if escenario.nombre %} · {{ escenario.nombre }}{% endif %}</th>
+      <td>DADO QUE {{ escenario.dado_que }}, CUANDO {{ escenario.cuando }}, ENTONCES {{ escenario.entonces }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if referencias.get(rf.id_requerimiento) %}
+  <p class="detalle">Fuentes: {{ referencias[rf.id_requerimiento] | join(' · ') }}</p>
+  {% endif %}
+  {% endfor %}
+  {% if defectos %}
+  <div class="aviso error">
+    <strong>Defectos de calidad sin corregir (RF-07):</strong>
+    <ul>{% for defecto in defectos %}<li>{{ defecto }}</li>{% endfor %}</ul>
+  </div>
+  {% else %}
+  <p class="aviso ok">Verificación de calidad (RF-07): sin defectos.</p>
+  {% endif %}
+  {{ formulario_decision(id_sesion, revisor) }}
+</section>
+
+{# --- N9: especificación de diseño ------------------------------------------------------ #}
+{% elif pausa.punto == 'especificacion' %}
+<section class="tarjeta">
+  <h2>N9 · Especificación de diseño para aprobar</h2>
+  <details open>
+    <summary>Registro de la decisión arquitectónica</summary>
+    <pre class="texto">{{ registro_decision }}</pre>
+  </details>
+  <p>
+    <strong>{{ especificacion.id_especificacion }}</strong> versión {{ especificacion.version }} ·
+    {{ especificacion.arquitectura_base }} · cubre {{ especificacion.requerimientos_cubiertos | join(', ') }}
+  </p>
+  {% for modulo in especificacion.modulos %}
+  <h3>{{ modulo.nombre }}</h3>
+  <p class="detalle">
+    <code>{{ modulo.ruta }}</code> · capa {{ modulo.capa }} · {{ modulo.requerimientos | join(', ') }} ·
+    puede importar: {{ modulo.dependencias_permitidas | join(', ') or 'ninguna' }}
+  </p>
+  <p>{{ modulo.responsabilidad }}</p>
+  <table class="tabla">
+    <thead><tr><th>Interfaz</th><th>Firma</th><th>Excepciones</th></tr></thead>
+    <tbody>
+      {% for interfaz in modulo.interfaces_publicas %}
+      <tr><td>{{ interfaz.tipo.value }} {{ interfaz.nombre }}</td><td><code>{{ interfaz.firma }}</code></td>
+        <td>{{ interfaz.excepciones | join(', ') or '—' }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+  {% if especificacion.modelo_datos %}
+  <h3>Modelo de datos</h3>
+  {% for entidad in especificacion.modelo_datos %}
+  <p><strong>{{ entidad.nombre }}</strong>:
+    {% for campo in entidad.campos %}{{ campo.nombre }}: <code>{{ campo.tipo }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endfor %}
+  {% endif %}
+  <p class="detalle">Dependencias externas:
+    {% for d in especificacion.dependencias_externas %}{{ d.paquete }} ({{ d.proposito }}){% if not loop.last %}, {% endif %}{% else %}ninguna{% endfor %}</p>
+  {% if errores %}
+  <div class="aviso error">
+    <strong>La especificación no pasa las validaciones del Anexo B; solo se admite el rechazo.</strong>
+    <ul>{% for e in errores %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% else %}
+  <p class="aviso ok">Validaciones del Anexo B: sin errores.</p>
+  {% endif %}
+  {{ formulario_decision(id_sesion, revisor, puede_aprobar=not errores) }}
+</section>
+
+{# --- N17: aprobación final --------------------------------------------------------------- #}
+{% elif pausa.punto == 'final' %}
+<section class="tarjeta">
+  <h2>N17 · Versión {{ version.numero }} del módulo para la aprobación final</h2>
+  <p class="aviso">
+    Iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }} del ciclo de corrección. Si
+    rechaza, el desarrollador corrige y la cuenta sigue; alcanzado el límite, un rechazo del
+    tester escala la sesión a una persona.
+  </p>
+  <h3>Veredicto del tester: {{ validacion.veredicto.value if validacion.veredicto else '—' }}</h3>
+  <table class="tabla">
+    <thead><tr><th>Caso</th><th>Cumple</th><th>Evidencia</th></tr></thead>
+    <tbody>
+      {% for v in validacion.veredictos %}
+      <tr><td>{{ v.id_caso }}</td><td>{{ 'sí' if v.cumple else 'no' }}</td><td>{{ v.evidencia }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if validacion.hallazgos %}
+  <h3>Hallazgos</h3>
+  <ul>
+    {% for h in validacion.hallazgos %}
+    <li><span class="etiqueta severidad-{{ h.severidad.value }}">{{ h.severidad.value }}</span>
+      <strong>{{ h.regla }}</strong> · <code>{{ h.ubicacion }}</code> · {{ h.descripcion }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p class="detalle">Reglas sin comprobación automática, para su revisión: {{ validacion.no_evaluadas | join(', ') or 'ninguna' }}.</p>
+  <details>
+    <summary>Reporte de validación completo</summary>
+    <pre class="texto">{{ validacion.reporte }}</pre>
+  </details>
+  <h3>Código</h3>
+  {% for ruta, contenido in version.archivos.items() | sort %}
+  <details>
+    <summary><code>{{ ruta }}</code></summary>
+    <pre class="codigo">{{ contenido }}</pre>
+  </details>
+  {% endfor %}
+</section>
+
+<section class="tarjeta">
+  <h2>Pruebas propias en el entorno aislado (RF-38)</h2>
+  <p class="detalle">
+    Sus pruebas corren con pytest junto con la versión, sin red. Importe los módulos por su nombre,
+    por ejemplo <code>from dominio.modulo import funcion</code>.
+  </p>
+  <form method="post" action="/sesiones/{{ id_sesion }}/pruebas" enctype="multipart/form-data" class="formulario">
+    <label>Nombre del archivo <input name="nombre" placeholder="test_mis_pruebas.py"></label>
+    <label>Contenido <textarea name="contenido" rows="8" class="codigo"
+      placeholder="def test_algo():&#10;    assert ..."></textarea></label>
+    <label>O suba un archivo .py <input type="file" name="archivo" accept=".py"></label>
+    <button type="submit" class="secundario">Ejecutar mis pruebas</button>
+  </form>
+  {% if pruebas %}
+  <h3>Resultado: {{ resumen_pruebas_propias(pruebas) }}</h3>
+  <table class="tabla">
+    <thead><tr><th>Prueba</th><th>Resultado</th><th>Detalle</th></tr></thead>
+    <tbody>
+      {% for p in pruebas.ejecucion.pruebas %}
+      <tr><td><code>{{ p.identificador }}</code></td><td>{{ p.resultado.value }}</td>
+        <td><pre class="texto">{{ p.mensaje[-600:] }}</pre></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% for e in pruebas.ejecucion.errores_recoleccion %}<pre class="texto aviso error">{{ e }}</pre>{% endfor %}
+  {% endif %}
+</section>
+
+<section class="tarjeta">
+  <h2>Decisión</h2>
+  {{ formulario_decision(id_sesion, revisor, sugeridas=sugeridas, con_pruebas=pruebas is not none) }}
+</section>
+{% endif %}
+
+{% elif vista %}
+<section class="tarjeta">
+  <h2>{{ vista.describir() }}</h2>
+  {% if vista.fase.value == 'validado' %}
+  <p>El módulo quedó validado. Puede revisar la <a href="/sesiones/{{ id_sesion }}/trazabilidad">trazabilidad</a>
+    o <a href="/sesiones/{{ id_sesion }}/exportar.zip">exportar el paquete</a>.</p>
+  {% else %}
+  <p>Revise la <a href="/sesiones/{{ id_sesion }}/trazabilidad">trazabilidad</a> para decidir cómo seguir.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

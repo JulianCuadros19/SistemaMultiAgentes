@@ -109,6 +109,7 @@ def identificadores_de_sesion(checkpointer: BaseCheckpointSaver) -> list[str]:
             ).fetchall()
         return [fila["thread_id"] for fila in filas]
     if isinstance(checkpointer, InMemorySaver):
-        return list(reversed(checkpointer.storage))
+        # El almacenamiento crea una entrada vacía al consultar un hilo que no existe.
+        return [hilo for hilo, puntos in reversed(checkpointer.storage.items()) if puntos]
     hilos = (punto.config["configurable"]["thread_id"] for punto in checkpointer.list(None))
     return list(dict.fromkeys(hilos))

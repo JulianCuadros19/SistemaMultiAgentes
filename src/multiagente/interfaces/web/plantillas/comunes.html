@@ -1,0 +1,34 @@
+{# Piezas compartidas por las páginas de la sesión y de la conversación. #}
+
+{% macro procesando(id_sesion, tarea) %}
+<section class="aviso procesando" data-sesion="{{ id_sesion }}" aria-live="polite">
+  <div class="girador" aria-hidden="true"></div>
+  <div>
+    <strong>{{ tarea.descripcion }}</strong>
+    <div class="detalle">
+      <span data-segundos>{{ tarea.segundos }} s</span>
+      <span data-nodo></span>
+    </div>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro error_de_tarea(error) %}
+{% if error %}
+<section class="aviso error" role="alert">
+  <strong>La última acción no terminó.</strong>
+  <pre class="texto">{{ error }}</pre>
+</section>
+{% endif %}
+{% endmacro %}
+
+{% macro turnos_de(turnos) %}
+<ol class="dialogo">
+  {% for turno in turnos %}
+  <li class="turno {{ turno.emisor.value }}">
+    <span class="quien">{{ 'Cliente' if turno.emisor.value == 'cliente' else 'Elicitador' }}</span>
+    <p>{{ turno.texto }}</p>
+  </li>
+  {% endfor %}
+</ol>
+{% endmacro %}

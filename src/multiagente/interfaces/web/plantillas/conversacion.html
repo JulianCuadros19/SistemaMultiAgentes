@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "comunes.html" as comunes %}
+{% block titulo %}Conversación{% endblock %}
+{% block navegacion %}<span class="detalle">{{ vista.proyecto }}</span>{% endblock %}
+{% block contenido %}
+<h1>Conversación con el equipo</h1>
+<p class="detalle">
+  Cuéntenos lo que necesita: le haremos una pregunta a la vez, en lenguaje de su negocio, y al
+  final le mostraremos un resumen para que lo confirme.
+</p>
+
+{{ comunes.turnos_de(turnos) }}
+{{ comunes.error_de_tarea(error) }}
+
+{% if tarea %}
+  {{ comunes.procesando(id_sesion, tarea) }}
+{% elif vista.pausa and vista.pausa.punto == 'dialogo' %}
+  {% if vista.pausa.datos.aviso %}<p class="aviso" role="alert">{{ vista.pausa.datos.aviso }}</p>{% endif %}
+  <form method="post" action="/sesiones/{{ id_sesion }}/respuesta" class="formulario">
+    <input type="hidden" name="origen" value="cliente">
+    <label>Su respuesta <textarea name="texto" rows="3" required autofocus></textarea></label>
+    <button type="submit">Responder</button>
+  </form>
+{% else %}
+  <p class="aviso ok">{{ mensaje }}</p>
+{% endif %}
+{% endblock %}

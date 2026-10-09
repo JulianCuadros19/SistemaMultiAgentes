@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block titulo %}Sesiones{% endblock %}
+{% block contenido %}
+<h1>Sesiones</h1>
+
+<section class="tarjeta">
+  <h2>Nueva sesión</h2>
+  <p class="detalle">
+    La sesión se abre con la necesidad del cliente. Luego el cliente conversa en su propia vista y
+    el equipo decide en los tres puntos de control.
+  </p>
+  {% if error %}<p class="aviso error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/sesiones" class="formulario">
+    <label>Cliente <input name="cliente" required></label>
+    <label>Proyecto <input name="proyecto" required></label>
+    <label>Necesidad del cliente
+      <textarea name="necesidad" rows="3" required
+        placeholder="Por ejemplo: necesitamos registrar las solicitudes de mutación de propietario."></textarea>
+    </label>
+    <button type="submit">Abrir la sesión</button>
+  </form>
+</section>
+
+<section>
+  <h2>Guardadas</h2>
+  {% if sesiones %}
+  <table class="tabla">
+    <thead><tr><th>Abierta</th><th>Cliente · proyecto</th><th>Estado</th><th></th></tr></thead>
+    <tbody>
+      {% for vista in sesiones %}
+      <tr>
+        <td>{{ vista.creada.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ vista.cliente }} · {{ vista.proyecto }}</td>
+        <td>
+          {% if en_curso[vista.id_sesion] %}
+          <span class="etiqueta en-curso">{{ en_curso[vista.id_sesion].descripcion }}</span>
+          {% else %}
+          <span class="etiqueta {{ vista.fase.value }}">{{ vista.describir() }}</span>
+          {% endif %}
+        </td>
+        <td class="acciones">
+          <a href="/sesiones/{{ vista.id_sesion }}">Operar</a>
+          <a href="/conversacion/{{ vista.id_sesion }}">Vista del cliente</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="detalle">Todavía no hay sesiones.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block titulo %}Trazabilidad{% endblock %}
+{% block navegacion %}<a href="/">Sesiones</a> <a href="/sesiones/{{ id_sesion }}">Volver a la sesión</a>{% endblock %}
+{% block contenido %}
+<pre class="texto documento">{{ documento }}</pre>
+{% endblock %}
