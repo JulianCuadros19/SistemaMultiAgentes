@@ -169,8 +169,23 @@ Mantener esta sección actualizada al cerrar cada paso.
     reanuda en un proceso nuevo, tanto a mitad del diálogo como tras una caída;
   - pasan 106 pruebas unitarias y 5 de integración;
   - `python scripts/simular_sesion.py` muestra el recorrido.
-- **Paso actual: 6.** Pipeline de las bases de conocimiento: cada agente recupera únicamente de
-  sus colecciones autorizadas.
+- **Paso 6: cerrado el 2026-10-08.** Bases de conocimiento en `multiagente.rag` (ADR-0007):
+  - **Servicios:** `embeddings` (TEI 1.9.4 en CPU, BGE-M3 ONNX, revisión fijada, sin conexión
+    externa) y `descarga-modelo` (curl reanudable verificado con SHA-256). La primera vez
+    descarga 2,29 GB.
+  - **Tablas:** migración `0001` con `kb_documentos` y `kb_fragmentos` (`vector(1024)`, HNSW,
+    léxico en español y por colección).
+  - **Corpus:** 36 documentos y 184 fragmentos, segmentados según su estrategia; ingesta
+    idempotente con `python scripts/ingestar_conocimiento.py`.
+  - **Recuperación:** `Recuperador` por agente con filtro obligatorio por colección; el
+    desarrollador no tiene recuperador. Combina búsqueda semántica y léxica con fusión por
+    rango recíproco y umbral de relevancia 0,37 calibrado.
+  - **Verificado:** 120 pruebas unitarias, 27 de integración y 15 con el modelo real
+    (`pytest -m embeddings`).
+  - **Pendiente para los pasos 7, 8 y 10:** construir las consultas con los artefactos
+    completos, que N7 recupere todo el catálogo de seis arquitecturas y recalibrar el umbral.
+- **Paso actual: 7.** Agente elicitador: una conversación produce un requerimiento que pasa la
+  verificación de calidad.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, despliegue
