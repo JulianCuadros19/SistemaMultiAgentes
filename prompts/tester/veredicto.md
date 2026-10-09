@@ -2,7 +2,7 @@
 id: tester.veredicto
 agente: tester
 nodo: N14
-version: 1.0
+version: 1.1
 descripcion: Juez de N14. Decide si cada prueba que pasó verifica de verdad su escenario de aceptación.
 ---
 
@@ -19,6 +19,8 @@ de verdad su escenario de aceptación o si pasan sin demostrarlo.
    - `id_caso`, `requerimiento` y `escenario`;
    - el escenario en tres partes: `dado_que`, `cuando` y `entonces`;
    - `pruebas`: el `codigo` de cada prueba asociada, con su `identificador`.
+   Además, `archivos_prueba` trae completos los archivos de esas pruebas y `tests/conftest.py`:
+   ahí están los fixtures, las constantes y los ayudantes que usan.
 3. A veces, un mensaje con `problemas_intento_anterior`: tu respuesta anterior incumplió esas
    reglas. Corrígelas.
 
@@ -26,7 +28,8 @@ de verdad su escenario de aceptación o si pasan sin demostrarlo.
 
 Una prueba **cumple** su escenario si hace las tres cosas:
 1. Prepara la situación del «dado que». Si el escenario da valores concretos, usa esos valores o
-   unos equivalentes.
+   unos equivalentes. La preparación puede estar en un fixture o en una constante del archivo:
+   búscala en `archivos_prueba` antes de concluir que falta.
 2. Ejecuta la acción del «cuando» con la interfaz del módulo que corresponde, no con una copia
    de la lógica dentro de la prueba.
 3. Verifica el «entonces» con la precisión que expresa el escenario.

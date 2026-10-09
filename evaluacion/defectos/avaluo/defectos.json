@@ -280,6 +280,9 @@
         "veredicto": "rechazado",
         "reglas": [
           "CAL-FS-001"
+        ],
+        "casos_juez": [
+          "CP-RF-01-ESC-01"
         ]
       },
       "solo_juez": true
@@ -309,6 +312,9 @@
         "veredicto": "rechazado",
         "reglas": [
           "CAL-FS-001"
+        ],
+        "casos_juez": [
+          "CP-RF-01-ESC-01"
         ]
       },
       "solo_juez": true
@@ -328,6 +334,9 @@
         "veredicto": "rechazado",
         "reglas": [
           "CAL-FS-001"
+        ],
+        "casos_juez": [
+          "CP-RF-01-ESC-03"
         ]
       },
       "solo_juez": true

@@ -26,6 +26,7 @@ from multiagente.agentes.tester.reglas import ReglaCalidad
 from multiagente.agentes.tester.reporte import reporte_validacion
 from multiagente.core.conformidad import (
     ARCHIVO_PRUEBA,
+    RUTA_CONFTEST,
     es_prueba_de,
     funciones_de_prueba,
     nombre_de_prueba,
@@ -211,13 +212,18 @@ class CasoPorJuzgar:
 
 
 def mensajes_veredicto(
-    casos: list[CasoPorJuzgar], contexto: Contexto
+    casos: list[CasoPorJuzgar], contexto: Contexto, archivos: Mapping[str, str]
 ) -> list[ChatCompletionMessageParam]:
     """Arma los mensajes de datos del juez: los criterios y los casos con sus pruebas.
+
+    Además del código de cada prueba, el juez recibe completos los archivos de prueba
+    implicados y `tests/conftest.py`: el «dado que» suele prepararse en fixtures y constantes
+    fuera de la función, y sin verlos el juez rechazaba pruebas correctas.
 
     Args:
         casos: Casos por juzgar.
         contexto: Contexto acumulado; solo se presentan los criterios de calidad.
+        archivos: Archivos de la versión, de los que se toman los de prueba.
 
     Returns:
         Dos mensajes de datos que acompañan al prompt del veredicto.
@@ -241,7 +247,14 @@ def mensajes_veredicto(
         }
         for por_juzgar in casos
     ]
-    contenido = json.dumps({"casos": datos}, ensure_ascii=False, separators=(",", ":"))
+    rutas = {prueba.archivo for por_juzgar in casos for prueba in por_juzgar.pruebas}
+    rutas |= {RUTA_CONFTEST} & set(archivos)
+    archivos_prueba = [{"ruta": ruta, "contenido": archivos[ruta]} for ruta in sorted(rutas)]
+    contenido = json.dumps(
+        {"casos": datos, "archivos_prueba": archivos_prueba},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     return [mensaje_contexto(contexto), {"role": "user", "content": contenido}]
 
 
@@ -404,7 +417,7 @@ def dictaminar_version(
     if por_juzgar and juez is not None:
         esperados = {item.caso.id for item in por_juzgar}
         juicios = juez.invocar_validado(
-            mensajes_veredicto(por_juzgar, contexto),
+            mensajes_veredicto(por_juzgar, contexto, version.archivos),
             SalidaVeredicto,
             lambda salida: validar_juicios(salida, esperados),
         )

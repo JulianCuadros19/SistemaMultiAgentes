@@ -51,10 +51,18 @@ class Cambio(ModeloEstricto):
 
 
 class Esperado(ModeloEstricto):
-    """Lo que el tester debe dictaminar sobre una variante."""
+    """Lo que el tester debe dictaminar sobre una variante.
+
+    Attributes:
+        veredicto: Veredicto esperado.
+        reglas: Reglas que deben aparecer en los hallazgos.
+        casos_juez: Casos que el juez de N14 debe marcar como incumplidos; cualquier otro caso
+            que marque el juez es un rechazo falso.
+    """
 
     veredicto: Veredicto
     reglas: list[TextoObligatorio] = Field(default_factory=list)
+    casos_juez: list[TextoObligatorio] = Field(default_factory=list)
 
 
 class DefectoInyectado(ModeloEstricto):

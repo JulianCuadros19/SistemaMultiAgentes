@@ -10,8 +10,10 @@ N11, N12 y N13 son determinísticos y se calculan una vez por variante; el juez 
 corrida.
 
 Una variante con defecto se detecta si el veredicto coincide con el esperado y aparece cada
-regla esperada. Un control acierta si sale aprobado sin hallazgos. El script imprime la matriz
-de confusión, los errores del juez con su justificación y el costo. Cada llamada al modelo se
+regla esperada. Un control acierta si sale aprobado sin hallazgos. El juez se mide además por
+caso: cada caso que marca fuera de los esperados (`casos_juez`) es un rechazo falso, aunque el
+veredicto de la variante no cambie. El script imprime la matriz de confusión por variante, los
+aciertos del juez por caso, sus errores con la justificación y el costo. Cada llamada al modelo se
 agrega a docs/mediciones/paso-10-tester.jsonl, sin el contenido de los mensajes.
 
 Requiere `docker compose up -d --wait`, la imagen del entorno aislado, el corpus ingerido y el
@@ -104,6 +106,15 @@ def preparar(tester: object, corpus: CorpusDefectos, variante: Variante) -> Prep
     return Preparada(variante, plan, validacion, contexto, version)
 
 
+def casos_marcados_por_el_juez(dictamen: Dictamen) -> tuple[set[str], int]:
+    """Casos que el juez marcó como incumplidos y cuántos casos juzgó.
+
+    El juez solo recibe los casos cuyas pruebas pasaron; su evidencia empieza con «… pasan.».
+    """
+    juzgados = [v for v in dictamen.veredictos if " pasan. " in v.evidencia]
+    return {v.id_caso for v in juzgados if not v.cumple}, len(juzgados)
+
+
 def acierta(variante: Variante, dictamen: Dictamen) -> bool:
     """Indica si el dictamen es el esperado para la variante."""
     reglas = {h.regla for h in dictamen.hallazgos}
@@ -150,6 +161,7 @@ def main() -> None:
         print(f"N11–N13 preparados en {time.perf_counter() - inicio:.1f} s")
 
         totales: Counter[str] = Counter()
+        juez: Counter[str] = Counter()
         for corrida in range(1, argumentos.corridas + 1):
             matriz: Counter[str] = Counter()
             for preparada in preparadas:
@@ -167,9 +179,16 @@ def main() -> None:
                 print(
                     f"  [{corrida}] {marca} {variante.id:16} {dictamen.veredicto.value:9} {reglas}"
                 )
-                if not bien:
+                marcados, juzgados = casos_marcados_por_el_juez(dictamen)
+                esperados = set(variante.esperado.casos_juez)
+                juez["juzgados"] += juzgados
+                juez["aciertos"] += len(marcados & esperados)
+                juez["rechazos_falsos"] += len(marcados - esperados)
+                juez["omisiones"] += len(esperados - marcados)
+                errores_juez = (marcados - esperados) | (esperados - marcados)
+                if not bien or errores_juez:
                     for veredicto in dictamen.veredictos:
-                        if not veredicto.cumple:
+                        if not veredicto.cumple or veredicto.id_caso in errores_juez:
                             print(f"        {veredicto.id_caso}: {veredicto.evidencia[:300]}")
             totales.update(matriz)
             print(f"Corrida {corrida}: {dict(matriz)}")
@@ -188,6 +207,10 @@ def main() -> None:
             f"Exactitud {exactitud:.3f} · precisión {precision:.3f} · recall {recall:.3f} · "
             f"F1 {f1:.3f}"
         )
+    print(
+        f"Juez por caso: {juez['juzgados']} casos juzgados · {juez['aciertos']} defectos "
+        f"marcados · {juez['rechazos_falsos']} rechazos falsos · {juez['omisiones']} omisiones"
+    )
     if llamadas:
         latencias = [llamada.latencia_ms / 1000 for llamada in llamadas]
         errores = sum(1 for llamada in llamadas if llamada.error)

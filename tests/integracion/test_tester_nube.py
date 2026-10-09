@@ -6,8 +6,10 @@ Sobre cada variante del corpus (`evaluacion/defectos/`), el tester completo dict
 - N13 con BGE-M3;
 - N14 con el juez de MODELO_N14_VEREDICTO.
 
-Cada defecto debe salir rechazado y con su regla, y cada control aprobado sin hallazgos. También
-recorre el ciclo N10–N15 del grafo con el tester real.
+Cada defecto debe salir rechazado y con su regla, y cada control aprobado sin hallazgos. El juez
+debe marcar exactamente los casos cuyas pruebas no verifican su escenario, sin rechazos falsos
+ocultos tras un hallazgo determinístico. También recorre el ciclo N10–N15 del grafo con el tester
+real.
 
 Cuesta dinero y requiere el archivo .env, los servicios `db` y `embeddings` y la imagen del
 entorno aislado:
@@ -99,6 +101,11 @@ def test_el_tester_detecta_cada_defecto_y_aprueba_los_controles(tester, corpus, 
     dictamen = tester.dictaminar(plan, validacion, contexto, version)
     reglas = {h.regla for h in dictamen.hallazgos}
     print(f"{variante.id}: {dictamen.veredicto.value} · {sorted(reglas)}")
+
+    # El juez marca exactamente los casos cuyas pruebas no verifican su escenario: ningún otro.
+    juzgados = [v for v in dictamen.veredictos if " pasan. " in v.evidencia]
+    marcados = {v.id_caso for v in juzgados if not v.cumple}
+    assert marcados == set(variante.esperado.casos_juez), dictamen.reporte
 
     # N13 solo recupera de criterios_calidad (RF-29).
     assert set(contexto.fragmentos) == {"criterios_calidad"}

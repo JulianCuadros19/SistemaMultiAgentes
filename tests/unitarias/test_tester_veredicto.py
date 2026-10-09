@@ -238,7 +238,10 @@ def test_el_juez_recibe_solo_los_casos_cuyas_pruebas_pasaron(cliente_falso, comp
     respuesta = juicios(("CP-RF-01-ESC-01", True, ""))
     cliente = cliente_falso(completar_respuesta(respuesta, modelo=MODELO))
     dictamen = dictaminar(pruebas=sin_esc_02, juez=juez(cliente))
-    enviados = json.loads(cliente.llamadas[0]["messages"][-1]["content"])["casos"]
+    datos = json.loads(cliente.llamadas[0]["messages"][-1]["content"])
+    enviados = datos["casos"]
+    # El juez ve completos los archivos de prueba: ahí están los fixtures del «dado que».
+    assert datos["archivos_prueba"] == [{"ruta": "tests/test_avaluo.py", "contenido": sin_esc_02}]
     assert [c["id_caso"] for c in enviados] == ["CP-RF-01-ESC-01"]
     assert enviados[0]["pruebas"][0]["codigo"].startswith("def test_rf_01_esc_01_calcula")
     assert enviados[0]["entonces"] == "el avalúo es 6"
