@@ -1,7 +1,7 @@
 """Configuración del sistema leída de variables de entorno o del archivo .env."""
 
 from psycopg.conninfo import make_conninfo
-from pydantic import PositiveInt, SecretStr
+from pydantic import Field, PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -92,3 +92,33 @@ class ConfiguracionOrquestador(BaseSettings):
 
     max_iteraciones_correccion: PositiveInt = 3
     max_turnos_elicitacion: PositiveInt = 15
+
+
+class ConfiguracionEmbeddings(BaseSettings):
+    """Servicio local de embeddings (EMBEDDINGS_URL, EMBEDDINGS_MODELO, EMBEDDINGS_DIMENSION)."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="EMBEDDINGS_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    url: str = "http://localhost:8081"
+    modelo: str = "BAAI/bge-m3"
+    dimension: PositiveInt = 1024
+
+
+class ConfiguracionRecuperacion(BaseSettings):
+    """Parámetros de la recuperación híbrida, tomados de las variables RAG_*."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="RAG_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    fragmentos: PositiveInt = 5
+    candidatos: PositiveInt = 20
+    umbral_similitud: float = Field(default=0.37, ge=0, le=1)
