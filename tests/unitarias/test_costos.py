@@ -112,6 +112,7 @@ def test_archivo_de_tarifas_versionado():
         ("gpt-5.4-mini-2026-03-17", "4.50"),
         ("gpt-5-2025-08-07", "10.00"),
         ("gpt-6.1-sol-2026-09-29", "10.00"),
+        ("gpt-6-luna-2026-09-22", "0.50"),
     ],
 )
 def test_cada_modelo_resuelve_su_tarifa(modelo, salida):

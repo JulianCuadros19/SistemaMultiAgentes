@@ -3,7 +3,7 @@
 from typing import Literal
 
 from psycopg.conninfo import make_conninfo
-from pydantic import Field, PositiveInt, SecretStr
+from pydantic import Field, NonNegativeInt, PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EsfuerzoRazonamiento = Literal["minimal", "low", "medium", "high"]
@@ -120,6 +120,8 @@ class ConfiguracionRazonamiento(BaseSettings):
     max_tokens_n10_generacion: PositiveInt = 32000
     tiempo_espera_n10_generacion: PositiveInt = 600
     """Segundos de espera de la llamada de N10, que produce el módulo completo con sus pruebas."""
+    esfuerzo_n14_veredicto: EsfuerzoRazonamiento = "low"
+    max_tokens_n14_veredicto: PositiveInt = 6000
 
 
 class ConfiguracionOrquestador(BaseSettings):
@@ -140,6 +142,23 @@ class ConfiguracionOrquestador(BaseSettings):
     max_turnos_elicitacion: PositiveInt = 15
     max_correcciones_calidad: PositiveInt = 2
     max_correcciones_diseno: PositiveInt = 2
+
+
+class ConfiguracionTester(BaseSettings):
+    """Regla de veredicto y ejecución del tester (UMBRAL_HALLAZGOS_MEDIA, TIEMPO_LIMITE_PRUEBAS_S).
+
+    Con el umbral en 0, cualquier hallazgo de severidad media rechaza el módulo (cal-sv), por
+    decisión del equipo (ADR-0012).
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    umbral_hallazgos_media: NonNegativeInt = 0
+    tiempo_limite_pruebas_s: PositiveInt = 120
 
 
 class ConfiguracionSandbox(BaseSettings):

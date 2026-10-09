@@ -39,3 +39,11 @@ entrada = "2.00"
 entrada_cacheada = "0.10"
 escritura_cache = "2.50"
 salida = "10.00"
+
+# Consultada el 2026-10-09, vigente desde el 2026-09-01. Perfil económico de la generación GPT-6,
+# versión 2026-09-22; candidato para el juez de N14 (ADR-0012). Contexto corto.
+["gpt-6-luna"]
+entrada = "0.10"
+entrada_cacheada = "0.01"
+escritura_cache = "0.125"
+salida = "0.50"
