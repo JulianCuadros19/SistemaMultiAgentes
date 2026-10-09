@@ -288,8 +288,33 @@ Mantener esta sección actualizada al cerrar cada paso.
   Pendiente:
   - las pruebas propias de la persona en N17 (RF-38) se conectan en el paso 12;
   - el paso 11 medirá cuántas iteraciones gasta el umbral 0 con módulos reales.
-- **Paso actual: 11.** Integración de extremo a extremo: un módulo completo sale aprobado por el
-  tester.
+- **Paso 11: cerrado el 2026-10-09.** Integración de extremo a extremo (ADR-0013):
+  - `agentes/servicios.py` arma los cuatro agentes reales; el desarrollador, sin recuperador;
+  - `interfaces/consola.py` presenta N6, N9 y N17, y `ejecucion.validaciones` recupera la
+    validación de cada versión desde los puntos de control;
+  - `python scripts/producir_modulo.py` permite a una persona operar el flujo completo por consola
+    (cliente y revisores), pausar y reanudar; con `--simulado CASO` responde un cliente simulado;
+  - casos sintéticos de elicitación de avalúo y de liquidación por lotes;
+  - la integración destapó un defecto de la fidelidad de N3: «4 dígitos» no se respaldaba con
+    «cuatro dígitos». Corregido.
+
+  Verificado:
+  - 448 pruebas unitarias, 27 de integración, 19 de embeddings y 25 del entorno aislado;
+  - `pytest -m "nube and embeddings and sandbox" tests/integracion/test_extremo_a_extremo_nube.py`:
+    9 de 9 corridas, sobre tres casos y cuatro arquitecturas, salen aprobadas por el tester y
+    validadas en N17, en 2,7 a 14,3 min por módulo;
+  - una persona operó el flujo con una necesidad propia, rechazó en N6 y en N17 y llegó a un
+    módulo validado;
+  - umbral 0: de 14 módulos, 11 aprobados en la v1 y 3 en la v2, todos por hallazgos Alta;
+    ninguno escaló.
+
+  Pendiente:
+  - N10 falla la verificación al primer intento en 5 de 9 corridas (excepciones declaradas sin
+    importar y sangría rota). El reintento lo corrige, pero duplica su costo;
+  - el paso 12 debe mostrar cuántas iteraciones quedan antes de decidir en N17, porque un rechazo
+    allí consume el ciclo de corrección.
+- **Paso actual: 12.** Interfaces de consola y web: un analista opera el flujo completo sin tocar
+  código.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
@@ -309,5 +334,6 @@ Mantener esta sección actualizada al cerrar cada paso.
   555 (448 de razonamiento) y 4,6 s; medium 1.340 (1.216 de razonamiento) y 8,9 s. Si el
   límite es menor que el razonamiento, la respuesta llega vacía con motivo `length` y se
   cobra igual.
-- **Modelo de costos: pendiente de recálculo.** Ya hay datos por llamada del paso 3; falta
-  estimar la unidad de trabajo por módulo cuando existan los nodos reales.
+- **Modelo de costos: unidad de trabajo medida en el paso 11** (ADR-0013). Un módulo cuesta de
+  0,16 a 0,37 USD, con media de 0,27, sin el cliente simulado. N10 aporta el 51 %, N8 el 31 %, N3
+  el 14 %, N5 el 4 % y N14 el 0,4 %. Falta el presupuesto que detiene la ejecución (paso 13).

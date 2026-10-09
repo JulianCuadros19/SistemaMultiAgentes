@@ -9,6 +9,8 @@ modifica: ADR-0006 (puntos 1, 4 y 5)
 
 > El ADR-0009 cambia el modelo de N3 y N5 a `gpt-5.4-mini`. Las mediciones de este ADR son con
 > `gpt-5-nano`.
+> El ADR-0013 (paso 11) hace que la fidelidad equipare los números en letras con sus cifras:
+> «cuatro dígitos» respalda «4 dígitos».
 
 ## Contexto y planteamiento del problema
 
