@@ -184,8 +184,33 @@ Mantener esta sección actualizada al cerrar cada paso.
     (`pytest -m embeddings`).
   - **Pendiente para los pasos 7, 8 y 10:** construir las consultas con los artefactos
     completos, que N7 recupere todo el catálogo de seis arquitecturas y recalibrar el umbral.
-- **Paso actual: 7.** Agente elicitador: una conversación produce un requerimiento que pasa la
-  verificación de calidad.
+- **Paso 7: cerrado el 2026-10-09.** Agente elicitador real en `agentes/elicitador/` (ADR-0008):
+  - la sesión se abre con la necesidad del cliente; N2 recupera la guía de elicitación y el
+    dominio de esa necesidad;
+  - N3 hace dos llamadas: extracción sin contexto de dominio y pregunta con el contexto. El
+    resumen que confirma el cliente lo arma el código;
+  - N5 sintetiza con el formato del Anexo A y referencias `F1…Fn` al contexto. La fidelidad se
+    verifica en código: solo entra lo que respalda lo dicho por el cliente;
+  - N6 verifica el RF-07 sin modelo, corrige hasta dos veces y escala al analista. Los defectos
+    que requieren al cliente escalan sin corregir;
+  - prompts versionados en `prompts/elicitador/` e invocación estructurada con un reintento y
+    traza de costo en `multiagente.llm`.
+
+  Verificado:
+  - 224 pruebas unitarias, 27 de integración y 17 de embeddings;
+  - `pytest -m nube tests/integracion/test_elicitador_nube.py`, con un cliente simulado sobre
+    `evaluacion/casos/elicitacion-mutacion.md`, llega a N6 sin defectos (6 de 7 corridas);
+  - `python scripts/conversar_elicitador.py` permite conversar o simular, y reproduce pausa,
+    reanudación, rechazo y aprobación;
+  - con `gpt-5-nano`, cada turno de diálogo dura de 3 a 9 s; el turno de cierre, con la
+    síntesis, hasta 15,3 s. Costo del sistema: 0,002 a 0,005 USD por elicitación.
+
+  Pendiente:
+  - el benchmark del paso 15 debe comparar `gpt-5-mini`, que es el perfil «intermedio» que la
+    arquitectura asigna a N3 y N5;
+  - la interfaz del paso 12 debe acusar la confirmación antes de sintetizar.
+- **Paso actual: 8.** Agente arquitecto: la especificación generada pasa las tres validaciones
+  del Anexo B.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, despliegue

@@ -6,6 +6,10 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 # ADR-0006 · Grafo de 17 nodos: estado tipado, servicios inyectables y puntos de control
 
+> El ADR-0008 (paso 7) modifica los puntos 1, 4 y 5: la sesión se abre con la necesidad del
+> cliente, N3 solo espera si hay una pregunta pendiente, N4 usa la suficiencia de eli-006 y N6
+> limita las correcciones automáticas antes de escalar al analista.
+
 ## Contexto y planteamiento del problema
 
 El paso 5 exige que una sesión recorra los 17 nodos, cierre los ciclos conversacional y de
