@@ -1,0 +1,133 @@
+"""Documentos legibles de los artefactos (RF-33) y paquete de exportación del módulo (RF-35)."""
+
+import json
+import re
+from pathlib import Path
+
+import pytest
+from langgraph.checkpoint.memory import InMemorySaver
+
+from multiagente.core.configuracion import ConfiguracionOrquestador
+from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
+from multiagente.core.esquemas.requerimiento import (
+    BacklogHistorias,
+    HistoriaUsuario,
+    RequerimientoFormal,
+)
+from multiagente.interfaces.documentos import (
+    ErrorExportacion,
+    especificacion_md,
+    paquete_del_modulo,
+    requerimientos_md,
+    trazabilidad_md,
+)
+from multiagente.orquestador.ejecucion import (
+    avanzar,
+    configuracion_hilo,
+    iniciar_sesion,
+    validaciones,
+)
+from multiagente.orquestador.grafo import construir_grafo
+from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
+from multiagente.persistencia.puntos_control import serializador
+
+RAIZ = Path(__file__).resolve().parents[2]
+ANEXOS = RAIZ / "tests" / "datos" / "anexos"
+
+
+def rf27() -> RequerimientoFormal:
+    datos = json.loads((ANEXOS / "anexo_a_rf27.json").read_text(encoding="utf-8"))
+    datos.pop("_fuente")
+    return RequerimientoFormal.model_validate(datos)
+
+
+def backlog() -> list[HistoriaUsuario]:
+    datos = json.loads((ANEXOS / "anexo_a_backlog.json").read_text(encoding="utf-8"))
+    datos.pop("_fuente", None)
+    return BacklogHistorias.model_validate(datos).historias
+
+
+def especificacion_de_referencia() -> EspecificacionDiseno:
+    plantilla = (
+        RAIZ / "knowledge_base/arquitecturas_referencia/02-especificacion-de-diseno.md"
+    ).read_text(encoding="utf-8")
+    datos = json.loads(re.search(r"```json\n(.*?)\n```", plantilla, re.S).group(1))
+    return EspecificacionDiseno.model_validate(datos)
+
+
+def test_requerimientos_en_el_formato_del_anexo_a():
+    historias = backlog()
+    documento = requerimientos_md(historias, [rf27()], {"RF-27": ["eli-003 v1.1 · Plantilla"]})
+
+    assert documento.startswith("# Requerimientos\n")
+    assert f"| {historias[0].id} | Profesor |" in documento
+    assert "## RF-27 · versión 1.0" in documento
+    assert "| Título | Como analista del equipo técnico, quiero que el ciclo" in documento
+    assert "| ESC-03 · Escalamiento por límite de iteraciones | DADO QUE" in documento
+    assert "| Requerimiento relacionado | RF-19, RF-21, RF-24, RF-26 |" in documento
+    assert "- eli-003 v1.1 · Plantilla" in documento
+
+
+def test_especificacion_en_el_formato_del_anexo_b():
+    especificacion = especificacion_de_referencia()
+    documento = especificacion_md(especificacion)
+
+    assert documento.startswith(f"# Especificación de diseño {especificacion.id_especificacion}")
+    for modulo in especificacion.modulos:
+        assert f"### {modulo.nombre}" in documento
+        assert f"`{modulo.ruta}`" in documento
+    assert "## Modelo de datos" in documento
+    assert "## Reglas de dependencia" in documento
+
+
+def sesion_validada():
+    """Sesión simulada completa: rechazos en los tres puntos de control y módulo validado."""
+    app = construir_grafo(
+        ServiciosSimulados(fallos_veredicto=1).como_servicios(),
+        ConfiguracionOrquestador(_env_file=None),
+    ).compile(checkpointer=InMemorySaver(serde=serializador()))
+    guion = guion_completo()
+    id_sesion, avance = iniciar_sesion(app, "Oficina", guion.proyecto, guion.necesidad)
+    while avance.pausa is not None:
+        avance = avanzar(app, id_sesion, guion.responder(avance.pausa.punto))
+    return app.get_state(configuracion_hilo(id_sesion)).values, validaciones(app, id_sesion)
+
+
+def test_trazabilidad_de_la_sesion():
+    estado, historial = sesion_validada()
+    documento = trazabilidad_md(estado, historial)
+
+    assert f"# Trazabilidad de la sesión {estado['sesion'].id_sesion}" in documento
+    assert "fase: validado" in documento
+    assert documento.count("| rechazado |") == 3
+    assert documento.count("| aprobado |") == 3
+    assert "- Versión 1 · 1 archivos · rechazado" in documento
+    assert "  - Atiende: El radicado debe incluir el año" in documento
+
+
+def test_paquete_del_modulo_validado():
+    estado, historial = sesion_validada()
+    paquete = paquete_del_modulo(estado, historial)
+
+    version = estado["codigo"].vigente
+    assert {ruta.removeprefix("codigo/") for ruta in paquete if ruta.startswith("codigo/")} == set(
+        version.archivos
+    )
+    # Los artefactos estructurados se exportan validados contra su esquema.
+    requerimientos = json.loads(paquete["requerimientos.json"])
+    assert [
+        RequerimientoFormal.model_validate(r) for r in requerimientos["requerimientos"]
+    ] == list(estado["requerimientos"].requerimientos)
+    especificacion = EspecificacionDiseno.model_validate_json(paquete["especificacion.json"])
+    assert especificacion == estado["arquitectura"].especificacion
+    for nombre in ("LEEME.md", "requerimientos.md", "especificacion.md", "trazabilidad.md"):
+        assert paquete[nombre].endswith("\n")
+    assert paquete["decision_arquitectura.md"].startswith(estado["arquitectura"].registro_decision)
+    assert paquete["validacion.md"].startswith("# Reporte simulado de la versión 3")
+
+
+def test_solo_se_exporta_un_modulo_validado():
+    estado, historial = sesion_validada()
+    sesion = estado["sesion"].model_copy(update={"fase": "aprobacion_final"})
+    with pytest.raises(ErrorExportacion, match="validado"):
+        paquete_del_modulo({**estado, "sesion": sesion}, historial)
