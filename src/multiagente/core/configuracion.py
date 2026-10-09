@@ -1,8 +1,13 @@
 """Configuración del sistema leída de variables de entorno o del archivo .env."""
 
+from typing import Literal
+
 from psycopg.conninfo import make_conninfo
 from pydantic import Field, PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+EsfuerzoRazonamiento = Literal["minimal", "low", "medium", "high"]
+"""Esfuerzo de razonamiento que admiten los modelos GPT-5."""
 
 
 class ConfiguracionBaseDatos(BaseSettings):
@@ -79,6 +84,26 @@ class ConfiguracionModelos(BaseSettings):
     n8_arquitectura: str
     n10_generacion: str
     n14_veredicto: str
+
+
+class ConfiguracionRazonamiento(BaseSettings):
+    """Esfuerzo de razonamiento y límite de salida por nodo (ESFUERZO_*, MAX_TOKENS_*).
+
+    El límite incluye los tokens de razonamiento ocultos: si se agota antes de producir texto, la
+    respuesta llega vacía y se cobra igual (ADR-0003). Los valores por defecto se fijaron con las
+    mediciones del paso 7 (ADR-0008).
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    esfuerzo_n3_dialogo: EsfuerzoRazonamiento = "low"
+    max_tokens_n3_dialogo: PositiveInt = 4000
+    esfuerzo_n5_sintesis: EsfuerzoRazonamiento = "medium"
+    max_tokens_n5_sintesis: PositiveInt = 16000
 
 
 class ConfiguracionOrquestador(BaseSettings):

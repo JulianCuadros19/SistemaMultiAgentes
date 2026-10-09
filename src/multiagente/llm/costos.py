@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, NonNegativeInt, model_validator
 
 MILLON = Decimal(1_000_000)
 
+RUTA_TARIFAS = Path(__file__).resolve().parents[3] / "config" / "tarifas_modelos.toml"
+"""Tarifas versionadas del repositorio (`config/tarifas_modelos.toml`)."""
+
 
 class ConsumoTokens(BaseModel):
     """Tokens de una llamada, con el razonamiento registrado aparte.
@@ -51,7 +54,7 @@ class ErrorTarifaNoEncontrada(LookupError):
     """No hay tarifa registrada para el modelo que respondió la llamada."""
 
 
-def cargar_tarifas(ruta: Path) -> dict[str, Tarifa]:
+def cargar_tarifas(ruta: Path = RUTA_TARIFAS) -> dict[str, Tarifa]:
     """Lee las tarifas desde un archivo TOML versionado.
 
     Los precios se leen como texto para convertirlos a Decimal sin pérdida.

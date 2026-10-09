@@ -6,9 +6,9 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
-import yaml
 from pydantic import ConfigDict, Field, ValidationError, model_validator
 
+from multiagente.core.cabecera import ErrorCabecera, separar_cabecera
 from multiagente.core.esquemas.comunes import ModeloEstricto, TextoObligatorio, Version
 from multiagente.rag.colecciones import ACCESO, Agente, Coleccion
 
@@ -68,9 +68,6 @@ class ErrorDocumento(ValueError):
 def leer_documento(archivo: Path, raiz: Path = RAIZ_CONOCIMIENTO) -> DocumentoConocimiento:
     """Lee un documento Markdown con cabecera YAML y valida sus metadatos.
 
-    La cabecera se lee con `BaseLoader`, que entrega todos los valores como texto: así una
-    versión `1.10` no se convierte en el número 1.1.
-
     Args:
         archivo: Ruta del documento.
         raiz: Carpeta raíz del corpus; la primera carpeta bajo ella es la colección.
@@ -84,12 +81,12 @@ def leer_documento(archivo: Path, raiz: Path = RAIZ_CONOCIMIENTO) -> DocumentoCo
     """
     ruta = archivo.relative_to(raiz).as_posix()
     texto = archivo.read_text(encoding="utf-8")
-    if not texto.startswith("---\n") or "\n---\n" not in texto[4:]:
-        raise ErrorDocumento(f"{ruta}: falta la cabecera de metadatos")
-    cabecera, cuerpo = texto[4:].split("\n---\n", 1)
     try:
-        metadatos = MetadatosDocumento.model_validate(yaml.load(cabecera, Loader=yaml.BaseLoader))
-    except (yaml.YAMLError, ValidationError) as error:
+        cabecera, cuerpo = separar_cabecera(texto)
+        metadatos = MetadatosDocumento.model_validate(cabecera)
+    except ErrorCabecera as error:
+        raise ErrorDocumento(f"{ruta}: {error}") from error
+    except ValidationError as error:
         raise ErrorDocumento(f"{ruta}: metadatos inválidos: {error}") from error
     carpeta = ruta.split("/", 1)[0]
     if carpeta != metadatos.coleccion:
@@ -99,7 +96,7 @@ def leer_documento(archivo: Path, raiz: Path = RAIZ_CONOCIMIENTO) -> DocumentoCo
     return DocumentoConocimiento(
         metadatos=metadatos,
         ruta=ruta,
-        cuerpo=cuerpo.strip("\n"),
+        cuerpo=cuerpo,
         huella=hashlib.sha256(texto.encode("utf-8")).hexdigest(),
     )
 
