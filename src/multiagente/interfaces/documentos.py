@@ -291,18 +291,44 @@ def _registro_con_preguntas(registro: str, capacidades: Sequence[str]) -> str:
     return texto
 
 
+def requirements_del_modulo(
+    especificacion: EspecificacionDiseno, requisitos: Mapping[str, str]
+) -> str:
+    """`requirements.txt` del módulo: sus dependencias declaradas y pytest, con versión fija.
+
+    Args:
+        especificacion: Especificación aprobada, con las dependencias externas.
+        requisitos: Línea de requisito de cada librería del entorno aislado, por nombre.
+
+    Returns:
+        El contenido del archivo. Una librería sin versión conocida queda sin fijar.
+    """
+    nombres = [d.paquete.lower().replace("_", "-") for d in especificacion.dependencias_externas]
+    lineas = [requisitos.get(nombre, nombre) for nombre in dict.fromkeys([*nombres, "pytest"])]
+    encabezado = (
+        "# Dependencias del módulo, con las versiones con que el tester lo probó en el entorno\n"
+        "# aislado. Se instalan con: pip install -r requirements.txt\n"
+    )
+    return encabezado + "\n".join(lineas) + "\n"
+
+
 def paquete_del_modulo(
-    estado: EstadoGrafo, historial: Sequence[tuple[VersionCodigo, Validacion]]
+    estado: EstadoGrafo,
+    historial: Sequence[tuple[VersionCodigo, Validacion]],
+    requisitos: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     """Entregables de un módulo validado, por ruta relativa (RF-35).
 
     Args:
         estado: Estado de una sesión en fase `validado`.
         historial: Cada versión del módulo con su validación.
+        requisitos: Versiones del entorno aislado (`sandbox.requisitos_del_entorno`), para el
+            `requirements.txt`; sin ellas, las dependencias quedan sin versión fija.
 
     Returns:
         Contenido de cada archivo del paquete: requerimientos y especificación en JSON y en
-        Markdown, registro de decisión, código con su documentación, reporte y trazabilidad.
+        Markdown, registro de decisión, código con su documentación y su `requirements.txt`,
+        reporte y trazabilidad, y un `LEEME.md` que dice cómo ponerlo en marcha.
 
     Raises:
         ErrorExportacion: Si la sesión no terminó con un módulo validado.
@@ -319,6 +345,7 @@ def paquete_del_modulo(
         return json.dumps(datos, ensure_ascii=False, indent=2) + "\n"
 
     archivos = {f"codigo/{ruta}": contenido for ruta, contenido in version.archivos.items()}
+    archivos["codigo/requirements.txt"] = requirements_del_modulo(especificacion, requisitos or {})
     leeme = "\n".join(
         [
             f"# {sesion.proyecto} · módulo validado",
@@ -329,11 +356,19 @@ def paquete_del_modulo(
             "- `requerimientos.md` y `requerimientos.json`: historias y requerimientos (Anexo A).",
             "- `decision_arquitectura.md`: registro de la decisión arquitectónica.",
             "- `especificacion.md` y `especificacion.json`: especificación de diseño (Anexo B).",
-            "- `codigo/`: módulos, pruebas y `USO.md`.",
+            "- `codigo/`: módulos, pruebas, `USO.md` y `requirements.txt`.",
             "- `validacion.md`: reporte de validación del tester.",
             "- `trazabilidad.md`: conversación, decisiones humanas y versiones.",
             "",
-            "Las pruebas se ejecutan desde `codigo/` con `PYTHONPATH=src python -m pytest tests`.",
+            "## Cómo ponerlo en marcha",
+            "",
+            "Desde la carpeta `codigo/`, con Python 3.11 o superior:",
+            "",
+            "1. Cree y active un entorno: `python3 -m venv .venv && source .venv/bin/activate`.",
+            "2. Instale las dependencias: `pip install -r requirements.txt`.",
+            "3. Prepare la configuración y ejecútelo como indican las secciones «Configuración» y",
+            "   «Ejecución» de `USO.md`.",
+            "4. Compruebe que funciona con sus pruebas: `PYTHONPATH=src python -m pytest tests`.",
         ]
     )
     return {

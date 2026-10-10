@@ -8,7 +8,10 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
-from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
+from multiagente.core.esquemas.especificacion_diseno import (
+    DependenciaExterna,
+    EspecificacionDiseno,
+)
 from multiagente.core.esquemas.requerimiento import (
     BacklogHistorias,
     HistoriaUsuario,
@@ -19,6 +22,7 @@ from multiagente.interfaces.documentos import (
     especificacion_md,
     paquete_del_modulo,
     requerimientos_md,
+    requirements_del_modulo,
     trazabilidad_md,
 )
 from multiagente.orquestador.ejecucion import (
@@ -30,6 +34,7 @@ from multiagente.orquestador.ejecucion import (
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
+from multiagente.sandbox.requisitos import requisitos_del_entorno
 
 RAIZ = Path(__file__).resolve().parents[2]
 ANEXOS = RAIZ / "tests" / "datos" / "anexos"
@@ -107,12 +112,16 @@ def test_trazabilidad_de_la_sesion():
 
 def test_paquete_del_modulo_validado():
     estado, historial = sesion_validada()
-    paquete = paquete_del_modulo(estado, historial)
+    paquete = paquete_del_modulo(estado, historial, requisitos_del_entorno())
 
     version = estado["codigo"].vigente
-    assert {ruta.removeprefix("codigo/") for ruta in paquete if ruta.startswith("codigo/")} == set(
-        version.archivos
-    )
+    assert {ruta.removeprefix("codigo/") for ruta in paquete if ruta.startswith("codigo/")} == {
+        *version.archivos,
+        "requirements.txt",
+    }
+    assert paquete["codigo/requirements.txt"].splitlines()[-1].startswith("pytest==")
+    assert "## Cómo ponerlo en marcha" in paquete["LEEME.md"]
+    assert "pip install -r requirements.txt" in paquete["LEEME.md"]
     # Los artefactos estructurados se exportan validados contra su esquema.
     requerimientos = json.loads(paquete["requerimientos.json"])
     assert [
@@ -124,6 +133,25 @@ def test_paquete_del_modulo_validado():
         assert paquete[nombre].endswith("\n")
     assert paquete["decision_arquitectura.md"].startswith(estado["arquitectura"].registro_decision)
     assert paquete["validacion.md"].startswith("# Reporte simulado de la versión 3")
+
+
+def test_requirements_fija_las_versiones_del_entorno_aislado():
+    especificacion = especificacion_de_referencia().model_copy(
+        update={
+            "dependencias_externas": [
+                DependenciaExterna(paquete="psycopg", proposito="acceso a la base"),
+                DependenciaExterna(paquete="openpyxl", proposito="reporte en Excel"),
+                DependenciaExterna(paquete="desconocida", proposito="prueba"),
+            ]
+        }
+    )
+    lineas = requirements_del_modulo(especificacion, requisitos_del_entorno()).splitlines()
+    sin_comentarios = [linea for linea in lineas if not linea.startswith("#")]
+    assert sin_comentarios[0].startswith("psycopg[binary]==")
+    assert sin_comentarios[1] == "openpyxl==3.1.5"
+    # Una librería sin versión conocida queda sin fijar; pytest siempre va, para las pruebas.
+    assert sin_comentarios[2] == "desconocida"
+    assert sin_comentarios[3].startswith("pytest==")
 
 
 def test_solo_se_exporta_un_modulo_validado():
