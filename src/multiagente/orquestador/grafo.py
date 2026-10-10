@@ -16,6 +16,8 @@ from langgraph.types import interrupt
 from pydantic import ValidationError
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
+from multiagente.llm.cliente import ErrorRespuestaModelo
+from multiagente.llm.invocador import ErrorValidacionSalida
 from multiagente.orquestador.estado import (
     AprobacionHumana,
     Arquitectura,
@@ -35,8 +37,9 @@ from multiagente.orquestador.estado import (
     Sesion,
     Turno,
     Validacion,
+    Veredicto,
 )
-from multiagente.orquestador.servicios import Servicios
+from multiagente.orquestador.servicios import Servicios, VerificacionCalidad
 
 _log = logging.getLogger(__name__)
 
@@ -44,6 +47,20 @@ PREGUNTA_REINTENTO = (
     "No pude procesar su respuesta en este momento. ¿Puede repetirla o decirla de otra forma?"
 )
 """Pregunta de N3 cuando falla el procesamiento de una respuesta del cliente."""
+
+
+FALLAS_DEL_MODELO = (ErrorRespuestaModelo, ErrorValidacionSalida)
+"""Fallas en que el modelo respondió sin una salida utilizable, tras el reintento del nodo.
+
+Son las de un contenido filtrado, rechazado, truncado o inválido: reanudar puede repetirlas, así
+que N5, N8 y N10 las convierten en una decisión del flujo. Las de transporte (red, tiempo de
+espera) se propagan: la sesión queda detenida y reanudarla las resuelve.
+"""
+
+
+def _problemas(error: Exception) -> tuple[str, ...]:
+    """Problemas de una falla del modelo, para mostrarlos o entregarlos como retroalimentación."""
+    return tuple(getattr(error, "problemas", None) or (str(error),))
 
 
 class Nodo(StrEnum):
@@ -187,6 +204,18 @@ def ruta_tras_especificacion(estado: EstadoGrafo) -> Nodo:
     return Nodo.N10
 
 
+def ruta_tras_generacion(estado: EstadoGrafo) -> Nodo:
+    """Enruta después de N10.
+
+    Args:
+        estado: Estado tras N10.
+
+    Returns:
+        N15 si la generación falló, para contar la iteración sin ejecutar nada; si no, N11.
+    """
+    return Nodo.N15 if estado["codigo"].fallo_generacion else Nodo.N11
+
+
 def ruta_tras_decision(estado: EstadoGrafo) -> str:
     """Enruta después de N15 (RF-27).
 
@@ -321,11 +350,27 @@ class NodosGrafo:
         return {}
 
     def n5_sintesis(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Sintetiza historias y requerimientos formales, corrigiendo los defectos previos."""
+        """Sintetiza historias y requerimientos formales, corrigiendo los defectos previos.
+
+        Si el modelo no da una síntesis válida, conserva los requerimientos previos y deja el
+        motivo en `fallo_sintesis`, que N6 trata como un defecto.
+        """
         previos = estado["requerimientos"]
-        sintesis = self.servicios.elicitador.sintetizar(
-            estado["conversacion"], estado["contexto"], previos, estado["sesion"].proyecto
-        )
+        try:
+            sintesis = self.servicios.elicitador.sintetizar(
+                estado["conversacion"], estado["contexto"], previos, estado["sesion"].proyecto
+            )
+        except FALLAS_DEL_MODELO as error:
+            # Sin síntesis válida, N6 lo trata como un defecto: la corrige o escala a la persona.
+            _log.warning("N5 no obtuvo una síntesis válida: %s", error)
+            return {
+                "requerimientos": previos.model_copy(
+                    update={
+                        "fallo_sintesis": "; ".join(_problemas(error)),
+                        "sintesis": previos.sintesis + 1,
+                    }
+                )
+            }
         return {
             "requerimientos": Requerimientos(
                 historias=sintesis.historias,
@@ -345,8 +390,13 @@ class NodosGrafo:
         flujo al diálogo con las observaciones y exige confirmar un nuevo resumen.
         """
         requerimientos = estado["requerimientos"]
-        verificacion = self.servicios.elicitador.verificar_calidad(requerimientos)
+        if requerimientos.requerimientos:
+            verificacion = self.servicios.elicitador.verificar_calidad(requerimientos)
+        else:
+            verificacion = VerificacionCalidad(defectos=("No hay requerimientos sintetizados.",))
         defectos = verificacion.defectos
+        if requerimientos.fallo_sintesis:
+            defectos = (f"La síntesis falló: {requerimientos.fallo_sintesis}", *defectos)
         corregible = not verificacion.requiere_cliente
         if (
             defectos
@@ -371,6 +421,12 @@ class NodosGrafo:
                 },
                 "defectos": list(defectos),
             },
+            bloqueo=(
+                None
+                if requerimientos.requerimientos
+                else "No hay requerimientos que aprobar: recházalos con observaciones para volver "
+                "al diálogo, o cierra la sesión."
+            ),
         )
         sesion = estado["sesion"]
         aprobado = aprobacion.decision is Decision.APROBADO
@@ -402,11 +458,28 @@ class NodosGrafo:
         return {"contexto": estado["contexto"].combinar(recuperado)}
 
     def n8_diseno(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Selecciona y parametriza la arquitectura: registro de decisión y especificación."""
+        """Selecciona y parametriza la arquitectura: registro de decisión y especificación.
+
+        Si el modelo no da un diseño válido, conserva el previo y deja el motivo en
+        `fallo_diseno`, que N9 trata como un error de validación.
+        """
         previa = estado["arquitectura"]
-        diseno = self.servicios.arquitecto.disenar(
-            estado["requerimientos"], estado["contexto"], previa
-        )
+        try:
+            diseno = self.servicios.arquitecto.disenar(
+                estado["requerimientos"], estado["contexto"], previa
+            )
+        except FALLAS_DEL_MODELO as error:
+            # Sin diseño válido, N9 lo trata como un error: lo corrige o escala a la persona. La
+            # observación pendiente sigue sin atender, para que el próximo diseño la considere.
+            _log.warning("N8 no obtuvo un diseño válido: %s", error)
+            return {
+                "arquitectura": previa.model_copy(
+                    update={
+                        "fallo_diseno": "; ".join(_problemas(error)),
+                        "disenos": previa.disenos + 1,
+                    }
+                )
+            }
         return {
             "arquitectura": previa.model_copy(
                 update={
@@ -415,6 +488,7 @@ class NodosGrafo:
                     "errores_validacion": (),
                     "disenos": previa.disenos + 1,
                     "observaciones_atendidas": len(previa.observaciones_revisor),
+                    "fallo_diseno": None,
                 }
             )
         }
@@ -428,9 +502,17 @@ class NodosGrafo:
         generación de código.
         """
         arquitectura = estado["arquitectura"]
-        errores = tuple(
-            self.servicios.arquitecto.validar(arquitectura.especificacion, estado["requerimientos"])
-        )
+        errores: tuple[str, ...] = ()
+        if arquitectura.fallo_diseno:
+            errores = (f"El diseño falló: {arquitectura.fallo_diseno}",)
+        if arquitectura.especificacion is None:
+            errores = errores or ("No hay especificación de diseño.",)
+        else:
+            errores += tuple(
+                self.servicios.arquitecto.validar(
+                    arquitectura.especificacion, estado["requerimientos"]
+                )
+            )
         limite = estado["control"].limite_correcciones_diseno
         if errores and arquitectura.correcciones < limite:
             return {
@@ -445,7 +527,11 @@ class NodosGrafo:
             PuntoControl.ESPECIFICACION,
             {
                 "registro_decision": arquitectura.registro_decision,
-                "especificacion": arquitectura.especificacion.model_dump(mode="json"),
+                "especificacion": (
+                    arquitectura.especificacion.model_dump(mode="json")
+                    if arquitectura.especificacion
+                    else None
+                ),
                 "errores": list(errores),
             },
             bloqueo=(
@@ -472,15 +558,45 @@ class NodosGrafo:
         """Genera una nueva versión del módulo sin recuperación de contexto.
 
         Recibe la versión vigente, si la hay, para corregirla en lugar de reescribirla (RF-19).
+        Si el modelo no da una versión válida, deja el motivo en `fallo_generacion` y una
+        validación rechazada con los problemas: el flujo salta a N15, que cuenta la iteración.
         """
         codigo = estado["codigo"]
-        version = self.servicios.desarrollador.generar(
-            estado["requerimientos"],
-            estado["arquitectura"].especificacion,
-            estado["validacion"],
-            codigo.vigente,
-        )
-        return {"codigo": codigo.model_copy(update={"versiones": (*codigo.versiones, version)})}
+        validacion = estado["validacion"]
+        try:
+            version = self.servicios.desarrollador.generar(
+                estado["requerimientos"],
+                estado["arquitectura"].especificacion,
+                validacion,
+                codigo.vigente,
+            )
+        except FALLAS_DEL_MODELO as error:
+            # Sin versión válida, la iteración cuenta como fallida: N15 la registra y decide.
+            _log.warning("N10 no obtuvo una versión válida: %s", error)
+            problemas = _problemas(error)
+            reporte = "\n".join(
+                [
+                    "# La generación del módulo falló",
+                    "",
+                    "El desarrollador no produjo una versión válida en sus dos intentos:",
+                    "",
+                    *(f"- {problema}" for problema in problemas),
+                ]
+            )
+            return {
+                "codigo": codigo.model_copy(update={"fallo_generacion": "; ".join(problemas)}),
+                "validacion": Validacion(
+                    plan_pruebas=validacion.plan_pruebas,
+                    veredicto=Veredicto.RECHAZADO,
+                    retroalimentacion=tuple(f"[generación] {p}" for p in problemas),
+                    reporte=reporte + "\n",
+                ),
+            }
+        return {
+            "codigo": codigo.model_copy(
+                update={"versiones": (*codigo.versiones, version), "fallo_generacion": None}
+            )
+        }
 
     def n11_ejecucion(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Importa los módulos y ejecuta las pruebas en el entorno aislado."""
@@ -622,7 +738,6 @@ def construir_grafo(
         (Nodo.N5, Nodo.N6),
         (Nodo.N7, Nodo.N8),
         (Nodo.N8, Nodo.N9),
-        (Nodo.N10, Nodo.N11),
         (Nodo.N11, Nodo.N12),
         (Nodo.N12, Nodo.N13),
         (Nodo.N13, Nodo.N14),
@@ -635,6 +750,7 @@ def construir_grafo(
         Nodo.N6, ruta_tras_requerimientos, [Nodo.N3, Nodo.N5, Nodo.N7, Nodo.N16]
     )
     grafo.add_conditional_edges(Nodo.N9, ruta_tras_especificacion, [Nodo.N8, Nodo.N10])
+    grafo.add_conditional_edges(Nodo.N10, ruta_tras_generacion, [Nodo.N11, Nodo.N15])
     grafo.add_conditional_edges(Nodo.N15, ruta_tras_decision, [Nodo.N10, Nodo.N17, END])
     grafo.add_conditional_edges(Nodo.N17, ruta_tras_aprobacion_final, [Nodo.N10, END])
     return grafo

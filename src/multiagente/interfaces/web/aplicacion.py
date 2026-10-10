@@ -163,7 +163,11 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
         if pausa.punto == "especificacion":
             return {
                 "registro_decision": datos["registro_decision"],
-                "especificacion": EspecificacionDiseno.model_validate(datos["especificacion"]),
+                "especificacion": (
+                    EspecificacionDiseno.model_validate(datos["especificacion"])
+                    if datos["especificacion"]
+                    else None
+                ),
                 "errores": datos["errores"],
             }
         if pausa.punto == "final":

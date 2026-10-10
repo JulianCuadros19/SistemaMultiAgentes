@@ -10,7 +10,7 @@ from multiagente.agentes.tester.contexto import CONSULTAS_FIJAS, recuperar_crite
 from multiagente.agentes.tester.reglas import cargar_reglas_calidad
 from multiagente.agentes.tester.veredicto import dictaminar_version, pruebas_fuente
 from multiagente.llm.costos import Tarifa
-from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo, ParametrosNodo
+from multiagente.llm.invocador import InvocadorNodo, ParametrosNodo
 from multiagente.llm.prompts import cargar_prompt
 from multiagente.llm.traza import RegistroEnMemoria
 from multiagente.orquestador.estado import (
@@ -278,14 +278,23 @@ def test_el_juez_reintenta_si_omite_un_caso(cliente_falso, completar_respuesta):
     assert "CP-RF-01-ESC-02" in problemas["problemas_intento_anterior"][0]
 
 
-def test_el_juez_no_puede_dejar_un_incumplido_sin_sugerencia(cliente_falso, completar_respuesta):
+def test_si_el_juez_no_da_un_juicio_valido_los_casos_quedan_sin_juicio(
+    cliente_falso, completar_respuesta
+):
+    # Un incumplido sin sugerencia es inválido; tras el reintento, el juez no bloquea la versión:
+    # los casos cuyas pruebas pasan quedan sin juicio y la persona los revisa en N17.
     sin_sugerencia = juicios(("CP-RF-01-ESC-01", False, ""), ("CP-RF-01-ESC-02", True, ""))
     cliente = cliente_falso(
         completar_respuesta(sin_sugerencia, modelo=MODELO),
         completar_respuesta(sin_sugerencia, modelo=MODELO),
     )
-    with pytest.raises(ErrorValidacionSalida, match="necesita una sugerencia"):
-        dictaminar(juez=juez(cliente))
+    dictamen = dictaminar(juez=juez(cliente))
+    assert dictamen.veredicto is Veredicto.APROBADO
+    assert all(v.cumple for v in dictamen.veredictos)
+    assert all(
+        "sin juicio del modelo: el juez no respondió" in v.evidencia for v in dictamen.veredictos
+    )
+    assert "necesita una sugerencia" in dictamen.veredictos[0].evidencia
 
 
 def test_sin_casos_por_juzgar_no_se_llama_al_modelo(cliente_falso):

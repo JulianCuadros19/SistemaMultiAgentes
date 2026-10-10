@@ -79,9 +79,12 @@ def mostrar_requerimientos(datos: dict[str, Any]) -> None:
 def mostrar_especificacion(datos: dict[str, Any]) -> None:
     """Imprime lo que la persona revisa en N9: el registro de decisión y la especificación."""
     print("\n=== Punto de control N9: especificación de diseño ===\n")
-    print(datos["registro_decision"])
+    print(datos["registro_decision"] or "(Sin registro de decisión.)")
     print()
-    print(especificacion_md(EspecificacionDiseno.model_validate(datos["especificacion"])))
+    if datos["especificacion"] is None:
+        print("(No hay especificación de diseño: el arquitecto no logró producirla.)")
+    else:
+        print(especificacion_md(EspecificacionDiseno.model_validate(datos["especificacion"])))
     if datos["errores"]:
         print("Errores de validación (Anexo B); solo se admite el rechazo:")
         for error in datos["errores"]:

@@ -54,6 +54,18 @@ class SimulacionConFallas(ServiciosSimulados):
             self._quizas_fallar("dialogar")
         return super().dialogar(conversacion, contexto)
 
+    def sintetizar(self, conversacion, contexto, previos, proyecto):
+        self._quizas_fallar("sintetizar")
+        return super().sintetizar(conversacion, contexto, previos, proyecto)
+
+    def disenar(self, requerimientos, contexto, previa):
+        self._quizas_fallar("disenar")
+        return super().disenar(requerimientos, contexto, previa)
+
+    def generar(self, requerimientos, especificacion, validacion, previa):
+        self._quizas_fallar("generar")
+        return super().generar(requerimientos, especificacion, validacion, previa)
+
     def ejecutar(self, version, especificacion):
         self._quizas_fallar("ejecutar")
         return super().ejecutar(version, especificacion)
@@ -69,6 +81,16 @@ def operador(simulacion: ServiciosSimulados) -> Operador:
 def abrir(op: Operador) -> str:
     guion = guion_completo()
     return op.iniciar("Oficina", guion.proyecto, guion.necesidad)
+
+
+def hasta(op: Operador, id_sesion: str, punto: str) -> None:
+    """Responde el diálogo y aprueba los puntos de control hasta la pausa indicada."""
+    respuestas = guion_completo().respuestas_cliente
+    while (pausa := op.vista(id_sesion).pausa).punto != punto:
+        if pausa.punto == "dialogo":
+            op.responder(id_sesion, respuestas.pop(0))
+        else:
+            op.decidir(id_sesion, Decision.APROBADO, "Equipo")
 
 
 # N3: falla al procesar la respuesta del cliente --------------------------------------------
@@ -118,3 +140,73 @@ def test_una_falla_de_infraestructura_se_reanuda():
     vista = op.vista(id_sesion)
     assert vista.detenida and "Falla simulada de ejecutar" in vista.error
     assert op.reanudar(id_sesion).pausa.punto == "final"
+
+
+# Fallas del modelo que se repiten: terminan en una decisión humana ----------------------
+
+
+def test_n5_sin_sintesis_escala_al_analista_con_la_aprobacion_bloqueada():
+    op = operador(SimulacionConFallas({"sintetizar": SIEMPRE}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "requerimientos")
+
+    datos = op.vista(id_sesion).pausa.datos
+    assert datos["requerimientos"] == []
+    assert datos["defectos"][0].startswith("La síntesis falló: Falla simulada de sintetizar")
+    avance = op.decidir(id_sesion, Decision.APROBADO, "Analista")
+    assert avance.pausa.punto == "requerimientos"
+    assert "No hay requerimientos que aprobar" in avance.pausa.datos["aviso"]
+    # El rechazo devuelve el flujo al diálogo: hay salida.
+    avance = op.decidir(id_sesion, Decision.RECHAZADO, "Analista", "Falta precisar la regla")
+    assert avance.pausa.punto == "dialogo"
+
+
+def test_n5_que_falla_una_vez_se_corrige_sola():
+    op = operador(SimulacionConFallas({"sintetizar": 1}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "requerimientos")
+    datos = op.vista(id_sesion).pausa.datos
+    assert datos["requerimientos"] and datos["defectos"] == []
+
+
+def test_n8_sin_diseno_escala_al_arquitecto_humano():
+    op = operador(SimulacionConFallas({"disenar": SIEMPRE}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "especificacion")
+
+    datos = op.vista(id_sesion).pausa.datos
+    assert datos["especificacion"] is None
+    assert datos["errores"][0].startswith("El diseño falló: Falla simulada de disenar")
+    avance = op.decidir(id_sesion, Decision.APROBADO, "Arquitecto")
+    assert "no puede aprobarse" in avance.pausa.datos["aviso"]
+
+
+def test_n8_que_falla_una_vez_se_corrige_sola():
+    op = operador(SimulacionConFallas({"disenar": 1}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "especificacion")
+    datos = op.vista(id_sesion).pausa.datos
+    assert datos["especificacion"] is not None and datos["errores"] == []
+
+
+def test_n10_que_falla_una_vez_cuenta_la_iteracion_y_sigue():
+    op = operador(SimulacionConFallas({"generar": 1}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "final")
+    vista = op.vista(id_sesion)
+    assert vista.iteracion == 2
+    assert vista.pausa.datos["version"] == 1
+
+
+def test_n10_sin_version_agota_el_ciclo_sin_ejecutar_nada():
+    simulacion = SimulacionConFallas({"generar": SIEMPRE})
+    op = operador(simulacion)
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "especificacion")
+    op.decidir(id_sesion, Decision.APROBADO, "Arquitecto")
+
+    estado = op.estado(id_sesion)
+    assert estado["codigo"].versiones == ()
+    assert estado["control"].iteracion == 3
+    assert estado["validacion"].reporte.startswith("# La generación del módulo falló")
+    assert simulacion.llamadas["ejecutar"] == 0

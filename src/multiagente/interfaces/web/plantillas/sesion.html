@@ -139,10 +139,13 @@
 {% elif pausa.punto == 'especificacion' %}
 <section class="tarjeta">
   <h2>N9 · Especificación de diseño para aprobar</h2>
+  {% if registro_decision %}
   <details open>
     <summary>Registro de la decisión arquitectónica</summary>
     <pre class="texto">{{ registro_decision }}</pre>
   </details>
+  {% endif %}
+  {% if especificacion %}
   <p>
     <strong>{{ especificacion.id_especificacion }}</strong> versión {{ especificacion.version }} ·
     {{ especificacion.arquitectura_base }} · cubre {{ especificacion.requerimientos_cubiertos | join(', ') }}
@@ -173,6 +176,9 @@
   {% endif %}
   <p class="detalle">Dependencias externas:
     {% for d in especificacion.dependencias_externas %}{{ d.paquete }} ({{ d.proposito }}){% if not loop.last %}, {% endif %}{% else %}ninguna{% endfor %}</p>
+  {% else %}
+  <p class="aviso error">No hay especificación de diseño: el arquitecto no logró producirla.</p>
+  {% endif %}
   {% if errores %}
   <div class="aviso error">
     <strong>La especificación no pasa las validaciones del Anexo B; solo se admite el rechazo.</strong>

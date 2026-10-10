@@ -223,6 +223,8 @@ class Requerimientos(Particion):
         sintesis: Síntesis producidas en la sesión; da la versión de los requerimientos.
         correcciones: Retornos automáticos de N6 a N5 desde la última decisión humana.
         defectos_escalados: Defectos que seguían sin corregir cuando la persona decidió.
+        fallo_sintesis: Por qué falló la última síntesis, si el modelo no dio una válida; los
+            requerimientos son entonces los de la síntesis anterior, si la hubo.
     """
 
     historias: tuple[HistoriaUsuario, ...] = ()
@@ -232,6 +234,7 @@ class Requerimientos(Particion):
     sintesis: NonNegativeInt = 0
     correcciones: NonNegativeInt = 0
     defectos_escalados: tuple[TextoObligatorio, ...] = ()
+    fallo_sintesis: TextoObligatorio | None = None
 
 
 class Arquitectura(Particion):
@@ -242,6 +245,8 @@ class Arquitectura(Particion):
         correcciones: Retornos automáticos de N9 a N8 desde la última decisión humana.
         observaciones_atendidas: Observaciones del revisor que ya conocía el último diseño; si
             llega una nueva, N8 vuelve a seleccionar la arquitectura.
+        fallo_diseno: Por qué falló el último diseño, si el modelo no dio uno válido; la
+            especificación es entonces la del diseño anterior, si lo hubo.
     """
 
     registro_decision: TextoObligatorio | None = None
@@ -251,6 +256,7 @@ class Arquitectura(Particion):
     disenos: NonNegativeInt = 0
     correcciones: NonNegativeInt = 0
     observaciones_atendidas: NonNegativeInt = 0
+    fallo_diseno: TextoObligatorio | None = None
 
 
 class VersionCodigo(ModeloEstricto):
@@ -274,9 +280,15 @@ class VersionCodigo(ModeloEstricto):
 
 
 class Codigo(Particion):
-    """Historial de versiones del módulo."""
+    """Historial de versiones del módulo.
+
+    Attributes:
+        fallo_generacion: Por qué falló la última generación, si el modelo no dio una versión
+            válida; N15 la cuenta como una iteración fallida.
+    """
 
     versiones: tuple[VersionCodigo, ...] = ()
+    fallo_generacion: TextoObligatorio | None = None
 
     @property
     def vigente(self) -> VersionCodigo | None:

@@ -14,6 +14,7 @@ incumplido o con más hallazgos de severidad media que el umbral configurado.
 
 import ast
 import json
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -31,6 +32,7 @@ from multiagente.core.conformidad import (
     funciones_de_prueba,
     nombre_de_prueba,
 )
+from multiagente.llm.cliente import ErrorRespuestaModelo
 from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo
 from multiagente.orquestador.estado import (
     CasoPrueba,
@@ -51,6 +53,9 @@ ORDEN_SEVERIDAD = {Severidad.ALTA: 0, Severidad.MEDIA: 1, Severidad.BAJA: 2}
 FALLIDAS = (ResultadoPrueba.FALLO, ResultadoPrueba.ERROR)
 LONGITUD_DETALLE = 300
 """Caracteres del mensaje de una prueba fallida que se citan como evidencia."""
+
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -414,13 +419,25 @@ def dictaminar_version(
             continue
         por_juzgar.append(CasoPorJuzgar(caso=caso, pruebas=asociadas))
 
+    juicios = None
+    sin_juicio = "sin juicio del modelo"
     if por_juzgar and juez is not None:
         esperados = {item.caso.id for item in por_juzgar}
-        juicios = juez.invocar_validado(
-            mensajes_veredicto(por_juzgar, contexto, version.archivos),
-            SalidaVeredicto,
-            lambda salida: validar_juicios(salida, esperados),
-        )
+        try:
+            juicios = juez.invocar_validado(
+                mensajes_veredicto(por_juzgar, contexto, version.archivos),
+                SalidaVeredicto,
+                lambda salida: validar_juicios(salida, esperados),
+            )
+        except (ErrorRespuestaModelo, ErrorValidacionSalida) as error:
+            # El juez solo agrega un control sobre pruebas que ya pasan: si no responde, los
+            # casos no se bloquean y la persona los revisa en la aprobación final (N17).
+            _log.warning("N14: el juez no dio un juicio válido: %s", error)
+            sin_juicio = (
+                f"sin juicio del modelo: el juez no respondió ({error}); revise este caso en la "
+                "aprobación final"
+            )
+    if juicios is not None:
         for item in por_juzgar:
             juicio = juicios[item.caso.id]
             ids = tuple(prueba.identificador for prueba in item.pruebas)
@@ -448,7 +465,7 @@ def dictaminar_version(
             veredictos[item.caso.id] = VeredictoCaso(
                 id_caso=item.caso.id,
                 cumple=True,
-                evidencia=f"{list(ids)} pasan (sin juicio del modelo)",
+                evidencia=f"{list(ids)} pasan ({sin_juicio})",
                 pruebas=ids,
             )
 
