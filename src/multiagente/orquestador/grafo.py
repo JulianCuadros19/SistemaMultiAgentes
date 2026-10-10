@@ -5,6 +5,7 @@ orquestador. El trabajo de modelos de lenguaje, recuperación y ejecución llega
 servicios inyectados (`multiagente.orquestador.servicios`).
 """
 
+import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
@@ -36,6 +37,13 @@ from multiagente.orquestador.estado import (
     Validacion,
 )
 from multiagente.orquestador.servicios import Servicios
+
+_log = logging.getLogger(__name__)
+
+PREGUNTA_REINTENTO = (
+    "No pude procesar su respuesta en este momento. ¿Puede repetirla o decirla de otra forma?"
+)
+"""Pregunta de N3 cuando falla el procesamiento de una respuesta del cliente."""
 
 
 class Nodo(StrEnum):
@@ -106,6 +114,21 @@ def _pedir_decision(
             aviso = "Las pruebas propias solo se registran en la aprobación final del módulo."
             continue
         return AprobacionHumana(**validada.model_dump(), punto=punto, fecha=_ahora())
+
+
+def _volver_a_preguntar(conversacion: Conversacion) -> Conversacion:
+    """Pide al cliente que repita su respuesta, que queda en el historial como ya procesada."""
+    turnos = (
+        *conversacion.turnos,
+        Turno(emisor=Emisor.ELICITADOR, texto=PREGUNTA_REINTENTO, fecha=_ahora()),
+    )
+    return conversacion.model_copy(
+        update={
+            "turnos": turnos,
+            "turnos_procesados": len(turnos),
+            "pregunta_pendiente": PREGUNTA_REINTENTO,
+        }
+    )
 
 
 def _con_aprobacion(sesion: Sesion, aprobacion: AprobacionHumana, fase: Fase | None) -> Sesion:
@@ -249,6 +272,11 @@ class NodosGrafo:
         la necesidad inicial o las observaciones del revisor y formula la primera pregunta. La
         espera va al inicio: al reanudar, LangGraph repite el nodo desde el principio, y así el
         trabajo del modelo de lenguaje se ejecuta una sola vez por respuesta.
+
+        Si procesar una respuesta falla, el nodo no falla: al reanudarlo, LangGraph repetiría la
+        misma respuesta y descartaría cualquier otra, de modo que una falla persistente, como el
+        filtro de contenido, dejaría la sesión atascada. En su lugar, pide al cliente que repita
+        o reformule su respuesta.
         """
         conversacion = estado["conversacion"]
         if conversacion.pregunta_pendiente is not None:
@@ -264,7 +292,13 @@ class NodosGrafo:
                 datos = {**datos, "aviso": "La respuesta no puede estar vacía."}
             turno = Turno(emisor=Emisor.CLIENTE, texto=respuesta, fecha=_ahora())
             conversacion = conversacion.model_copy(update={"turnos": (*conversacion.turnos, turno)})
-        dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
+            try:
+                dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
+            except Exception:
+                _log.exception("N3 no pudo procesar la respuesta del cliente; vuelve a preguntar")
+                return {"conversacion": _volver_a_preguntar(conversacion)}
+        else:
+            dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
         turnos = conversacion.turnos
         if dialogo.siguiente_pregunta is not None:
             pregunta = Turno(
