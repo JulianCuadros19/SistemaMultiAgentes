@@ -98,6 +98,12 @@ class SalidaPregunta(BaseModel):
 D = TypeVar("D", DatoEntrada, DatoSalida)
 
 PREGUNTA_CIERRE = "¿Es correcto o falta algo?"
+
+ENCABEZADO_RESUMEN = "Le resumo lo que entendí:"
+"""Primera línea del resumen que confirma el cliente."""
+
+PREGUNTA_QUE_FALTA = "¿Qué falta o qué debo corregir del resumen?"
+"""Pregunta cuando el cliente no confirma el resumen, pero tampoco dice qué cambiar."""
 """Pregunta con que cierra el resumen que el cliente confirma."""
 
 TERMINOS_TECNICOS = re.compile(
@@ -301,7 +307,7 @@ def resumen_para_confirmar(registro: RegistroCaptura) -> str:
         for dato in registro.datos_salida
     )
     lineas = [
-        "Le resumo lo que entendí:",
+        ENCABEZADO_RESUMEN,
         f"- Quién lo usa: {registro.rol}",
         f"- Qué necesita: {registro.funcionalidad}",
         f"- Para qué: {registro.beneficio}",
@@ -426,6 +432,13 @@ def dialogar(
     if not registro.pendientes:
         return Dialogo(registro=registro, siguiente_pregunta=None)
     if registro.pendientes == ["confirmacion"] and nueva is not None:
+        preguntas = [t.texto for t in conversacion.turnos if t.emisor is Emisor.ELICITADOR]
+        anterior = preguntas[-1] if preguntas else ""
+        if anterior.startswith(ENCABEZADO_RESUMEN) and _huella(registro) == _huella(
+            conversacion.registro
+        ):
+            # «Falta algo» sin decir qué: repetir el mismo resumen no ayuda al cliente.
+            return Dialogo(registro=registro, siguiente_pregunta=PREGUNTA_QUE_FALTA)
         resumen = f"{resumen_para_confirmar(registro)}\n{PREGUNTA_CIERRE}"
         return Dialogo(registro=registro, siguiente_pregunta=resumen)
     siguiente = pregunta.invocar_validado(

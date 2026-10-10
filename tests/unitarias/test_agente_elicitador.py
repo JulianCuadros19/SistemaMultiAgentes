@@ -16,6 +16,7 @@ from multiagente.agentes.elicitador.contexto import (
 )
 from multiagente.agentes.elicitador.dialogo import (
     PREGUNTA_CIERRE,
+    PREGUNTA_QUE_FALTA,
     SalidaExtraccion,
     SalidaPregunta,
     aplicar_extraccion,
@@ -857,6 +858,29 @@ def test_n3_presenta_el_resumen_sin_pedir_pregunta(cliente_falso, completar_resp
     assert dialogo.siguiente_pregunta == (
         f"{resumen_para_confirmar(dialogo.registro)}\n{PREGUNTA_CIERRE}"
     )
+
+
+def test_n3_pregunta_que_falta_si_el_cliente_no_confirma_ni_corrige(
+    cliente_falso, completar_respuesta
+):
+    cliente = cliente_falso(completar_respuesta(salida_extraccion()))
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        esperando_confirmacion("Falta algo"), contexto_recuperado()
+    )
+    assert dialogo.siguiente_pregunta == PREGUNTA_QUE_FALTA
+    assert len(cliente.llamadas) == 1
+
+
+def test_n3_vuelve_al_resumen_cuando_el_cliente_dice_que_falta(cliente_falso, completar_respuesta):
+    # Tras «¿qué falta?», una respuesta que agrega un dato muestra el resumen actualizado.
+    nueva = "Si la fecha del documento es posterior a la radicación, se rechaza"
+    conversacion = con_respuesta(registro_completo(), PREGUNTA_QUE_FALTA, nueva)
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion(excepciones=[*COMPLETO["excepciones"], nueva]))
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
+    assert dialogo.siguiente_pregunta.startswith("Le resumo lo que entendí:")
+    assert nueva in dialogo.siguiente_pregunta
 
 
 def test_n3_cierra_sin_pregunta_al_confirmar(cliente_falso, completar_respuesta):
