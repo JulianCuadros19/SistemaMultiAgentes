@@ -1,6 +1,7 @@
 """Capa de operación con PostgreSQL y con el entorno aislado real, sin modelos de lenguaje.
 
-- `pytest -m integracion`: la lista de sesiones se lee de los puntos de control en PostgreSQL.
+- `pytest -m integracion`: la lista de sesiones se lee de los puntos de control en PostgreSQL, y
+  una sesión cerrada queda cerrada para otro proceso.
 - `pytest -m sandbox`: las pruebas propias de la persona corren en el entorno aislado contra el
   módulo base del corpus de defectos (RF-38).
 """
@@ -13,14 +14,16 @@ from langgraph.checkpoint.memory import InMemorySaver
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.defectos import cargar_corpus_de_defectos
 from multiagente.interfaces.operacion import Operador, observaciones_de_pruebas
-from multiagente.orquestador.estado import Decision, ResultadoPrueba
+from multiagente.orquestador.estado import Decision, Fase, ResultadoPrueba
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.servicios import Servicios
 from multiagente.orquestador.simulacion import (
     ArquitectoFijo,
     DesarrolladorFijo,
     ElicitadorFijo,
+    ErrorSimulado,
     ServiciosSimulados,
+    guion_completo,
 )
 from multiagente.persistencia.puntos_control import abrir_checkpointer, serializador
 
@@ -43,6 +46,46 @@ def test_lista_las_sesiones_guardadas_en_postgresql():
             assert operador.vista(segunda).cliente == "Cliente B"
         finally:
             for id_sesion in (primera, segunda):
+                checkpointer.delete_thread(id_sesion)
+
+
+@pytest.mark.integracion
+def test_una_sesion_cerrada_queda_cerrada_para_otro_proceso():
+    guion = guion_completo()
+    simulacion = ServiciosSimulados(fallos_veredicto=0, fallos_ejecucion=1)
+    with abrir_checkpointer() as checkpointer:
+        app = construir_grafo(simulacion.como_servicios(), CONFIGURACION).compile(
+            checkpointer=checkpointer
+        )
+        operador = Operador(app)
+        en_pausa = operador.iniciar("Cliente A", guion.proyecto, guion.necesidad)
+        detenida = operador.iniciar("Cliente B", guion.proyecto, guion.necesidad)
+        try:
+            for respuesta in guion.respuestas_cliente[:7]:
+                operador.responder(detenida, respuesta)
+            operador.decidir(detenida, Decision.APROBADO, "Analista")
+            with pytest.raises(ErrorSimulado):
+                operador.decidir(detenida, Decision.APROBADO, "Arquitecto")
+            assert operador.vista(detenida).detenida
+
+            operador.cerrar(en_pausa, "Laura", "El cliente desistió")
+            operador.cerrar(detenida, "Julián", "Docker no está disponible")
+
+            # Otro proceso, con su propia conexión, las encuentra cerradas y sin nada pendiente.
+            with abrir_checkpointer() as otra_conexion:
+                lector = Operador(
+                    construir_grafo(ServiciosSimulados().como_servicios(), CONFIGURACION).compile(
+                        checkpointer=otra_conexion
+                    )
+                )
+                for id_sesion in (en_pausa, detenida):
+                    vista = lector.vista(id_sesion)
+                    assert vista.fase is Fase.CERRADA and vista.terminada
+                cierre = lector.estado(detenida)["sesion"].cierre
+                assert (cierre.revisor, cierre.motivo) == ("Julián", "Docker no está disponible")
+                assert "N11" in cierre.desde
+        finally:
+            for id_sesion in (en_pausa, detenida):
                 checkpointer.delete_thread(id_sesion)
 
 
