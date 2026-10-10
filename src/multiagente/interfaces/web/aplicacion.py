@@ -3,7 +3,9 @@
 Rutas:
 - `/`: sesiones guardadas y formulario de sesión nueva;
 - `/sesiones/{id}`: estado de la sesión y la pausa pendiente con su formulario: diálogo, N6, N9
-  o N17, con las pruebas propias de la persona (RF-38);
+  o N17, con las pruebas propias de la persona (RF-38); en N17, el módulo se aprueba o se devuelve
+  al desarrollador o al arquitecto;
+- `/sesiones/{id}/cerrar`: cierra sin módulo validado una sesión en pausa o detenida;
 - `/conversacion/{id}`: la vista del cliente, solo el diálogo y un estado en lenguaje de negocio;
 - `/sesiones/{id}/trazabilidad` y `/sesiones/{id}/exportar.zip` (RF-33, RF-35);
 - `/sesiones/{id}/estado.json`, que la página consulta mientras procesa.
@@ -35,7 +37,7 @@ from multiagente.interfaces.operacion import (
     observaciones_de_pruebas,
 )
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
-from multiagente.orquestador.estado import Decision, Fase, PruebasPropias
+from multiagente.orquestador.estado import Decision, Destino, Fase, PruebasPropias
 
 CARPETA = Path(__file__).parent
 
@@ -50,6 +52,9 @@ PROCESOS = {
     ("especificacion", Decision.RECHAZADO): "Rediseñando la arquitectura con sus observaciones",
     ("final", Decision.APROBADO): "Cerrando la sesión con el módulo validado",
     ("final", Decision.RECHAZADO): "Corrigiendo el módulo con sus observaciones y validándolo",
+    ("final", Destino.ARQUITECTO): (
+        "Rediseñando la arquitectura con sus observaciones (N8); después la revisa en N9"
+    ),
 }
 """Lo que hace el sistema tras cada decisión, para mostrarlo mientras procesa."""
 
@@ -176,6 +181,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             estado = operador.estado(vista.id_sesion)
             pruebas = pruebas_por_sesion.get(vista.id_sesion)
             return {
+                "escalado": datos.get("escalado", False),
                 "version": estado["codigo"].vigente,
                 "validacion": estado["validacion"],
                 "pruebas": pruebas,
@@ -270,14 +276,22 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     @aplicacion.post("/sesiones/{id_sesion}/decision")
     def decidir(
         id_sesion: str,
-        decision: Annotated[Decision, Form()],
+        decision: Annotated[Decision | None, Form()] = None,
+        destino: Annotated[Destino | None, Form()] = None,
         revisor: Annotated[str, Form()] = "",
         observaciones: Annotated[str, Form()] = "",
         registrar_pruebas: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
-        """Registra la decisión del punto de control pendiente, con las pruebas propias en N17."""
+        """Registra la decisión del punto de control pendiente, con las pruebas propias en N17.
+
+        En N17, devolver el módulo a un agente es rechazarlo con ese destino.
+        """
         vista = operador.vista(id_sesion)
         punto = vista.pausa.punto if vista.pausa else ""
+        if destino is not None:
+            decision = Decision.RECHAZADO
+        if decision is None:
+            raise ErrorOperacion("Elija una decisión: aprobar o rechazar.")
         pruebas = (
             pruebas_por_sesion.get(id_sesion) if registrar_pruebas and punto == "final" else None
         )
@@ -289,10 +303,37 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
                 revisor.strip() or REVISORES.get(punto, "Revisor"),
                 observaciones or None,
                 pruebas,
+                destino,
             )
             pruebas_por_sesion.pop(id_sesion, None)
 
-        tareas.lanzar(id_sesion, PROCESOS.get((punto, decision), "Procesando la decisión"), accion)
+        proceso = PROCESOS.get(
+            (punto, destino if destino is Destino.ARQUITECTO else decision),
+            "Procesando la decisión",
+        )
+        tareas.lanzar(id_sesion, proceso, accion)
+        return volver(id_sesion, "operacion")
+
+    @aplicacion.post("/sesiones/{id_sesion}/cerrar")
+    def cerrar(
+        id_sesion: str,
+        motivo: Annotated[str, Form()] = "",
+        revisor: Annotated[str, Form()] = "",
+        confirmo: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        """Cierra sin módulo validado una sesión en pausa o detenida; queda en la trazabilidad."""
+        vista = operador.vista(id_sesion)
+        if vista.terminada:
+            raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
+        if not motivo.strip() or not confirmo:
+            raise ErrorOperacion("Para cerrar la sesión, escriba el motivo y confirme el cierre.")
+        punto = vista.pausa.punto if vista.pausa else ""
+
+        def accion() -> None:
+            operador.cerrar(id_sesion, revisor.strip() or REVISORES.get(punto, "Analista"), motivo)
+            pruebas_por_sesion.pop(id_sesion, None)
+
+        tareas.lanzar(id_sesion, "Cerrando la sesión", accion)
         return volver(id_sesion, "operacion")
 
     @aplicacion.post("/sesiones/{id_sesion}/pruebas")

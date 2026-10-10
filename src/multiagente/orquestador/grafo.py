@@ -112,14 +112,15 @@ def _pedir_decision(
     Args:
         punto: Punto de control.
         datos: Lo que la persona revisa en la pausa.
-        bloqueo: Si se indica, la aprobación no se admite y este es el motivo.
+        bloqueo: Si se indica, la aprobación no se admite y este es el motivo. Va también en los
+            datos de la pausa, para que las interfaces no ofrezcan aprobar.
 
     Returns:
         La decisión válida, registrada con el punto y la fecha.
     """
     aviso: str | None = None
     while True:
-        respuesta = interrupt({**datos, "punto": punto.value, "aviso": aviso})
+        respuesta = interrupt({**datos, "punto": punto.value, "aviso": aviso, "bloqueo": bloqueo})
         try:
             validada = RespuestaHumana.model_validate(respuesta)
         except ValidationError as error:
@@ -433,8 +434,8 @@ class NodosGrafo:
             bloqueo=(
                 None
                 if requerimientos.requerimientos
-                else "No hay requerimientos que aprobar: recházalos con observaciones para volver "
-                "al diálogo, o cierra la sesión."
+                else "No hay requerimientos que aprobar: recházelos con observaciones para volver "
+                "al diálogo, o cierre la sesión."
             ),
         )
         sesion = estado["sesion"]
@@ -547,7 +548,7 @@ class NodosGrafo:
             },
             bloqueo=(
                 "La especificación no pasa las validaciones del Anexo B y no puede aprobarse: "
-                "recházala con observaciones para que el arquitecto la corrija."
+                "recházela con observaciones para que el arquitecto la corrija, o cierre la sesión."
                 if errores
                 else None
             ),
@@ -738,8 +739,8 @@ class NodosGrafo:
                 "reporte": validacion.reporte,
             },
             bloqueo=(
-                "El tester no aprobó esta versión y no puede aprobarse: devuélvela al "
-                "desarrollador o al arquitecto con observaciones, o cierra la sesión."
+                "El tester no aprobó el módulo y no puede aprobarse: devuélvalo al "
+                "desarrollador o al arquitecto con observaciones, o cierre la sesión."
                 if escalado
                 else None
             ),

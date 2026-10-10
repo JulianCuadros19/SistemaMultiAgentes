@@ -15,7 +15,7 @@ from multiagente.interfaces.consola import (
 )
 from multiagente.interfaces.operacion import ACUSE_CONFIRMACION, Operador
 from multiagente.orquestador.ejecucion import avanzar, iniciar_sesion
-from multiagente.orquestador.estado import Decision, Fase, PuntoControl, ResultadoPrueba
+from multiagente.orquestador.estado import Decision, Destino, Fase, PuntoControl, ResultadoPrueba
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -50,7 +50,7 @@ def test_presenta_cada_punto_de_control_con_los_datos_de_su_pausa(capsys):
     assert "=== Punto de control N9: especificación de diseño ===" in salida
     assert "=== Punto de control N17: versión 1 del módulo ===" in salida
     assert "Validaciones del Anexo B: sin errores." in salida
-    assert "Iteración 1 de 3 del ciclo de corrección." in salida
+    assert "El tester lo aprobó en la iteración 1 de 3 del ciclo de corrección." in salida
 
 
 class Teclado:
@@ -206,3 +206,146 @@ def test_errores_de_operacion_salen_con_codigo_1(tmp_path, capsys, entorno_falso
     assert "No existe la sesión no-existe" in capsys.readouterr().out
     with pytest.raises(SystemExit):
         _parser().parse_args(["desconocido"])
+
+
+def test_presenta_las_pausas_sin_artefactos(capsys):
+    # N6 sin requerimientos, N9 sin especificación y N17 escalado sin versión: la persona ve qué
+    # falló en lugar de un error de la consola.
+    mostrar_requerimientos(
+        {
+            "historias": [],
+            "requerimientos": [],
+            "referencias": {},
+            "defectos": ["La síntesis falló: salida inválida"],
+        }
+    )
+    mostrar_especificacion(
+        {
+            "registro_decision": None,
+            "especificacion": None,
+            "errores": ["El diseño falló: salida inválida"],
+            "capacidades_no_cubiertas": ["Leer hojas de cálculo Excel"],
+        }
+    )
+    mostrar_validacion(
+        {
+            "escalado": True,
+            "iteracion": 3,
+            "limite_iteraciones": 3,
+            "version": None,
+            "archivos": [],
+            "reporte": "# La generación del módulo falló",
+        }
+    )
+    salida = capsys.readouterr().out
+    assert "La síntesis falló: salida inválida" in salida
+    assert "No hay especificación de diseño" in salida
+    assert "  - Leer hojas de cálculo Excel" in salida
+    assert "=== Punto de control N17: sin versión válida del módulo ===" in salida
+    assert "La sesión escaló: tras 3 iteraciones" in salida
+
+
+def test_en_n17_escalado_no_se_aprueba_y_se_devuelve_al_arquitecto(tmp_path, capsys, entorno_falso):
+    guion = guion_completo()
+    teclado = Teclado(
+        "Oficina",
+        guion.proyecto,
+        guion.necesidad,
+        *guion.respuestas_cliente[:7],
+        *["a", ""] * 2,
+        # N17 escalado: aprobar no es una opción; devuelve al arquitecto.
+        "a",
+        "d",
+        "Usar una arquitectura más simple",
+        "Laura",
+        # N9 de nuevo y N17 con la versión que aprobó el tester.
+        *["a", ""] * 2,
+    )
+    op = operador(ServiciosSimulados(fallos_veredicto=3), entorno_falso)
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+
+    salida = capsys.readouterr().out
+    assert "El tester no aprobó el módulo y no puede aprobarse" in salida
+    assert "Opción no válida." in salida
+    menus = [i for i in teclado.indicaciones if "[x] cerrar la sesión" in i]
+    escalado = next(i for i in menus if "[d]iseño" in i)
+    assert "[a]probar" not in escalado and "[p]robar" in escalado
+    [vista] = op.sesiones()
+    assert vista.fase is Fase.VALIDADO
+    finales = [
+        a
+        for a in op.estado(vista.id_sesion)["sesion"].aprobaciones
+        if a.punto is PuntoControl.FINAL
+    ]
+    assert [(a.decision, a.destino) for a in finales] == [
+        (Decision.RECHAZADO, Destino.ARQUITECTO),
+        (Decision.APROBADO, None),
+    ]
+
+
+def test_se_cierra_desde_un_punto_de_control(tmp_path, capsys, entorno_falso):
+    guion = guion_completo()
+    teclado = Teclado(
+        "Oficina",
+        guion.proyecto,
+        guion.necesidad,
+        *guion.respuestas_cliente[:7],
+        # N6: cierra; la primera vez sin confirmar.
+        "x",
+        "El cliente desistió",
+        "n",
+        "x",
+        "El cliente desistió",
+        "s",
+        "Laura",
+    )
+    op = operador(ServiciosSimulados(), entorno_falso)
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+    salida = capsys.readouterr().out
+    assert "La sesión sigue abierta." in salida
+    assert "Cerrada sin módulo validado." in salida
+    [vista] = op.sesiones()
+    cierre = op.estado(vista.id_sesion)["sesion"].cierre
+    assert (cierre.revisor, cierre.motivo) == ("Laura", "El cliente desistió")
+
+
+def test_se_cierra_una_sesion_detenida(tmp_path, capsys, entorno_falso):
+    guion = guion_completo()
+    teclado = Teclado(
+        "Oficina",
+        guion.proyecto,
+        guion.necesidad,
+        *guion.respuestas_cliente[:7],
+        *["a", ""] * 2,
+        # N11 falla: cierra en lugar de reanudar.
+        "x",
+        "Docker no está disponible",
+        "s",
+        "",
+    )
+    op = operador(ServiciosSimulados(fallos_ejecucion=1), entorno_falso)
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+    assert "[r]eanudar, [x] cerrar la sesión o [s]alir: " in teclado.indicaciones
+    [vista] = op.sesiones()
+    assert vista.fase is Fase.CERRADA
+    assert op.estado(vista.id_sesion)["sesion"].cierre.revisor == "Analista"
+
+
+def test_el_subcomando_cerrar_cierra_una_sesion_en_pausa(tmp_path, capsys, entorno_falso):
+    guion = guion_completo()
+    op = operador(ServiciosSimulados(), entorno_falso)
+    teclado = Teclado("Oficina", guion.proyecto, guion.necesidad, "/salir")
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+    [vista] = op.sesiones()
+    cerrar = comando(f"cerrar {vista.id_sesion}")
+
+    assert ejecutar(op, cerrar, configuracion(tmp_path), Teclado("Sesión de prueba", "")) == 0
+    assert op.vista(vista.id_sesion).pausa.punto == "dialogo"
+    teclado = Teclado("Sesión de prueba", "sí", "Julián")
+    assert ejecutar(op, cerrar, configuracion(tmp_path), teclado) == 0
+    assert op.vista(vista.id_sesion).fase is Fase.CERRADA
+    assert ejecutar(op, cerrar, configuracion(tmp_path), Teclado()) == 1
+    salida = capsys.readouterr().out
+    assert "multiagente cerrar " + vista.id_sesion in salida
+    assert "Cerrada sin módulo validado." in salida
+    assert "ya terminó" in salida

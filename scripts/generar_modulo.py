@@ -162,6 +162,9 @@ def main() -> None:
     avance = avanzar(app, id_sesion, aprobar("Arquitecto"))
     while avance.pausa is not None and avance.pausa.punto == "final":
         estado = app.get_state(configuracion_hilo(id_sesion)).values
+        if avance.pausa.datos["escalado"]:
+            print(f"\nLa sesión escaló sin módulo aprobado:\n{estado['validacion'].reporte}")
+            break
         version = estado["codigo"].vigente
         revisar(version, caso, estado["requerimientos"], entorno)
         if argumentos.salida:

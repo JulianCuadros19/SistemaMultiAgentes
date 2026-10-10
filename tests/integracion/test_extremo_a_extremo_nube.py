@@ -14,8 +14,10 @@ Las personas de los tres puntos de control deciden como lo haría el equipo:
 - en N9 se aprueba una especificación sin errores del Anexo B;
 - en N17 se aprueba el módulo que aprobó el tester.
 
-Si un nodo falla, por ejemplo N10 tras su reintento, la sesión se reanuda una vez desde su último
-punto de control, como lo haría el operador (RF-28). La reanudación se reporta.
+Si un nodo falla por la infraestructura, la sesión se reanuda una vez desde su último punto de
+control, como lo haría el operador (RF-28). La reanudación se reporta. Si la aprobación queda
+bloqueada, porque N5 no sintetizó o porque la sesión escaló al agotar el ciclo de corrección, la
+corrida falla con el reporte en lugar de insistir.
 
 El módulo debe salir aprobado dentro del límite de iteraciones y en 20 minutos o menos de tiempo
 del sistema (RNF-01).
@@ -109,6 +111,7 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
             rechazos_n6.append(observaciones_del_analista(pausa.datos))
             respuesta = rechazar(rechazos_n6[-1], "Analista")
         elif pausa.punto == "requerimientos":
+            assert pausa.datos["bloqueo"] is None, pausa.datos["defectos"]
             aprobados_con_defectos.extend(pausa.datos["defectos"])
             respuesta = aprobar("Analista")
         elif pausa.punto == "especificacion":
@@ -116,6 +119,8 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
             respuesta = aprobar("Arquitecto")
         else:
             final = pausa.datos
+            if final["escalado"]:
+                break  # Sin aprobación posible: el resumen y las aserciones lo reportan.
             respuesta = aprobar("Revisor")
         inicio = time.perf_counter()
         try:
@@ -145,7 +150,8 @@ def test_un_modulo_completo_sale_aprobado_por_el_tester(
         print(f"  Reanudación tras la falla: {falla}")
 
     # El módulo llega a N17 aprobado por el tester, sin escalar por el límite de iteraciones.
-    assert estado["sesion"].fase is not Fase.REQUIERE_INTERVENCION, historial[-1][1].reporte
+    assert final is not None and not final["escalado"], final and final["reporte"]
+    assert estado["sesion"].fase is not Fase.REQUIERE_INTERVENCION
     assert final is not None and pausas.count("final") == 1
     assert final["veredicto"] == "aprobado", final["reporte"]
     assert estado["control"].iteracion <= configuracion.max_iteraciones_correccion

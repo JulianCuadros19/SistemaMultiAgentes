@@ -128,9 +128,16 @@ class VistaSesion(BaseModel):
         """Indica si la sesión espera que alguien la reanude, sin pausa humana pendiente."""
         return self.pausa is None and bool(self.pendientes)
 
+    @property
+    def terminada(self) -> bool:
+        """Indica si la sesión llegó al final: validada, cerrada o terminada por el grafo."""
+        return self.pausa is None and not self.pendientes
+
     def describir(self) -> str:
         """Estado de la sesión en lenguaje de negocio, para listas y encabezados."""
         if self.pausa is not None:
+            if self.pausa.punto == "final" and self.pausa.datos.get("escalado"):
+                return "Escalada: el tester no aprobó el módulo; espera la decisión de una persona"
             return ESPERAS[self.pausa.punto]
         if self.pendientes:
             nodos = ", ".join(NOMBRES_DE_NODO.get(n, n) for n in self.pendientes)
@@ -281,7 +288,7 @@ class Operador:
             ErrorOperacion: Si la sesión ya terminó, o si falta el revisor o el motivo.
         """
         vista = self.vista(id_sesion)
-        if vista.pausa is None and not vista.pendientes:
+        if vista.terminada:
             raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
         if not revisor.strip() or not motivo.strip():
             raise ErrorOperacion("Para cerrar la sesión se necesitan el revisor y el motivo.")
@@ -418,6 +425,8 @@ class Operador:
         """
         self._pausa(id_sesion, ("final",))
         version = self.estado(id_sesion)["codigo"].vigente
+        if version is None:
+            raise ErrorOperacion("No hay una versión del módulo contra la cual probar.")
         if invalidas := sorted(r for r in archivos if not RUTA_PRUEBA_PROPIA.fullmatch(r)):
             raise ErrorOperacion(f"Las pruebas propias van en tests/test_*.py: {invalidas}")
         if repetidas := sorted(set(archivos) & set(version.archivos)):

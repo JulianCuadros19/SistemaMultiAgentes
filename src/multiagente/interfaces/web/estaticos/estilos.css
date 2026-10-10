@@ -101,6 +101,7 @@ button {
   cursor: pointer;
 }
 button.secundario { color: var(--acento); background: transparent; }
+button.peligro { color: var(--error-borde); background: transparent; border-color: var(--error-borde); }
 
 .tabla { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.92rem; }
 .tabla th, .tabla td { text-align: left; vertical-align: top; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--borde); }
@@ -142,6 +143,7 @@ button.secundario { color: var(--acento); background: transparent; }
 .etiqueta.requiere_intervencion_humana, .etiqueta.severidad-alta { border-color: var(--error-borde); }
 .etiqueta.severidad-media { border-color: var(--aviso-borde); }
 .etiqueta.en-curso { border-color: var(--acento); }
+.etiqueta.cerrada { color: var(--tenue); border-style: dashed; }
 
 .dialogo { list-style: none; padding: 0; display: grid; gap: 0.5rem; }
 .turno { padding: 0.5rem 0.75rem; border-radius: 8px; max-width: 46rem; }
@@ -159,3 +161,5 @@ pre.codigo { background: var(--codigo-fondo); padding: 0.75rem; overflow-x: auto
 pre.documento { background: var(--superficie); border: 1px solid var(--borde); padding: 1rem; border-radius: 8px; }
 details { margin: 0.4rem 0; }
 summary { cursor: pointer; }
+.cierre { margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--borde); }
+.cierre summary { color: var(--tenue); }

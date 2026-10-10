@@ -143,6 +143,9 @@ def conversar(
             if simulado:
                 if guion.rechazo:
                     decision, observaciones, guion.rechazo = "r", guion.rechazo, None
+                elif guion.aprobar and pausa.datos["bloqueo"]:
+                    print(f"\n{pausa.datos['bloqueo']}")
+                    return
                 elif guion.aprobar:
                     decision, observaciones = "a", None
                 else:

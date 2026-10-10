@@ -102,6 +102,9 @@ def main() -> None:
             if rechazo:
                 decision, observaciones, rechazo = "r", rechazo, None
                 print(f"\nDecisión del arquitecto humano: rechazar · {observaciones}")
+            elif argumentos.aprobar and avance.pausa.datos["bloqueo"]:
+                print(f"\n{avance.pausa.datos['bloqueo']}")
+                break
             elif argumentos.aprobar:
                 decision, observaciones = "a", None
                 print("\nDecisión del arquitecto humano: aprobar")

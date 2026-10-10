@@ -1,12 +1,15 @@
 """Interfaz de consola: el comando `multiagente` y el bucle con que una persona opera una sesión.
 
 La persona responde como cliente y decide en los tres puntos de control; en N17 puede revisar el
-código y ejecutar pruebas propias en el entorno aislado (RF-38). Todo pasa por el `Operador`,
-igual que en la web, de modo que ambas interfaces aplican las mismas reglas.
+código y ejecutar pruebas propias en el entorno aislado (RF-38), y devolver el módulo al
+desarrollador o al arquitecto. Una sesión que no debe seguir se cierra sin módulo validado desde
+cualquier pausa o tras una falla. Todo pasa por el `Operador`, igual que en la web, de modo que
+ambas interfaces aplican las mismas reglas.
 
 Uso:
     multiagente nueva
     multiagente continuar ID
+    multiagente cerrar ID
     multiagente sesiones
     multiagente ver ID
     multiagente exportar ID CARPETA
@@ -43,7 +46,7 @@ from multiagente.interfaces.operacion import (
     observaciones_de_pruebas,
 )
 from multiagente.orquestador.ejecucion import Avance
-from multiagente.orquestador.estado import Decision, PruebasPropias, VersionCodigo
+from multiagente.orquestador.estado import Decision, Destino, PruebasPropias, VersionCodigo
 from multiagente.sandbox.ejecutor import ErrorEntornoAislado
 
 SALIR = "/salir"
@@ -51,6 +54,9 @@ SALIR = "/salir"
 
 REVISORES = {"requerimientos": "Analista", "especificacion": "Arquitecto", "final": "Revisor"}
 """Rol que decide en cada punto de control, si la persona no da su nombre."""
+
+AGENTES_DEL_RECHAZO = {"requerimientos": "elicitador", "especificacion": "arquitecto"}
+"""Agente que recibe las observaciones de un rechazo en N6 y N9."""
 
 REPORTE = "REPORTE_VALIDACION.md"
 
@@ -103,18 +109,28 @@ def mostrar_validacion(datos: dict[str, Any]) -> None:
     """Imprime lo que la persona revisa en N17: los archivos del módulo y su reporte (RF-38).
 
     El reporte del tester ya reúne el veredicto, el dictamen por caso, la conformidad por
-    módulo, los hallazgos por severidad, la ejecución y las reglas no evaluadas.
+    módulo, los hallazgos por severidad, la ejecución y las reglas no evaluadas. Una sesión
+    escalada puede llegar sin versión, si ninguna generación fue válida.
     """
-    print(f"\n=== Punto de control N17: versión {datos['version']} del módulo ===\n")
+    version = datos["version"]
+    titulo = "sin versión válida" if version is None else f"versión {version}"
+    print(f"\n=== Punto de control N17: {titulo} del módulo ===\n")
     for ruta in datos["archivos"]:
         print(f"  {ruta}")
     print()
     print(datos["reporte"] or "(El tester no emitió reporte.)")
-    print(
-        f"Iteración {datos['iteracion']} de {datos['limite_iteraciones']} del ciclo de "
-        "corrección. Si rechaza, el desarrollador corrige y la cuenta sigue; alcanzado el límite, "
-        "un rechazo del tester escala la sesión a una persona."
-    )
+    if datos.get("escalado"):
+        print(
+            f"La sesión escaló: tras {datos['iteracion']} iteraciones del ciclo de corrección, el "
+            "tester no aprobó el módulo. No puede aprobarse: devuélvalo al desarrollador o al "
+            "arquitecto con observaciones, lo que abre un ciclo nuevo, o cierre la sesión."
+        )
+    else:
+        print(
+            f"El tester lo aprobó en la iteración {datos['iteracion']} de "
+            f"{datos['limite_iteraciones']} del ciclo de corrección. Si lo devuelve, el agente "
+            "corrige con sus observaciones y los hallazgos del tester, en un ciclo nuevo."
+        )
 
 
 PRESENTACION: dict[str, Callable[[dict[str, Any]], None]] = {
@@ -168,22 +184,37 @@ def recorrido(avance: Avance) -> str:
 
 @dataclass(frozen=True)
 class DecisionHumana:
-    """Decisión de una persona en un punto de control."""
+    """Decisión de una persona en un punto de control.
+
+    Attributes:
+        destino: Solo al rechazar en N17: quién corrige, el desarrollador o el arquitecto.
+    """
 
     decision: Decision
     revisor: str
     observaciones: str | None = None
     pruebas_propias: PruebasPropias | None = None
+    destino: Destino | None = None
+
+
+@dataclass(frozen=True)
+class CierreHumano:
+    """Decisión de una persona de cerrar la sesión sin módulo validado."""
+
+    revisor: str
+    motivo: str
 
 
 RespondeCliente = Callable[[Operador, VistaSesion], str | None]
 """Da la respuesta del cliente a la pregunta pendiente, o None para dejar la sesión en pausa."""
 
-DecideRevisor = Callable[[Operador, VistaSesion], DecisionHumana | None]
-"""Da la decisión en el punto de control pendiente, o None para dejar la sesión en pausa."""
+DecideRevisor = Callable[[Operador, VistaSesion], DecisionHumana | CierreHumano | None]
+"""Da la decisión en el punto de control pendiente, el cierre de la sesión o None para dejarla
+en pausa."""
 
-ConfirmaReanudar = Callable[[VistaSesion], bool]
-"""Indica si se reanuda una sesión detenida por una falla."""
+AtiendeDetenida = Callable[[VistaSesion], bool | CierreHumano]
+"""Ante una sesión detenida por una falla: True la reanuda, False la deja así y un cierre la
+cierra."""
 
 
 @dataclass
@@ -282,12 +313,21 @@ def abrir_sesion(
     return id_sesion
 
 
+def _cerrar(operador: Operador, id_sesion: str, cierre: CierreHumano, tiempos: Tiempos) -> None:
+    _avanzar(
+        operador,
+        id_sesion,
+        lambda: operador.cerrar(id_sesion, cierre.revisor, cierre.motivo),
+        tiempos,
+    )
+
+
 def operar(
     operador: Operador,
     id_sesion: str,
     responder_cliente: RespondeCliente,
     decidir: DecideRevisor,
-    reanudar: ConfirmaReanudar,
+    atender_detenida: AtiendeDetenida,
     tiempos: Tiempos | None = None,
 ) -> VistaSesion | None:
     """Atiende cada pausa de la sesión hasta que termina o la persona la deja en pausa.
@@ -297,14 +337,17 @@ def operar(
         id_sesion: Identificador de la sesión.
         responder_cliente: Quién responde como cliente.
         decidir: Quién decide en los puntos de control.
-        reanudar: Si se reanuda una sesión detenida por una falla.
+        atender_detenida: Si se reanuda o se cierra una sesión detenida por una falla.
         tiempos: Dónde sumar la duración de cada avance.
 
     Returns:
         La vista final de la sesión, o None si la sesión no existe.
     """
     tiempos = tiempos or Tiempos()
-    continuar = f"multiagente continuar {id_sesion}"
+    continuar = (
+        f"multiagente continuar {id_sesion}; para cerrarla sin módulo validado: "
+        f"multiagente cerrar {id_sesion}"
+    )
     while True:
         try:
             vista = operador.vista(id_sesion)
@@ -315,7 +358,11 @@ def operar(
             print(f"\n{vista.describir()}.")
             if vista.error:
                 print(f"Error: {vista.error}")
-            if not reanudar(vista):
+            eleccion = atender_detenida(vista)
+            if isinstance(eleccion, CierreHumano):
+                _cerrar(operador, id_sesion, eleccion, tiempos)
+                continue
+            if not eleccion:
                 print(f"Sesión detenida. Reanúdela con: {continuar}")
                 return vista
             print("(Reanudando…)")
@@ -353,12 +400,15 @@ def operar(
         if decision is None:
             print(f"Sesión en pausa: {vista.describir().lower()}. Reanúdela con: {continuar}")
             return vista
+        if isinstance(decision, CierreHumano):
+            _cerrar(operador, id_sesion, decision, tiempos)
+            continue
         print("(Procesando…)")
         avance = _avanzar(
             operador,
             id_sesion,
             lambda d=decision: operador.decidir(
-                id_sesion, d.decision, d.revisor, d.observaciones, d.pruebas_propias
+                id_sesion, d.decision, d.revisor, d.observaciones, d.pruebas_propias, d.destino
             ),
             tiempos,
         )
@@ -381,9 +431,43 @@ def cliente_por_teclado(leer: Callable[[str], str] = input) -> RespondeCliente:
     return responder
 
 
-def reanudar_por_teclado(leer: Callable[[str], str] = input) -> ConfirmaReanudar:
-    """Pregunta a la persona si reanuda una sesión detenida."""
-    return lambda vista: leer("[r]eanudar o [s]alir: ").strip().lower().startswith("r")
+def pedir_cierre(leer: Callable[[str], str], revisor: str) -> CierreHumano | None:
+    """Pide el motivo y la confirmación para cerrar una sesión sin módulo validado.
+
+    Args:
+        leer: Lectura de la consola.
+        revisor: Nombre de quien cierra, si la persona no da el suyo.
+
+    Returns:
+        El cierre, o None si falta el motivo o la persona no lo confirma.
+    """
+    motivo = leer("Motivo del cierre (queda en la trazabilidad): ").strip()
+    if not motivo:
+        print("Sin motivo, la sesión no se cierra.")
+        return None
+    confirmacion = leer(
+        "Cerrar es definitivo: la sesión termina sin módulo validado. ¿Confirma? [s/N]: "
+    )
+    if not confirmacion.strip().lower().startswith("s"):
+        print("La sesión sigue abierta.")
+        return None
+    return CierreHumano(leer(f"Su nombre (Enter: «{revisor}»): ").strip() or revisor, motivo)
+
+
+def reanudar_por_teclado(leer: Callable[[str], str] = input) -> AtiendeDetenida:
+    """Pregunta a la persona si reanuda una sesión detenida, la cierra o la deja así."""
+
+    def atender(vista: VistaSesion) -> bool | CierreHumano:
+        while True:
+            eleccion = leer("[r]eanudar, [x] cerrar la sesión o [s]alir: ").strip().lower()[:1]
+            if eleccion == "r":
+                return True
+            if eleccion != "x":
+                return False
+            if cierre := pedir_cierre(leer, "Analista"):
+                return cierre
+
+    return atender
 
 
 class RevisorPorTeclado:
@@ -399,41 +483,72 @@ class RevisorPorTeclado:
         self.carpeta_trabajo = carpeta_trabajo
         self.leer = leer
 
-    def __call__(self, operador: Operador, vista: VistaSesion) -> DecisionHumana | None:
-        """Ofrece las opciones del punto de control hasta que la persona decide o sale."""
-        punto = vista.pausa.punto
+    def __call__(
+        self, operador: Operador, vista: VistaSesion
+    ) -> DecisionHumana | CierreHumano | None:
+        """Ofrece las opciones del punto de control hasta que la persona decide o sale.
+
+        En N17, rechazar devuelve el módulo al desarrollador y [d]iseño, al arquitecto. Si la
+        aprobación está bloqueada (requerimientos vacíos, especificación con errores o sesión
+        escalada), no se ofrece.
+        """
+        punto, datos = vista.pausa.punto, vista.pausa.datos
         revisor = REVISORES[punto]
-        bloqueada = bool(vista.pausa.datos.get("errores"))
+        final = punto == "final"
+        con_version = final and datos.get("version") is not None
+        bloqueo = datos.get("bloqueo")
+        if bloqueo:
+            print(bloqueo)
         pruebas: PruebasPropias | None = None
-        opciones = ("" if bloqueada else "[a]probar, ") + "[r]echazar"
-        if punto == "final":
-            opciones += ", [p]robar con un archivo propio, [c]ódigo"
+        opciones = [] if bloqueo else ["[a]probar"]
+        if final:
+            opciones += ["[r]echazar: corrige el desarrollador", "[d]iseño: rediseña el arquitecto"]
+        else:
+            opciones.append("[r]echazar")
+        if con_version:
+            opciones += ["[p]robar con un archivo propio", "[c]ódigo"]
+        opciones += ["[x] cerrar la sesión", "[s]alir"]
+        menu = f"{', '.join(opciones[:-1])} o {opciones[-1]}"
         while True:
-            eleccion = self.leer(f"\n{opciones} o [s]alir: ").strip().lower()[:1]
-            if eleccion == "a" and not bloqueada:
+            eleccion = self.leer(f"\n{menu}: ").strip().lower()[:1]
+            if eleccion == "a" and not bloqueo:
                 return DecisionHumana(Decision.APROBADO, self._nombre(revisor), None, pruebas)
-            if eleccion == "r":
-                sugeridas = observaciones_de_pruebas(pruebas) if pruebas else ""
-                if sugeridas:
-                    print(f"Observaciones sugeridas por sus pruebas:\n{sugeridas}")
-                indicacion = " (Enter: usar las sugeridas)" if sugeridas else ""
-                observaciones = (
-                    self.leer(
-                        f"Observaciones para el agente (qué debe cambiar){indicacion}: "
-                    ).strip()
-                    or sugeridas
-                )
-                return DecisionHumana(
-                    Decision.RECHAZADO, self._nombre(revisor), observaciones or None, pruebas
-                )
-            if eleccion == "p" and punto == "final":
+            if eleccion == "r" and not final:
+                return self._rechazo(revisor, AGENTES_DEL_RECHAZO[punto], pruebas, None)
+            if eleccion == "r" and final:
+                return self._rechazo(revisor, "desarrollador", pruebas, Destino.DESARROLLADOR)
+            if eleccion == "d" and final:
+                return self._rechazo(revisor, "arquitecto", pruebas, Destino.ARQUITECTO)
+            if eleccion == "p" and con_version:
                 pruebas = self._probar(operador, vista) or pruebas
-            elif eleccion == "c" and punto == "final":
+            elif eleccion == "c" and con_version:
                 self._escribir_codigo(operador, vista)
+            elif eleccion == "x":
+                if cierre := pedir_cierre(self.leer, revisor):
+                    return cierre
             elif eleccion == "s":
                 return None
             else:
                 print("Opción no válida.")
+
+    def _rechazo(
+        self,
+        revisor: str,
+        agente: str,
+        pruebas: PruebasPropias | None,
+        destino: Destino | None,
+    ) -> DecisionHumana:
+        sugeridas = observaciones_de_pruebas(pruebas) if pruebas else ""
+        if sugeridas:
+            print(f"Observaciones sugeridas por sus pruebas:\n{sugeridas}")
+        indicacion = " (Enter: usar las sugeridas)" if sugeridas else ""
+        observaciones = (
+            self.leer(f"Observaciones para el {agente} (qué debe cambiar){indicacion}: ").strip()
+            or sugeridas
+        )
+        return DecisionHumana(
+            Decision.RECHAZADO, self._nombre(revisor), observaciones or None, pruebas, destino
+        )
 
     def _nombre(self, revisor: str) -> str:
         return self.leer(f"Su nombre, como revisor (Enter: «{revisor}»): ").strip() or revisor
@@ -475,6 +590,10 @@ def _parser() -> argparse.ArgumentParser:
     comandos.add_parser("nueva", help="Abre una sesión: la persona conversa como cliente.")
     continuar = comandos.add_parser("continuar", help="Reanuda una sesión en pausa o detenida.")
     continuar.add_argument("sesion")
+    cerrar = comandos.add_parser(
+        "cerrar", help="Cierra una sesión en pausa o detenida, sin módulo validado."
+    )
+    cerrar.add_argument("sesion")
     comandos.add_parser("sesiones", help="Lista las sesiones guardadas.")
     ver = comandos.add_parser("ver", help="Muestra la trazabilidad de una sesión (RF-33).")
     ver.add_argument("sesion")
@@ -495,6 +614,17 @@ def _listar(operador: Operador) -> None:
             f"{vista.id_sesion}  {vista.creada:%Y-%m-%d %H:%M}  {vista.cliente} · "
             f"{vista.proyecto}\n    {vista.describir()}"
         )
+
+
+def _cerrar_sesion(operador: Operador, id_sesion: str, leer: Callable[[str], str]) -> None:
+    vista = operador.vista(id_sesion)
+    if vista.terminada:
+        raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
+    print(f"Sesión {id_sesion} · {vista.cliente} · {vista.proyecto}\n{vista.describir()}.")
+    revisor = REVISORES.get(vista.pausa.punto, "Analista") if vista.pausa else "Analista"
+    if cierre := pedir_cierre(leer, revisor):
+        operador.cerrar(id_sesion, cierre.revisor, cierre.motivo)
+        print(f"Sesión {id_sesion}: {operador.vista(id_sesion).describir()}.")
 
 
 def _exportar(operador: Operador, id_sesion: str, carpeta: Path) -> None:
@@ -548,6 +678,8 @@ def ejecutar(
             operar(operador, id_sesion, cliente, revisor, reanudar)
         elif argumentos.comando == "continuar":
             operar(operador, argumentos.sesion, cliente, revisor, reanudar)
+        elif argumentos.comando == "cerrar":
+            _cerrar_sesion(operador, argumentos.sesion, leer)
     except (ErrorOperacion, ErrorExportacion) as error:
         print(error)
         return 1

@@ -2,9 +2,10 @@
 {% import "comunes.html" as comunes %}
 {% block titulo %}{{ vista.cliente if vista else 'Sesión' }}{% endblock %}
 
-{% macro formulario_decision(id_sesion, revisor, puede_aprobar=True, sugeridas='', con_pruebas=False) %}
+{% macro formulario_decision(id_sesion, revisor, bloqueo=none, sugeridas='', con_pruebas=False, final=False) %}
 <form method="post" action="/sesiones/{{ id_sesion }}/decision" class="formulario decision">
-  <label>Observaciones para el agente (obligatorias al rechazar)
+  {% if bloqueo %}<p class="aviso error">{{ bloqueo }}</p>{% endif %}
+  <label>Observaciones para el agente (obligatorias al {{ 'devolver' if final else 'rechazar' }})
     <textarea name="observaciones" rows="4">{{ sugeridas }}</textarea>
   </label>
   <label>Su nombre, como revisor
@@ -17,10 +18,39 @@
   </label>
   {% endif %}
   <div class="botones">
-    {% if puede_aprobar %}<button name="decision" value="aprobado">Aprobar</button>{% endif %}
+    {% if not bloqueo %}<button name="decision" value="aprobado">Aprobar</button>{% endif %}
+    {% if final %}
+    <button name="destino" value="desarrollador" class="secundario">Devolver al desarrollador</button>
+    <button name="destino" value="arquitecto" class="secundario">Devolver al arquitecto</button>
+    {% else %}
     <button name="decision" value="rechazado" class="secundario">Rechazar con observaciones</button>
+    {% endif %}
   </div>
+  {% if final %}
+  <p class="detalle">
+    El desarrollador corrige el código; el arquitecto rehace el diseño, que se revisa de nuevo en
+    N9. Devolverlo abre un ciclo de corrección nuevo, con sus observaciones y los hallazgos del
+    tester.
+  </p>
+  {% endif %}
 </form>
+{% endmacro %}
+
+{% macro formulario_cierre(id_sesion) %}
+<details class="cierre">
+  <summary>Cerrar la sesión sin módulo validado</summary>
+  <form method="post" action="/sesiones/{{ id_sesion }}/cerrar" class="formulario">
+    <p class="detalle">
+      Cerrar es definitivo: la sesión termina sin módulo y el motivo queda en la trazabilidad.
+    </p>
+    <label>Motivo <textarea name="motivo" rows="2" required></textarea></label>
+    <label>Su nombre <input name="revisor" placeholder="Analista"></label>
+    <label class="casilla">
+      <input type="checkbox" name="confirmo" value="si" required> Entiendo que es definitivo
+    </label>
+    <button type="submit" class="peligro">Cerrar la sesión</button>
+  </form>
+</details>
 {% endmacro %}
 
 {% block contenido %}
@@ -57,6 +87,7 @@
   <form method="post" action="/sesiones/{{ id_sesion }}/reanudar">
     <button type="submit">Reanudar</button>
   </form>
+  {{ formulario_cierre(id_sesion) }}
 </section>
 
 {% elif vista and vista.pausa %}
@@ -79,6 +110,7 @@
     <label>Respuesta del cliente <textarea name="texto" rows="3" required></textarea></label>
     <button type="submit">Enviar</button>
   </form>
+  {{ formulario_cierre(id_sesion) }}
 </section>
 
 {# --- N6: requerimientos ---------------------------------------------------------------- #}
@@ -132,7 +164,8 @@
   {% else %}
   <p class="aviso ok">Verificación de calidad (RF-07): sin defectos.</p>
   {% endif %}
-  {{ formulario_decision(id_sesion, revisor) }}
+  {{ formulario_decision(id_sesion, revisor, bloqueo=pausa.datos.bloqueo) }}
+  {{ formulario_cierre(id_sesion) }}
 </section>
 
 {# --- N9: especificación de diseño ------------------------------------------------------ #}
@@ -194,18 +227,27 @@
   {% else %}
   <p class="aviso ok">Validaciones del Anexo B: sin errores.</p>
   {% endif %}
-  {{ formulario_decision(id_sesion, revisor, puede_aprobar=not errores) }}
+  {{ formulario_decision(id_sesion, revisor, bloqueo=pausa.datos.bloqueo) }}
+  {{ formulario_cierre(id_sesion) }}
 </section>
 
 {# --- N17: aprobación final --------------------------------------------------------------- #}
 {% elif pausa.punto == 'final' %}
 <section class="tarjeta">
-  <h2>N17 · Versión {{ version.numero }} del módulo para la aprobación final</h2>
-  <p class="aviso">
-    Iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }} del ciclo de corrección. Si
-    rechaza, el desarrollador corrige y la cuenta sigue; alcanzado el límite, un rechazo del
-    tester escala la sesión a una persona.
+  <h2>N17 · Aprobación final · {{ 'versión %d del módulo' | format(version.numero) if version else 'sin versión válida del módulo' }}</h2>
+  {% if escalado %}
+  <p class="aviso error">
+    La sesión escaló: tras {{ vista.iteracion }} iteraciones del ciclo de corrección, el tester no
+    aprobó el módulo. No puede aprobarse: devuélvalo al desarrollador o al arquitecto con
+    observaciones, lo que abre un ciclo nuevo, o cierre la sesión.
   </p>
+  {% else %}
+  <p class="aviso">
+    El tester lo aprobó en la iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }} del
+    ciclo de corrección. Si lo devuelve, el agente corrige con sus observaciones y los hallazgos
+    del tester, en un ciclo nuevo.
+  </p>
+  {% endif %}
   <h3>Veredicto del tester: {{ validacion.veredicto.value if validacion.veredicto else '—' }}</h3>
   <table class="tabla">
     <thead><tr><th>Caso</th><th>Cumple</th><th>Evidencia</th></tr></thead>
@@ -229,6 +271,7 @@
     <summary>Reporte de validación completo</summary>
     <pre class="texto">{{ validacion.reporte }}</pre>
   </details>
+  {% if version %}
   <h3>Código</h3>
   {% for ruta, contenido in version.archivos.items() | sort %}
   <details>
@@ -236,8 +279,10 @@
     <pre class="codigo">{{ contenido }}</pre>
   </details>
   {% endfor %}
+  {% endif %}
 </section>
 
+{% if version %}
 <section class="tarjeta">
   <h2>Pruebas propias en el entorno aislado (RF-38)</h2>
   <p class="detalle">
@@ -265,10 +310,13 @@
   {% for e in pruebas.ejecucion.errores_recoleccion %}<pre class="texto aviso error">{{ e }}</pre>{% endfor %}
   {% endif %}
 </section>
+{% endif %}
 
 <section class="tarjeta">
   <h2>Decisión</h2>
-  {{ formulario_decision(id_sesion, revisor, sugeridas=sugeridas, con_pruebas=pruebas is not none) }}
+  {{ formulario_decision(id_sesion, revisor, bloqueo=pausa.datos.bloqueo, sugeridas=sugeridas,
+     con_pruebas=pruebas is not none, final=True) }}
+  {{ formulario_cierre(id_sesion) }}
 </section>
 {% endif %}
 
@@ -278,6 +326,9 @@
   {% if vista.fase.value == 'validado' %}
   <p>El módulo quedó validado. Puede revisar la <a href="/sesiones/{{ id_sesion }}/trazabilidad">trazabilidad</a>
     o <a href="/sesiones/{{ id_sesion }}/exportar.zip">exportar el paquete</a>.</p>
+  {% elif vista.fase.value == 'cerrada' %}
+  <p>La sesión se cerró sin módulo validado. Quién la cerró, desde dónde y por qué quedan en la
+    <a href="/sesiones/{{ id_sesion }}/trazabilidad">trazabilidad</a>.</p>
   {% else %}
   <p>Revise la <a href="/sesiones/{{ id_sesion }}/trazabilidad">trazabilidad</a> para decidir cómo seguir.</p>
   {% endif %}

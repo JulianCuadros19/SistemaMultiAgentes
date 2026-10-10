@@ -12,7 +12,7 @@ from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.operacion import Operador
 from multiagente.interfaces.web.aplicacion import PARA_EL_CLIENTE, crear_aplicacion
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
-from multiagente.orquestador.estado import Decision, Fase, PuntoControl, ResultadoPrueba
+from multiagente.orquestador.estado import Decision, Destino, Fase, PuntoControl, ResultadoPrueba
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import PREGUNTAS, ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -69,8 +69,8 @@ def test_el_equipo_y_el_cliente_operan_el_flujo_completo_por_la_web(entorno_fals
     pagina = decidir(cliente, id_sesion, "aprobado")
 
     # N17: una prueba propia falla, sus observaciones se proponen y la persona rechaza.
-    assert "N17 · Versión 1 del módulo" in pagina
-    assert "Iteración 1 de 3 del ciclo de corrección" in pagina
+    assert "N17 · Aprobación final · versión 1 del módulo" in pagina
+    assert "El tester lo aprobó en la iteración 1 de 3" in pagina
     pagina = cliente.post(
         f"/sesiones/{id_sesion}/pruebas",
         data={"nombre": "radicado.py", "contenido": "def test_radicado_falla():\n    assert 0\n"},
@@ -81,7 +81,7 @@ def test_el_equipo_y_el_cliente_operan_el_flujo_completo_por_la_web(entorno_fals
     decidir(cliente, id_sesion, "rechazado", observaciones=sugeridas, registrar_pruebas="si")
 
     # Versión 2: sube su archivo, pasa y aprueba registrando sus pruebas.
-    assert "N17 · Versión 2 del módulo" in cliente.get(f"/sesiones/{id_sesion}").text
+    assert "versión 2 del módulo" in cliente.get(f"/sesiones/{id_sesion}").text
     archivo = ("test_radicado.py", b"def test_radicado_con_anio():\n    assert 1\n", "text/plain")
     cliente.post(f"/sesiones/{id_sesion}/pruebas", files={"archivo": archivo})
     pagina = decidir(cliente, id_sesion, "aprobado", revisor="Julián", registrar_pruebas="si")
@@ -141,10 +141,87 @@ def test_una_sesion_detenida_por_una_falla_se_reanuda_desde_la_pagina(entorno_fa
     assert "ErrorSimulado" in pagina
     assert "Detenida antes de N11 · ejecución en el entorno aislado" in pagina
     assert 'action="/sesiones/' + id_sesion + '/reanudar"' in pagina
+    assert 'action="/sesiones/' + id_sesion + '/cerrar"' in pagina
 
     pagina = cliente.post(f"/sesiones/{id_sesion}/reanudar").text
-    assert "N17 · Versión 1 del módulo" in pagina
+    assert "N17 · Aprobación final · versión 1 del módulo" in pagina
     assert operador.vista(id_sesion).fase is Fase.APROBACION_FINAL
+
+
+def hasta_la_aprobacion_final(cliente: TestClient) -> str:
+    guion = guion_completo()
+    id_sesion = abrir(cliente, guion.necesidad)
+    for respuesta in guion.respuestas_cliente[:7]:
+        cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": respuesta})
+    decidir(cliente, id_sesion, "aprobado")
+    decidir(cliente, id_sesion, "aprobado")
+    return id_sesion
+
+
+def test_una_sesion_escalada_se_devuelve_al_arquitecto(entorno_falso):
+    # El tester rechaza las tres versiones del ciclo: la sesión escala a N17.
+    cliente, operador = web(ServiciosSimulados(fallos_veredicto=3), entorno_falso)
+    id_sesion = hasta_la_aprobacion_final(cliente)
+    pagina = cliente.get(f"/sesiones/{id_sesion}").text
+    assert "La sesión escaló: tras 3 iteraciones" in pagina
+    assert "El tester no aprobó el módulo y no puede aprobarse" in pagina
+    assert 'value="aprobado"' not in pagina
+    assert 'name="destino" value="arquitecto"' in pagina
+    assert "Escalada: el tester no aprobó el módulo" in cliente.get("/").text
+    assert (
+        PARA_EL_CLIENTE[Fase.REQUIERE_INTERVENCION]
+        in cliente.get(f"/conversacion/{id_sesion}").text
+    )
+
+    pagina = cliente.post(
+        f"/sesiones/{id_sesion}/decision",
+        data={"destino": "arquitecto", "observaciones": "Usar una arquitectura más simple"},
+    ).text
+    assert "N9 · Especificación de diseño" in pagina
+    pagina = decidir(cliente, id_sesion, "aprobado")
+    assert "El tester lo aprobó en la iteración 1 de 3" in pagina
+    decidir(cliente, id_sesion, "aprobado")
+
+    assert operador.vista(id_sesion).fase is Fase.VALIDADO
+    finales = [
+        (a.decision, a.destino)
+        for a in operador.estado(id_sesion)["sesion"].aprobaciones
+        if a.punto is PuntoControl.FINAL
+    ]
+    assert finales == [(Decision.RECHAZADO, Destino.ARQUITECTO), (Decision.APROBADO, None)]
+
+
+def test_la_especificacion_con_errores_no_ofrece_aprobar(entorno_falso):
+    cliente, _ = web(ServiciosSimulados(errores_validacion=99), entorno_falso)
+    guion = guion_completo()
+    id_sesion = abrir(cliente, guion.necesidad)
+    for respuesta in guion.respuestas_cliente[:7]:
+        cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": respuesta})
+    pagina = decidir(cliente, id_sesion, "aprobado")
+    assert "N9 · Especificación de diseño" in pagina
+    assert "La especificación no pasa las validaciones del Anexo B y no puede aprobarse" in pagina
+    assert 'value="aprobado"' not in pagina
+
+
+def test_se_cierra_una_sesion_desde_la_pagina(entorno_falso):
+    cliente, operador = web(ServiciosSimulados(), entorno_falso)
+    id_sesion = abrir(cliente)
+    pagina = cliente.get(f"/sesiones/{id_sesion}").text
+    assert 'action="/sesiones/' + id_sesion + '/cerrar"' in pagina
+
+    # Sin confirmar, no se cierra.
+    respuesta = cliente.post(f"/sesiones/{id_sesion}/cerrar", data={"motivo": "Desistió"})
+    assert "confirme el cierre" in respuesta.text
+    assert operador.vista(id_sesion).pausa.punto == "dialogo"
+
+    datos = {"motivo": "El cliente desistió", "revisor": "Laura", "confirmo": "si"}
+    pagina = cliente.post(f"/sesiones/{id_sesion}/cerrar", data=datos).text
+    assert "La sesión se cerró sin módulo validado" in pagina
+    assert operador.vista(id_sesion).fase is Fase.CERRADA
+    assert operador.estado(id_sesion)["sesion"].cierre.revisor == "Laura"
+    assert "Cerrada por Laura" in cliente.get(f"/sesiones/{id_sesion}/trazabilidad").text
+    assert PARA_EL_CLIENTE[Fase.CERRADA] in cliente.get(f"/conversacion/{id_sesion}").text
+    assert "ya terminó" in cliente.post(f"/sesiones/{id_sesion}/cerrar", data=datos).text
 
 
 def test_errores_de_operacion_y_de_exportacion(entorno_falso):

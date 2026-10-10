@@ -15,7 +15,9 @@ la deja en pausa y --sesion la reanuda en otro proceso, también tras una falla 
 
 Con --simulado, un modelo hace de cliente a partir de un caso sintético. --aprobar aprueba donde
 se admite, y --rechazar PUNTO OBSERVACION rechaza una vez en ese punto (requerimientos,
-especificacion o final). Sin decisión, la sesión queda en pausa en el punto de control.
+especificacion o final). Sin decisión, la sesión queda en pausa en el punto de control. Una
+sesión escalada también queda en pausa en N17: la reabre o la cierra una persona, con
+`multiagente continuar ID` o `multiagente cerrar ID`.
 
 Cada llamada al modelo se agrega a docs/mediciones/paso-11-extremo-a-extremo.jsonl con su sesión,
 sin el contenido de los mensajes. Requiere `docker compose up -d --wait`, el corpus ingerido, la
@@ -94,15 +96,22 @@ def revisor_simulado(guion: Guion, salida: Path | None) -> DecideRevisor:
         revisor = REVISORES[punto]
         if punto == "final" and salida:
             estado = operador.estado(vista.id_sesion)
-            destino = escribir_version(
-                salida / vista.id_sesion, estado["codigo"].vigente, estado["validacion"].reporte
+            if (version := estado["codigo"].vigente) is not None:
+                destino = escribir_version(
+                    salida / vista.id_sesion, version, estado["validacion"].reporte
+                )
+                print(f"\nCódigo y reporte escritos en {destino}")
+        if datos.get("escalado"):
+            print(
+                "\nLa sesión escaló sin módulo aprobado: queda en pausa en N17 para que una "
+                "persona la devuelva a un agente o la cierre."
             )
-            print(f"\nCódigo y reporte escritos en {destino}")
+            return None
         if punto in guion.rechazos:
             observaciones = guion.rechazos.pop(punto)
             print(f"\nDecisión simulada ({revisor}): rechazar · {observaciones}")
             return DecisionHumana(Decision.RECHAZADO, revisor, observaciones)
-        if guion.aprobar and not (datos.get("defectos") or datos.get("errores")):
+        if guion.aprobar and not (datos.get("bloqueo") or datos.get("defectos")):
             print(f"\nDecisión simulada ({revisor}): aprobar")
             return DecisionHumana(Decision.APROBADO, revisor)
         return None
