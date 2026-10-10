@@ -3,7 +3,6 @@
 from datetime import UTC, datetime
 
 from openai import OpenAI
-from psycopg import Connection
 
 from multiagente.agentes.arquitecto.catalogo import (
     CatalogoTecnologico,
@@ -39,7 +38,7 @@ from multiagente.orquestador.estado import Arquitectura, Contexto, Requerimiento
 from multiagente.orquestador.servicios import Diseno
 from multiagente.rag.colecciones import Agente
 from multiagente.rag.embeddings import Vectorizador, VectorizadorTEI
-from multiagente.rag.recuperacion import Recuperador
+from multiagente.rag.recuperacion import ConexionLectura, Recuperador
 
 
 class AgenteArquitecto:
@@ -117,7 +116,7 @@ class AgenteArquitecto:
 
 
 def crear_agente_arquitecto(
-    conexion: Connection,
+    conexion: ConexionLectura,
     registrador: RegistradorLlamadas,
     cliente: OpenAI | None = None,
     vectorizador: Vectorizador | None = None,

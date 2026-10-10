@@ -6,7 +6,6 @@ consulta bases de conocimiento (decisión 1 de `CLAUDE.md`, RF-29).
 """
 
 from openai import OpenAI
-from psycopg import Connection
 
 from multiagente.agentes.arquitecto.servicio import crear_agente_arquitecto
 from multiagente.agentes.desarrollador.servicio import crear_agente_desarrollador
@@ -17,11 +16,12 @@ from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistradorLlamadas
 from multiagente.orquestador.servicios import Servicios
 from multiagente.rag.embeddings import Vectorizador, VectorizadorTEI
+from multiagente.rag.recuperacion import ConexionLectura
 from multiagente.sandbox.ejecutor import EntornoAislado
 
 
 def crear_servicios(
-    conexion: Connection,
+    conexion: ConexionLectura,
     registrador: RegistradorLlamadas,
     cliente: OpenAI | None = None,
     vectorizador: Vectorizador | None = None,

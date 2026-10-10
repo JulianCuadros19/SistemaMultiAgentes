@@ -12,11 +12,13 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from psycopg import Connection
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 from multiagente.core.configuracion import ConfiguracionBaseDatos
 from multiagente.core.esquemas import comunes, especificacion_diseno, requerimiento
 from multiagente.orquestador import estado
 from multiagente.orquestador.estado import PARTICIONES
+from multiagente.persistencia.conexiones import abrir_pool
 
 MODULOS_DEL_ESTADO: tuple[ModuleType, ...] = (
     comunes,
@@ -89,6 +91,29 @@ def abrir_checkpointer(
         yield checkpointer
 
 
+@contextmanager
+def abrir_checkpointer_compartido(
+    configuracion: ConfiguracionBaseDatos | None = None,
+    aplicacion: str = "multiagente-puntos-control",
+) -> Iterator[PostgresSaver]:
+    """Abre el checkpointer sobre un pool, para procesos de larga vida como la web.
+
+    El pool verifica cada conexión antes de usarla: si PostgreSQL se reinicia, el proceso sigue
+    funcionando sin reiniciarse. Las conexiones usan las mismas opciones que `abrir_checkpointer`.
+
+    Args:
+        configuracion: Conexión a la base; si se omite, se lee del entorno.
+        aplicacion: Nombre con que las conexiones aparecen en `pg_stat_activity`.
+
+    Yields:
+        Checkpointer listo para compilar el grafo.
+    """
+    with abrir_pool(configuracion, aplicacion, prepare_threshold=0, row_factory=dict_row) as pool:
+        checkpointer = PostgresSaver(pool, serde=serializador())
+        checkpointer.setup()
+        yield checkpointer
+
+
 def identificadores_de_sesion(checkpointer: BaseCheckpointSaver) -> list[str]:
     """Identificadores de las sesiones guardadas, de la más reciente a la más antigua.
 
@@ -102,11 +127,16 @@ def identificadores_de_sesion(checkpointer: BaseCheckpointSaver) -> list[str]:
         El `thread_id` de cada sesión.
     """
     if isinstance(checkpointer, PostgresSaver):
-        with checkpointer.lock, checkpointer.conn.cursor() as cursor:
-            filas = cursor.execute(
-                "SELECT thread_id FROM checkpoints WHERE checkpoint_ns = '' "
-                "GROUP BY thread_id ORDER BY max(checkpoint_id) DESC"
-            ).fetchall()
+        consulta = (
+            "SELECT thread_id FROM checkpoints WHERE checkpoint_ns = '' "
+            "GROUP BY thread_id ORDER BY max(checkpoint_id) DESC"
+        )
+        if isinstance(checkpointer.conn, ConnectionPool):
+            with checkpointer.conn.connection() as conexion:
+                filas = conexion.execute(consulta).fetchall()
+        else:
+            with checkpointer.lock, checkpointer.conn.cursor() as cursor:
+                filas = cursor.execute(consulta).fetchall()
         return [fila["thread_id"] for fila in filas]
     if isinstance(checkpointer, InMemorySaver):
         # El almacenamiento crea una entrada vacía al consultar un hilo que no existe.

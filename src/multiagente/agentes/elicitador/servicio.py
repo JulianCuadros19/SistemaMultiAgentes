@@ -1,7 +1,6 @@
 """Agente elicitador real: implementa los servicios de N2, N3, N5 y N6 (paso 7)."""
 
 from openai import OpenAI
-from psycopg import Connection
 
 from multiagente.agentes.elicitador.calidad import verificar_conjunto
 from multiagente.agentes.elicitador.contexto import recuperar_contexto
@@ -25,7 +24,7 @@ from multiagente.orquestador.estado import Contexto, Conversacion, Requerimiento
 from multiagente.orquestador.servicios import Dialogo, Sintesis, VerificacionCalidad
 from multiagente.rag.colecciones import Agente
 from multiagente.rag.embeddings import Vectorizador, VectorizadorTEI
-from multiagente.rag.recuperacion import Recuperador
+from multiagente.rag.recuperacion import ConexionLectura, Recuperador
 
 
 class AgenteElicitador:
@@ -83,7 +82,7 @@ class AgenteElicitador:
 
 
 def crear_agente_elicitador(
-    conexion: Connection,
+    conexion: ConexionLectura,
     registrador: RegistradorLlamadas,
     cliente: OpenAI | None = None,
     vectorizador: Vectorizador | None = None,

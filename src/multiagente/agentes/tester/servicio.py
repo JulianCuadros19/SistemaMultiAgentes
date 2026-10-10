@@ -5,7 +5,6 @@ colección `criterios_calidad` (RF-29).
 """
 
 from openai import OpenAI
-from psycopg import Connection
 
 from multiagente.agentes.tester.analisis import analizar_version
 from multiagente.agentes.tester.contexto import recuperar_criterios
@@ -35,7 +34,7 @@ from multiagente.orquestador.estado import (
 from multiagente.orquestador.servicios import AnalisisEstatico, Dictamen
 from multiagente.rag.colecciones import Agente
 from multiagente.rag.embeddings import Vectorizador, VectorizadorTEI
-from multiagente.rag.recuperacion import Recuperador
+from multiagente.rag.recuperacion import ConexionLectura, Recuperador
 from multiagente.sandbox.ejecutor import EntornoAislado
 
 
@@ -136,7 +135,7 @@ def crear_juez(
 
 
 def crear_agente_tester(
-    conexion: Connection,
+    conexion: ConexionLectura,
     registrador: RegistradorLlamadas,
     cliente: OpenAI | None = None,
     vectorizador: Vectorizador | None = None,

@@ -36,6 +36,8 @@ dependencies = [
     "uvicorn>=0.54,<1",
     "jinja2>=3.1,<4",
     "python-multipart>=0.0.32,<0.1",
+    # N12 aplica Ruff al código generado (ADR-0012): es del sistema, no solo de desarrollo.
+    "ruff>=0.16,<0.17",
 ]
 
 [project.scripts]
@@ -44,7 +46,6 @@ multiagente = "multiagente.interfaces.consola:main"
 [project.optional-dependencies]
 dev = [
     "pytest>=9.1,<10",
-    "ruff>=0.16,<0.17",
 ]
 
 [tool.hatch.version]

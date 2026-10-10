@@ -11,14 +11,12 @@ from contextlib import AbstractContextManager, contextmanager, nullcontext
 from datetime import UTC, datetime
 from typing import Any
 
-import psycopg
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, ConfigDict
 
 from multiagente.agentes.servicios import crear_servicios
 from multiagente.agentes.tester.ejecucion import pruebas_ejecutadas
 from multiagente.core.configuracion import (
-    ConfiguracionBaseDatos,
     ConfiguracionInterfaces,
     ConfiguracionTester,
 )
@@ -48,7 +46,11 @@ from multiagente.orquestador.estado import (
     VersionCodigo,
 )
 from multiagente.orquestador.grafo import Nodo, construir_grafo
-from multiagente.persistencia.puntos_control import abrir_checkpointer, identificadores_de_sesion
+from multiagente.persistencia.conexiones import ConexionDePool, abrir_pool
+from multiagente.persistencia.puntos_control import (
+    abrir_checkpointer_compartido,
+    identificadores_de_sesion,
+)
 from multiagente.sandbox.ejecutor import EntornoAislado
 
 PUNTOS_DE_CONTROL = tuple(punto.value for punto in PuntoControl)
@@ -462,7 +464,9 @@ def abrir_operador(configuracion: ConfiguracionInterfaces | None = None) -> Iter
     """Abre el operador del sistema completo: base de conocimiento, puntos de control y agentes.
 
     Requiere `docker compose up -d --wait`, el corpus ingerido, la imagen del entorno aislado y
-    el archivo .env. Cada llamada a un modelo queda en la traza con su sesión.
+    el archivo .env. Cada llamada a un modelo queda en la traza con su sesión. Las conexiones a
+    PostgreSQL van por pools que se reconectan, para que un reinicio de la base no detenga una
+    web abierta durante horas.
 
     Args:
         configuracion: Traza y carpeta de trabajo; si se omite, se lee del entorno.
@@ -473,8 +477,10 @@ def abrir_operador(configuracion: ConfiguracionInterfaces | None = None) -> Iter
     configuracion = configuracion or ConfiguracionInterfaces()
     registro = RegistroPorSesion(configuracion.traza_llamadas)
     entorno = EntornoAislado()
-    cadena = ConfiguracionBaseDatos().cadena_conexion()
-    with psycopg.connect(cadena, autocommit=True) as conexion, abrir_checkpointer() as puntos:
-        servicios = crear_servicios(conexion, registro, entorno=entorno)
+    with (
+        abrir_pool(aplicacion="multiagente-conocimiento") as pool,
+        abrir_checkpointer_compartido() as puntos,
+    ):
+        servicios = crear_servicios(ConexionDePool(pool), registro, entorno=entorno)
         app = construir_grafo(servicios).compile(checkpointer=puntos)
         yield Operador(app, entorno, registro)

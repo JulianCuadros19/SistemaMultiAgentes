@@ -6,9 +6,9 @@ obligatorio por colección: un `Recuperador` solo existe para un agente y solo c
 colecciones que ese agente tiene autorizadas.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from typing import Protocol
 
-from psycopg import Connection
 from pydantic import BaseModel, ConfigDict
 
 from multiagente.core.configuracion import ConfiguracionRecuperacion
@@ -18,6 +18,26 @@ from multiagente.rag.ingesta import literal_vector
 
 K_FUSION = 60
 """Constante de la fusión por rango recíproco (arquitectura, §3.2)."""
+
+
+class FilasConsulta(Protocol):
+    """Resultado de una consulta del que se leen todas las filas."""
+
+    def fetchall(self) -> Sequence[Sequence[object]]:
+        """Devuelve todas las filas."""
+        ...
+
+
+class ConexionLectura(Protocol):
+    """Lo que el recuperador usa de una conexión.
+
+    Sirve una `psycopg.Connection` o una conexión de pool (`persistencia.conexiones`), que
+    sobrevive a un reinicio de la base.
+    """
+
+    def execute(self, consulta: str, parametros: object = None) -> FilasConsulta:
+        """Ejecuta una consulta."""
+        ...
 
 
 class FragmentoRecuperado(BaseModel):
@@ -111,7 +131,7 @@ class Recuperador:
 
     def __init__(
         self,
-        conexion: Connection,
+        conexion: ConexionLectura,
         vectorizador: Vectorizador,
         agente: Agente,
         configuracion: ConfiguracionRecuperacion | None = None,
