@@ -19,12 +19,14 @@ from multiagente.orquestador.estado import (
     Decision,
     Emisor,
     Fase,
+    Hallazgo,
     PuntoControl,
     Requerimientos,
+    Severidad,
     Veredicto,
 )
 from multiagente.orquestador.grafo import Nodo, construir_grafo
-from multiagente.orquestador.servicios import Servicios
+from multiagente.orquestador.servicios import AnalisisEstatico, Servicios
 from multiagente.orquestador.simulacion import (
     ElicitadorFijo,
     ErrorSimulado,
@@ -107,7 +109,9 @@ def test_recorrido_completo_con_ciclos_y_retornos(caplog):
         (PuntoControl.FINAL, Decision.RECHAZADO),
         (PuntoControl.FINAL, Decision.APROBADO),
     ]
-    assert estado["control"].iteracion == 3
+    # El rechazo en N17 abrió un ciclo nuevo: la versión 3 es su primera iteración.
+    assert estado["control"].iteracion == 1
+    assert estado["control"].retornos_humanos == 1
     assert len(estado["codigo"].versiones) == 3
     assert estado["codigo"].versiones[-1].defectos_atendidos == ("El radicado debe incluir el año",)
     assert [c.id for c in estado["validacion"].plan_pruebas] == [
@@ -209,16 +213,88 @@ def test_respuesta_vacia_del_cliente_vuelve_a_preguntar():
     assert avance.pausa.datos["aviso"] is None
 
 
-def test_escalamiento_al_agotar_las_iteraciones():
+def test_al_agotar_las_iteraciones_escala_a_una_persona_en_n17():
     simulacion = ServiciosSimulados(fallos_veredicto=99)
     app = compilar(simulacion, iteraciones=3)
-    recorrido = recorrer(app, guion_directo())
+    id_sesion, avance = avanzar_hasta(app, guion_directo(), "final")
 
-    visitas = Counter(recorrido.nodos)
-    assert visitas[Nodo.N10] == visitas[Nodo.N15] == 3
-    assert Nodo.N17 not in visitas
-    assert recorrido.final.pausa is None
-    assert recorrido.final.fase is Fase.REQUIERE_INTERVENCION
+    assert simulacion.llamadas["generar"] == 3
+    assert avance.fase is Fase.REQUIERE_INTERVENCION
+    assert avance.pausa.datos["escalado"] is True
+    # El tester no aprobó: la aprobación queda bloqueada.
+    avance = avanzar(app, id_sesion, aprobar())
+    assert avance.pausa.punto == "final"
+    assert "no puede aprobarse" in avance.pausa.datos["aviso"]
+
+    # Devolverlo al desarrollador abre un ciclo nuevo, que esta vez aprueba el tester.
+    simulacion.fallos_veredicto = 0
+    avance = avanzar(app, id_sesion, rechazar("Revisa la regla del radicado"))
+    assert avance.pausa.punto == "final"
+    assert avance.pausa.datos["escalado"] is False
+    assert avance.pausa.datos["iteracion"] == 1
+    assert avance.fase is Fase.APROBACION_FINAL
+
+
+class SimulacionQueObserva(ServiciosSimulados):
+    """Anota la versión previa y la retroalimentación que recibe cada generación."""
+
+    def __init__(self, hallazgos=()):
+        super().__init__(fallos_veredicto=0)
+        self.generaciones = []
+        self.hallazgos_de_analisis = hallazgos
+
+    def generar(self, requerimientos, especificacion, validacion, previa):
+        self.generaciones.append((previa, validacion.retroalimentacion, especificacion.version))
+        return super().generar(requerimientos, especificacion, validacion, previa)
+
+    def analizar(self, version, especificacion, requerimientos):
+        return AnalisisEstatico(hallazgos=self.hallazgos_de_analisis)
+
+
+def test_un_rechazo_en_n17_entrega_al_desarrollador_los_hallazgos_del_tester():
+    estilo = Hallazgo(
+        regla="CAL-MT-009",
+        severidad=Severidad.BAJA,
+        ubicacion="src/simulado/modulo.py:3",
+        descripcion="E501: línea larga",
+        sugerencia="Ajusta el estilo",
+        origen="ruff:E501",
+    )
+    simulacion = SimulacionQueObserva(hallazgos=(estilo,))
+    app = compilar(simulacion)
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
+    avanzar(app, id_sesion, rechazar("Arregla los hallazgos que encontraste"))
+
+    previa, retroalimentacion, _ = simulacion.generaciones[-1]
+    assert previa is not None and previa.numero == 1
+    assert retroalimentacion == ("Arregla los hallazgos que encontraste", estilo.como_linea())
+
+
+def test_devolver_al_arquitecto_redisena_y_genera_de_cero():
+    simulacion = SimulacionQueObserva()
+    app = compilar(simulacion)
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
+    avance = avanzar(app, id_sesion, rechazar("Separa la persistencia") | {"destino": "arquitecto"})
+    assert avance.pausa.punto == "especificacion"
+    estado = app.get_state(configuracion_hilo(id_sesion)).values
+    assert estado["arquitectura"].observaciones_revisor[-1] == "Separa la persistencia"
+
+    avance = avanzar(app, id_sesion, aprobar())
+    assert avance.pausa.punto == "final"
+    assert avance.pausa.datos["version"] == 2
+    # Con la especificación nueva, la versión 2 se genera de cero.
+    (previa_1, _, version_1), (previa_2, _, version_2) = simulacion.generaciones
+    assert previa_1 is None and previa_2 is None and version_1 != version_2
+    versiones = app.get_state(configuracion_hilo(id_sesion)).values["codigo"].versiones
+    assert [v.especificacion for v in versiones] == ["ED-01 v0.1", "ED-01 v0.2"]
+
+
+def test_el_destino_solo_se_elige_en_la_aprobacion_final():
+    app = compilar(ServiciosSimulados(fallos_veredicto=0))
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "especificacion")
+    avance = avanzar(app, id_sesion, rechazar("Otra") | {"destino": "arquitecto"})
+    assert avance.pausa.punto == "especificacion"
+    assert "solo se elige en la aprobación final" in avance.pausa.datos["aviso"]
 
 
 def test_defectos_de_calidad_regresan_a_la_sintesis_sin_humano():

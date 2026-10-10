@@ -302,21 +302,6 @@ def _escenario(caso: CasoPrueba) -> str:
     return f"dado que {caso.dado_que}, cuando {caso.cuando}, entonces {caso.entonces}"
 
 
-def linea_de_retroalimentacion(hallazgo_: Hallazgo) -> str:
-    """Defecto para el desarrollador, con campos fijos (RF-24).
-
-    Args:
-        hallazgo_: Hallazgo de la validación.
-
-    Returns:
-        `[regla · severidad] ubicación · defecto · Sugerencia: …`.
-    """
-    return (
-        f"[{hallazgo_.regla} · {hallazgo_.severidad.value}] {hallazgo_.ubicacion} · "
-        f"{hallazgo_.descripcion} · Sugerencia: {hallazgo_.sugerencia}"
-    )
-
-
 def dictaminar_version(
     plan: tuple[CasoPrueba, ...],
     validacion: Validacion,
@@ -484,9 +469,7 @@ def dictaminar_version(
         Veredicto.RECHAZADO if altas or incumplidos or medias > umbral_media else Veredicto.APROBADO
     )
     retroalimentacion = (
-        tuple(linea_de_retroalimentacion(h) for h in ordenados)
-        if veredicto is Veredicto.RECHAZADO
-        else ()
+        tuple(h.como_linea() for h in ordenados) if veredicto is Veredicto.RECHAZADO else ()
     )
     reporte = reporte_validacion(
         version.numero,

@@ -62,23 +62,35 @@ class Decision(StrEnum):
     RECHAZADO = "rechazado"
 
 
+class Destino(StrEnum):
+    """A quién devuelve la persona el módulo cuando lo rechaza en la aprobación final (N17)."""
+
+    DESARROLLADOR = "desarrollador"
+    ARQUITECTO = "arquitecto"
+
+
 class RespuestaHumana(ModeloEstricto):
     """Respuesta que entrega la persona al reanudar un punto de control.
 
     Attributes:
         pruebas_propias: Pruebas que la persona ejecutó antes de decidir en N17 (RF-38); quedan
             con la decisión como evidencia (RF-33).
+        destino: Solo en un rechazo en N17: el desarrollador corrige el módulo (por defecto) o
+            el arquitecto lo rediseña.
     """
 
     decision: Decision
     revisor: TextoObligatorio
     observaciones: TextoObligatorio | None = None
     pruebas_propias: "PruebasPropias | None" = None
+    destino: Destino | None = None
 
     @model_validator(mode="after")
     def _rechazo_con_observaciones(self) -> Self:
         if self.decision is Decision.RECHAZADO and self.observaciones is None:
             raise ValueError("Un rechazo debe incluir observaciones para el agente anterior")
+        if self.destino is not None and self.decision is not Decision.RECHAZADO:
+            raise ValueError("El destino solo se indica al rechazar")
         return self
 
 
@@ -267,6 +279,8 @@ class VersionCodigo(ModeloEstricto):
         archivos: Contenido de cada archivo por su ruta: módulos, pruebas y `USO.md`.
         defectos_atendidos: Retroalimentación que esta versión atiende.
         huella_estilo: SHA-256 de la configuración de estilo que rigió la generación (RF-36).
+        especificacion: Especificación con que se generó, como `ED-01 v0.2`: tras un rediseño,
+            la versión siguiente se genera de cero.
     """
 
     # El contenido de los archivos se conserva tal cual: recortarlo quitaría el salto de línea
@@ -277,6 +291,7 @@ class VersionCodigo(ModeloEstricto):
     archivos: dict[str, str] = Field(min_length=1)
     defectos_atendidos: tuple[TextoObligatorio, ...] = ()
     huella_estilo: TextoObligatorio | None = None
+    especificacion: TextoObligatorio | None = None
 
 
 class Codigo(Particion):
@@ -433,6 +448,17 @@ class Hallazgo(ModeloEstricto):
     sugerencia: TextoObligatorio
     origen: TextoObligatorio
 
+    def como_linea(self) -> str:
+        """Defecto para el desarrollador, con campos fijos (RF-24).
+
+        Returns:
+            `[regla · severidad] ubicación · defecto · Sugerencia: …`.
+        """
+        return (
+            f"[{self.regla} · {self.severidad.value}] {self.ubicacion} · {self.descripcion} · "
+            f"Sugerencia: {self.sugerencia}"
+        )
+
 
 class ConformidadModulo(ModeloEstricto):
     """Conformidad arquitectónica de un módulo declarado (RF-22)."""
@@ -521,9 +547,16 @@ class Contexto(Particion):
 
 
 class Control(Particion):
-    """Iteración del ciclo de corrección, límites configurados y costo acumulado."""
+    """Iteración del ciclo de corrección, límites configurados y costo acumulado.
+
+    Attributes:
+        iteracion: Iteración del ciclo de corrección en curso; cada devolución de la persona en
+            N17 abre un ciclo nuevo, que empieza en 1.
+        retornos_humanos: Devoluciones de N17 ya contadas por N15.
+    """
 
     iteracion: NonNegativeInt = 0
+    retornos_humanos: NonNegativeInt = 0
     limite_iteraciones: PositiveInt
     limite_turnos: PositiveInt
     limite_correcciones: PositiveInt

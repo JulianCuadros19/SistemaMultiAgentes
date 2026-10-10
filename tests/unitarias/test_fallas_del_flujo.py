@@ -13,7 +13,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.operacion import Operador
 from multiagente.llm.invocador import ErrorValidacionSalida
-from multiagente.orquestador.estado import Decision
+from multiagente.orquestador.estado import Decision, Destino
 from multiagente.orquestador.grafo import PREGUNTA_REINTENTO, construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -210,3 +210,11 @@ def test_n10_sin_version_agota_el_ciclo_sin_ejecutar_nada():
     assert estado["control"].iteracion == 3
     assert estado["validacion"].reporte.startswith("# La generación del módulo falló")
     assert simulacion.llamadas["ejecutar"] == 0
+    # Escala a una persona en N17, aunque no haya versión: la sesión tiene salida.
+    datos = op.vista(id_sesion).pausa.datos
+    assert datos["escalado"] is True
+    assert datos["version"] is None and datos["archivos"] == []
+    avance = op.decidir(
+        id_sesion, Decision.RECHAZADO, "Revisor", "Simplifica el diseño", destino=Destino.ARQUITECTO
+    )
+    assert avance.pausa.punto == "especificacion"

@@ -36,6 +36,7 @@ from multiagente.orquestador.ejecucion import (
 from multiagente.orquestador.estado import (
     RUTA_PRUEBA_PROPIA,
     Decision,
+    Destino,
     EjecucionPruebas,
     EstadoGrafo,
     Fase,
@@ -227,6 +228,7 @@ class Operador:
         revisor: str,
         observaciones: str | None = None,
         pruebas_propias: PruebasPropias | None = None,
+        destino: Destino | None = None,
     ) -> Avance:
         """Registra la decisión de la persona en el punto de control pendiente.
 
@@ -239,6 +241,7 @@ class Operador:
             revisor: Nombre de quien decide.
             observaciones: Qué debe cambiar el agente anterior; obligatorias al rechazar.
             pruebas_propias: Pruebas que la persona ejecutó en N17 (RF-38).
+            destino: Solo al rechazar en N17: el desarrollador (por defecto) o el arquitecto.
 
         Returns:
             El avance hasta la siguiente pausa o el final.
@@ -252,6 +255,8 @@ class Operador:
             respuesta["observaciones"] = observaciones.strip()
         if pruebas_propias is not None:
             respuesta["pruebas_propias"] = pruebas_propias.model_dump(mode="json")
+        if destino is not None:
+            respuesta["destino"] = destino.value
         return self._avanzar(id_sesion, respuesta)
 
     def reanudar(self, id_sesion: str) -> Avance:

@@ -27,6 +27,7 @@ from multiagente.orquestador.estado import (
     Control,
     Conversacion,
     Decision,
+    Destino,
     Emisor,
     EntradaSesion,
     EstadoGrafo,
@@ -130,6 +131,9 @@ def _pedir_decision(
         if validada.pruebas_propias is not None and punto is not PuntoControl.FINAL:
             aviso = "Las pruebas propias solo se registran en la aprobación final del módulo."
             continue
+        if validada.destino is not None and punto is not PuntoControl.FINAL:
+            aviso = "El destino de un rechazo solo se elige en la aprobación final del módulo."
+            continue
         return AprobacionHumana(**validada.model_dump(), punto=punto, fecha=_ahora())
 
 
@@ -223,13 +227,12 @@ def ruta_tras_decision(estado: EstadoGrafo) -> str:
         estado: Estado tras N15.
 
     Returns:
-        N17 si todos los casos cumplen; FIN si se agotaron las iteraciones; si no, N10.
+        N17 si todos los casos cumplen o si se agotaron las iteraciones del ciclo, para que una
+        persona decida cómo seguir (escalamiento); si no, N10.
     """
     fase = estado["sesion"].fase
-    if fase is Fase.APROBACION_FINAL:
+    if fase in (Fase.APROBACION_FINAL, Fase.REQUIERE_INTERVENCION):
         return Nodo.N17
-    if fase is Fase.REQUIERE_INTERVENCION:
-        return END
     return Nodo.N10
 
 
@@ -240,9 +243,14 @@ def ruta_tras_aprobacion_final(estado: EstadoGrafo) -> str:
         estado: Estado tras N17.
 
     Returns:
-        FIN si la persona aprobó el módulo; N10 si lo rechazó.
+        FIN si la persona aprobó el módulo; N8 si lo devolvió al arquitecto; si no, N10.
     """
-    return END if estado["sesion"].fase is Fase.VALIDADO else Nodo.N10
+    fase = estado["sesion"].fase
+    if fase is Fase.VALIDADO:
+        return END
+    if fase is Fase.DISENO:
+        return Nodo.N8
+    return Nodo.N10
 
 
 class NodosGrafo:
@@ -557,18 +565,21 @@ class NodosGrafo:
     def n10_generacion(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Genera una nueva versión del módulo sin recuperación de contexto.
 
-        Recibe la versión vigente, si la hay, para corregirla en lugar de reescribirla (RF-19).
-        Si el modelo no da una versión válida, deja el motivo en `fallo_generacion` y una
-        validación rechazada con los problemas: el flujo salta a N15, que cuenta la iteración.
+        Recibe la versión vigente, si la hay, para corregirla en lugar de reescribirla (RF-19);
+        tras un rediseño, la especificación cambió y el módulo se genera de cero. Si el modelo no
+        da una versión válida, deja el motivo en `fallo_generacion` y una validación rechazada con
+        los problemas: el flujo salta a N15, que cuenta la iteración.
         """
         codigo = estado["codigo"]
         validacion = estado["validacion"]
+        especificacion = estado["arquitectura"].especificacion
+        clave = f"{especificacion.id_especificacion} v{especificacion.version}"
+        previa = codigo.vigente
+        if previa is not None and previa.especificacion not in (None, clave):
+            previa = None
         try:
             version = self.servicios.desarrollador.generar(
-                estado["requerimientos"],
-                estado["arquitectura"].especificacion,
-                validacion,
-                codigo.vigente,
+                estado["requerimientos"], especificacion, validacion, previa
             )
         except FALLAS_DEL_MODELO as error:
             # Sin versión válida, la iteración cuenta como fallida: N15 la registra y decide.
@@ -592,6 +603,9 @@ class NodosGrafo:
                     reporte=reporte + "\n",
                 ),
             }
+        version = version.model_copy(
+            update={"numero": len(codigo.versiones) + 1, "especificacion": clave}
+        )
         return {
             "codigo": codigo.model_copy(
                 update={"versiones": (*codigo.versiones, version), "fallo_generacion": None}
@@ -646,9 +660,19 @@ class NodosGrafo:
         }
 
     def n15_decision(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Cuenta la iteración y decide: aprobación final, corrección o escalamiento."""
+        """Cuenta la iteración y decide: aprobación final, corrección o escalamiento.
+
+        Cada devolución de la persona en N17 abre un ciclo de corrección nuevo, que empieza en
+        la iteración 1: trae información nueva, no es un fallo del desarrollador. El límite del
+        RF-27 se aplica por ciclo. Al agotarlo, la sesión escala a N17.
+        """
         control = estado["control"]
-        iteracion = control.iteracion + 1
+        retornos = sum(
+            1
+            for aprobacion in estado["sesion"].aprobaciones
+            if aprobacion.punto is PuntoControl.FINAL and aprobacion.decision is Decision.RECHAZADO
+        )
+        iteracion = 1 if retornos > control.retornos_humanos else control.iteracion + 1
         if estado["validacion"].aprobado:
             fase = Fase.APROBACION_FINAL
         elif iteracion >= control.limite_iteraciones:
@@ -656,7 +680,9 @@ class NodosGrafo:
         else:
             fase = Fase.DESARROLLO
         return {
-            "control": control.model_copy(update={"iteracion": iteracion}),
+            "control": control.model_copy(
+                update={"iteracion": iteracion, "retornos_humanos": retornos}
+            ),
             "sesion": estado["sesion"].model_copy(update={"fase": fase}),
         }
 
@@ -681,19 +707,26 @@ class NodosGrafo:
 
         La persona revisa el código, el veredicto por caso, los hallazgos, la conformidad por
         módulo y el reporte de validación, y puede registrar con su decisión las pruebas propias
-        que ejecutó (RF-38). Ve también la iteración del ciclo de corrección: un rechazo aquí
-        consume una más.
+        que ejecutó (RF-38). Si rechaza, devuelve el módulo al desarrollador, que corrige con sus
+        observaciones y los hallazgos del tester, o al arquitecto, que rediseña.
+
+        También recibe las sesiones escaladas por agotar el ciclo de corrección (RF-27): la
+        aprobación queda bloqueada, porque el tester no aprobó la versión, y la persona decide
+        cómo seguir. Puede que no haya versión, si ninguna generación fue válida.
         """
         validacion = estado["validacion"]
         version = estado["codigo"].vigente
         control = estado["control"]
+        sesion = estado["sesion"]
+        escalado = sesion.fase is Fase.REQUIERE_INTERVENCION
         aprobacion = _pedir_decision(
             PuntoControl.FINAL,
             {
+                "escalado": escalado,
                 "iteracion": control.iteracion,
                 "limite_iteraciones": control.limite_iteraciones,
-                "version": version.numero,
-                "archivos": sorted(version.archivos),
+                "version": version.numero if version else None,
+                "archivos": sorted(version.archivos) if version else [],
                 "veredicto": validacion.veredicto.value if validacion.veredicto else None,
                 "veredictos": [v.model_dump(mode="json") for v in validacion.veredictos],
                 "hallazgos": [h.model_dump(mode="json") for h in validacion.hallazgos],
@@ -701,16 +734,38 @@ class NodosGrafo:
                 "no_evaluadas": list(validacion.no_evaluadas),
                 "reporte": validacion.reporte,
             },
+            bloqueo=(
+                "El tester no aprobó esta versión y no puede aprobarse: devuélvela al "
+                "desarrollador o al arquitecto con observaciones, o cierra la sesión."
+                if escalado
+                else None
+            ),
         )
-        sesion = estado["sesion"]
         if aprobacion.decision is Decision.APROBADO:
             return {"sesion": _con_aprobacion(sesion, aprobacion, Fase.VALIDADO)}
-        return {
-            "sesion": _con_aprobacion(sesion, aprobacion, Fase.DESARROLLO),
-            "validacion": validacion.model_copy(
-                update={"retroalimentacion": (aprobacion.observaciones,)}
-            ),
+        # La persona y el tester hablan al desarrollador a la vez: sus observaciones primero y
+        # luego cada hallazgo de la versión, incluidos los de severidad baja.
+        retroalimentacion = (
+            aprobacion.observaciones,
+            *(hallazgo.como_linea() for hallazgo in validacion.hallazgos),
+        )
+        cambios: dict[str, Any] = {
+            "validacion": validacion.model_copy(update={"retroalimentacion": retroalimentacion})
         }
+        if aprobacion.destino is Destino.ARQUITECTO:
+            arquitectura = estado["arquitectura"]
+            cambios["arquitectura"] = arquitectura.model_copy(
+                update={
+                    "observaciones_revisor": (
+                        *arquitectura.observaciones_revisor,
+                        aprobacion.observaciones,
+                    )
+                }
+            )
+            cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.DISENO)
+        else:
+            cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.DESARROLLO)
+        return cambios
 
 
 def construir_grafo(
@@ -751,6 +806,6 @@ def construir_grafo(
     )
     grafo.add_conditional_edges(Nodo.N9, ruta_tras_especificacion, [Nodo.N8, Nodo.N10])
     grafo.add_conditional_edges(Nodo.N10, ruta_tras_generacion, [Nodo.N11, Nodo.N15])
-    grafo.add_conditional_edges(Nodo.N15, ruta_tras_decision, [Nodo.N10, Nodo.N17, END])
-    grafo.add_conditional_edges(Nodo.N17, ruta_tras_aprobacion_final, [Nodo.N10, END])
+    grafo.add_conditional_edges(Nodo.N15, ruta_tras_decision, [Nodo.N10, Nodo.N17])
+    grafo.add_conditional_edges(Nodo.N17, ruta_tras_aprobacion_final, [Nodo.N8, Nodo.N10, END])
     return grafo
