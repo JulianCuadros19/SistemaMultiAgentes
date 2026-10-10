@@ -10,14 +10,16 @@ verificarse leyendo el árbol sintáctico (arquitectura, §11):
 - RF-17: cada módulo importa solo la biblioteca estándar, las dependencias externas declaradas y
   los módulos de sus `dependencias_permitidas`, siempre con importaciones absolutas y sin nombres
   privados de otro módulo (CAL-MT-010, que el tester rechaza con el umbral 0).
-- RF-18: toda función, clase y método público documentado, y al menos una prueba por cada
-  escenario de cada requerimiento cubierto, nombrada `test_rf_01_esc_01_…`.
+- RF-18: toda función, clase y método público documentado, al menos una prueba por cada
+  escenario de cada requerimiento cubierto, nombrada `test_rf_01_esc_01_…`, y un `USO.md` con
+  las secciones que necesita quien lo pone en marcha (`SECCIONES_USO`).
 
 El análisis es el de `multiagente.core.conformidad`, el mismo que aplica el tester en N12. El
 estilo (RF-16), la ejecución y la severidad los dictamina el tester (N11 a N14). Los problemas se
 redactan para que el modelo los corrija en su reintento.
 """
 
+import unicodedata
 from collections.abc import Mapping
 
 from multiagente.core.conformidad import (
@@ -32,6 +34,7 @@ from multiagente.orquestador.estado import Requerimientos
 
 __all__ = [
     "RUTA_USO",
+    "SECCIONES_USO",
     "importacion_de_paquete",
     "nombre_de_prueba",
     "verificar_version",
@@ -43,6 +46,17 @@ INTERFACES = "RF-15 · interfaces"
 DEPENDENCIAS = "RF-17 · dependencias"
 DOCUMENTACION = "RF-18 · documentación"
 PRUEBAS = "RF-18 · pruebas"
+
+SECCIONES_USO = (
+    "Requisitos",
+    "Instalación",
+    "Configuración",
+    "Ejecución",
+    "Pruebas",
+    "Interfaces",
+    "Supuestos",
+)
+"""Secciones de segundo nivel que debe tener el documento de uso, en ese orden."""
 
 CRITERIO_POR_TIPO: dict[TipoProblema, str] = {
     TipoProblema.RUTA_INSEGURA: ARCHIVOS,
@@ -82,8 +96,34 @@ def verificar_version(
         pasar al tester.
     """
     informe = analizar_conformidad(archivos, especificacion, requerimientos.requerimientos)
-    return [
+    problemas = [
         f"{CRITERIO_POR_TIPO[problema.tipo]}: {problema.mensaje}"
         for problema in informe.problemas
         if problema.tipo in CRITERIO_POR_TIPO
     ]
+    if (uso := archivos.get(RUTA_USO)) is not None and (faltan := secciones_faltantes(uso)):
+        lista = ", ".join(f"«## {seccion}»" for seccion in faltan)
+        problemas.append(f"{DOCUMENTACION}: a {RUTA_USO} le faltan las secciones {lista}")
+    return problemas
+
+
+def _comparable(texto: str) -> str:
+    descompuesto = unicodedata.normalize("NFKD", texto)
+    return "".join(c for c in descompuesto if not unicodedata.combining(c)).strip().casefold()
+
+
+def secciones_faltantes(documento: str) -> list[str]:
+    """Secciones de `SECCIONES_USO` que no están como títulos de segundo nivel del documento.
+
+    Args:
+        documento: Contenido de `USO.md`.
+
+    Returns:
+        Las secciones que faltan, sin importar mayúsculas ni tildes.
+    """
+    titulos = {
+        _comparable(linea.removeprefix("## "))
+        for linea in documento.splitlines()
+        if linea.startswith("## ")
+    }
+    return [seccion for seccion in SECCIONES_USO if _comparable(seccion) not in titulos]

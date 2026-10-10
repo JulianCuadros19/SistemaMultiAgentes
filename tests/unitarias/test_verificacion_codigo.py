@@ -3,6 +3,7 @@
 import pytest
 
 from multiagente.agentes.desarrollador.verificacion import (
+    SECCIONES_USO,
     importacion_de_paquete,
     nombre_de_prueba,
     verificar_version,
@@ -175,7 +176,8 @@ def archivos_validos() -> dict[str, str]:
         "src/dominio/predio.py": PREDIO,
         "src/aplicacion/avaluo.py": AVALUO,
         "tests/test_avaluo.py": PRUEBAS,
-        "USO.md": "# Uso\n\nLlame a `calcular_avaluo`.\n",
+        "USO.md": "# Uso\n\n"
+        + "".join(f"## {seccion}\n\nLlame a `calcular_avaluo`.\n\n" for seccion in SECCIONES_USO),
     }
 
 
@@ -233,6 +235,10 @@ class Predio:
         (agregar("../fuera.py", ""), "no es relativa"),
         (quitar("tests/test_avaluo.py"), "no hay archivos de prueba"),
         (quitar("USO.md"), "falta el documento de uso"),
+        (
+            reemplazar("USO.md", "## Ejecución", "## Cómo se usa"),
+            "a USO.md le faltan las secciones «## Ejecución»",
+        ),
         (
             reemplazar(
                 "src/aplicacion/avaluo.py", "from typing", "type Monto = Decimal\nfrom typing"

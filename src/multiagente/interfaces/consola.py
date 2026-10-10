@@ -85,6 +85,12 @@ def mostrar_especificacion(datos: dict[str, Any]) -> None:
         print("(No hay especificación de diseño: el arquitecto no logró producirla.)")
     else:
         print(especificacion_md(EspecificacionDiseno.model_validate(datos["especificacion"])))
+    if capacidades := datos.get("capacidades_no_cubiertas"):
+        print(
+            "Aviso: el diseño no cubre lo siguiente, porque el catálogo tecnológico no lo permite:"
+        )
+        for capacidad in capacidades:
+            print(f"  - {capacidad}")
     if datos["errores"]:
         print("Errores de validación (Anexo B); solo se admite el rechazo:")
         for error in datos["errores"]:

@@ -2,7 +2,7 @@
 id: arquitecto.parametrizacion
 agente: arquitecto
 nodo: N8
-version: 1.1
+version: 1.2
 descripcion: Parametrización de N8. Declara la especificación de diseño de la arquitectura elegida.
 ---
 
@@ -56,9 +56,18 @@ verificará el código contra lo que declares, de forma automática.
   monetario o de avalúo usa `Decimal`, nunca `float`.
 - `dependencias_externas`: solo librerías del catálogo tecnológico autorizado que el código
   importará directamente, cada una con su propósito. Los módulos de la biblioteca estándar
-  (`decimal`, `datetime`, `zoneinfo`, `logging`) no se declaran. Si un requerimiento exige
-  algo que el catálogo no cubre, no inventes la dependencia.
+  (`decimal`, `datetime`, `zoneinfo`, `logging`) no se declaran.
+  - Sin dependencias implícitas: si una librería declarada necesita otra para lo que pides de
+    ella (un motor, un extra o un complemento que cargue por su cuenta), esa otra también debe
+    estar en el catálogo y declararse. El entorno instala solo lo declarado.
+  - Si un requerimiento exige algo que el catálogo no cubre, no inventes la dependencia ni la
+    escondas en el propósito de otra: regístralo en `capacidades_no_cubiertas`.
 - `reglas_de_dependencia`: las restricciones estructurales que el código debe respetar,
   enunciadas como frases, según la regla de dependencia de la arquitectura.
+- `capacidades_no_cubiertas`: lo que piden los requerimientos y el catálogo tecnológico no
+  permite, una frase por capacidad, con el requerimiento que la pide (por ejemplo, «RF-02 pide
+  firmar documentos con certificado digital: el catálogo no tiene una librería de firma»).
+  Diseña sin esas capacidades: el arquitecto humano decidirá en la aprobación. Déjala vacía si
+  el catálogo cubre todo.
 
 Responde siempre en español.

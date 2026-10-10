@@ -170,6 +170,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
                     else None
                 ),
                 "errores": datos["errores"],
+                "capacidades": datos.get("capacidades_no_cubiertas", []),
             }
         if pausa.punto == "final":
             estado = operador.estado(vista.id_sesion)

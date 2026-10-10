@@ -179,6 +179,13 @@
   {% else %}
   <p class="aviso error">No hay especificación de diseño: el arquitecto no logró producirla.</p>
   {% endif %}
+  {% if capacidades %}
+  <div class="aviso">
+    <strong>El diseño no cubre lo siguiente, porque el catálogo tecnológico no lo permite.</strong>
+    Si lo aprueba, el módulo se construirá sin ello.
+    <ul>{% for c in capacidades %}<li>{{ c }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
   {% if errores %}
   <div class="aviso error">
     <strong>La especificación no pasa las validaciones del Anexo B; solo se admite el rechazo.</strong>

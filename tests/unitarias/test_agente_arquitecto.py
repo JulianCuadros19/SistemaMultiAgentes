@@ -346,6 +346,7 @@ def salida_especificacion(**cambios) -> SalidaEspecificacion:
         ],
         "dependencias_externas": [{"paquete": "pydantic", "proposito": "validar datos"}],
         "reglas_de_dependencia": ["La capa de dominio no importa de ninguna otra capa"],
+        "capacidades_no_cubiertas": [],
     }
     return SalidaEspecificacion.model_validate(base | cambios)
 
@@ -414,6 +415,21 @@ def test_primer_diseno_selecciona_y_parametriza(cliente_falso, completar_respues
         cargar_prompt("arquitecto", "parametrizacion").identificador,
     ]
     assert registro.llamadas[0].costo_usd > 0
+
+
+def test_las_capacidades_no_cubiertas_llegan_al_diseno(cliente_falso, completar_respuesta):
+    # Regla 4 de arq-004: lo que el catálogo no cubre se registra, no se esconde ni se inventa.
+    hueco = "RF-01 pide firmar documentos: el catálogo no tiene una librería de firma"
+    cliente = cliente_falso(
+        completar_respuesta(salida_seleccion(), modelo="gpt-5-2025-08-07"),
+        completar_respuesta(
+            salida_especificacion(capacidades_no_cubiertas=[f"  {hueco} ", " "]),
+            modelo="gpt-5-2025-08-07",
+        ),
+    )
+    diseno = agente(cliente).disenar(APROBADOS, contexto_recuperado(), Arquitectura())
+    assert diseno.capacidades_no_cubiertas == (hueco,)
+    assert "capacidades_no_cubiertas" not in diseno.especificacion.model_dump()
 
 
 def diseno_previo(**cambios) -> Arquitectura:
@@ -499,6 +515,7 @@ def test_requerimientos_aprobados_llegan_a_una_especificacion_valida(
     assert avance.pausa.punto == "especificacion"
     assert avance.pausa.datos["errores"] == []
     assert avance.pausa.datos["especificacion"]["arquitectura_base"] == "ARQ-01"
+    assert avance.pausa.datos["capacidades_no_cubiertas"] == []
     assert "Registro de decisión" in avance.pausa.datos["registro_decision"]
 
     # Un rechazo humano vuelve a seleccionar y parametrizar con la observación.

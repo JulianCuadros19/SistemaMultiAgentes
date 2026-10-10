@@ -8,7 +8,12 @@ import pytest
 from multiagente.agentes.tester.analisis import hallazgo
 from multiagente.agentes.tester.contexto import CONSULTAS_FIJAS, recuperar_criterios
 from multiagente.agentes.tester.reglas import cargar_reglas_calidad
-from multiagente.agentes.tester.veredicto import dictaminar_version, pruebas_fuente
+from multiagente.agentes.tester.veredicto import (
+    dictaminar_version,
+    hallazgos_de_ejecucion,
+    pruebas_fuente,
+    sugerencia_de_ejecucion,
+)
 from multiagente.llm.costos import Tarifa
 from multiagente.llm.invocador import InvocadorNodo, ParametrosNodo
 from multiagente.llm.prompts import cargar_prompt
@@ -354,3 +359,24 @@ def test_n13_consulta_cada_regla_citada_y_los_criterios_del_juicio():
         colecciones == (Coleccion.CRITERIOS_CALIDAD,) for _, colecciones, _ in recuperador.consultas
     )
     assert len(contexto.fragmentos["criterios_calidad"]) == len(consultas)
+
+
+def test_una_libreria_que_falta_tiene_una_sugerencia_precisa():
+    mensaje = "ModuleNotFoundError: No module named 'openpyxl'"
+    assert "«openpyxl»" in sugerencia_de_ejecucion(mensaje)
+    # Un módulo propio que no se encuentra, o cualquier otra falla, usan la sugerencia de la regla.
+    assert sugerencia_de_ejecucion("No module named 'dominio.avaluo'") is None
+    assert sugerencia_de_ejecucion("AssertionError: assert 1 == 2") is None
+
+    ejecucion = EjecucionPruebas(
+        pruebas=(
+            PruebaEjecutada(
+                archivo="tests/test_reporte.py",
+                nombre="test_rf_01_esc_01_genera",
+                resultado=ResultadoPrueba.FALLO,
+                mensaje=mensaje,
+            ),
+        )
+    )
+    [falla] = hallazgos_de_ejecucion(ejecucion, cargar_reglas_calidad())
+    assert falla.regla == "CAL-FS-002" and "«openpyxl»" in falla.sugerencia

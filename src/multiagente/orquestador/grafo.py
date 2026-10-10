@@ -498,6 +498,7 @@ class NodosGrafo:
                     "disenos": previa.disenos + 1,
                     "observaciones_atendidas": len(previa.observaciones_revisor),
                     "fallo_diseno": None,
+                    "capacidades_no_cubiertas": diseno.capacidades_no_cubiertas,
                 }
             )
         }
@@ -542,6 +543,7 @@ class NodosGrafo:
                     else None
                 ),
                 "errores": list(errores),
+                "capacidades_no_cubiertas": list(arquitectura.capacidades_no_cubiertas),
             },
             bloqueo=(
                 "La especificación no pasa las validaciones del Anexo B y no puede aprobarse: "

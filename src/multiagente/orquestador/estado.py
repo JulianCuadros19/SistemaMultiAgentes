@@ -277,6 +277,8 @@ class Arquitectura(Particion):
             llega una nueva, N8 vuelve a seleccionar la arquitectura.
         fallo_diseno: Por qué falló el último diseño, si el modelo no dio uno válido; la
             especificación es entonces la del diseño anterior, si lo hubo.
+        capacidades_no_cubiertas: Lo que piden los requerimientos y el catálogo tecnológico no
+            permite, según el último diseño; N9 lo muestra a la persona.
     """
 
     registro_decision: TextoObligatorio | None = None
@@ -287,6 +289,7 @@ class Arquitectura(Particion):
     correcciones: NonNegativeInt = 0
     observaciones_atendidas: NonNegativeInt = 0
     fallo_diseno: TextoObligatorio | None = None
+    capacidades_no_cubiertas: tuple[TextoObligatorio, ...] = ()
 
 
 class VersionCodigo(ModeloEstricto):

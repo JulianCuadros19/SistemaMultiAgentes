@@ -99,12 +99,19 @@ class AgenteArquitecto:
             registro = previa.registro_decision
             elegida = previa.especificacion.arquitectura_base
         version = f"0.{previa.disenos + 1}"
-        especificacion = self.parametrizacion.invocar_validado(
+        especificacion, capacidades = self.parametrizacion.invocar_validado(
             mensajes_parametrizacion(requerimientos, contexto, previa, elegida, registro),
             SalidaEspecificacion,
-            lambda s: especificacion_desde_salida(s, requerimientos, elegida, version),
+            lambda s: (
+                especificacion_desde_salida(s, requerimientos, elegida, version),
+                tuple(c.strip() for c in s.capacidades_no_cubiertas if c.strip()),
+            ),
         )
-        return Diseno(registro_decision=registro, especificacion=especificacion)
+        return Diseno(
+            registro_decision=registro,
+            especificacion=especificacion,
+            capacidades_no_cubiertas=capacidades,
+        )
 
     def validar(
         self, especificacion: EspecificacionDiseno, requerimientos: Requerimientos

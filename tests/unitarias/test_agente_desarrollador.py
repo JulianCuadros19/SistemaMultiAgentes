@@ -18,6 +18,7 @@ from multiagente.agentes.desarrollador.servicio import (
     AgenteDesarrollador,
     crear_agente_desarrollador,
 )
+from multiagente.agentes.desarrollador.verificacion import SECCIONES_USO
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.core.esquemas.comunes import Enunciado, Impacto, Prioridad
 from multiagente.core.esquemas.requerimiento import (
@@ -133,7 +134,10 @@ def test_rf_01_esc_02_rechaza_vacio():
 """
 
 
-def salida(archivos: dict[str, str], uso: str = "# Uso\n\nLlame a `ejecutar`.") -> dict:
+USO = "# Uso\n\n" + "\n\n".join(f"## {s}\n\nLlame a `ejecutar`." for s in SECCIONES_USO)
+
+
+def salida(archivos: dict[str, str], uso: str = USO) -> dict:
     return {
         "archivos": [
             {"ruta": ruta, "contenido": contenido} for ruta, contenido in archivos.items()
@@ -233,7 +237,7 @@ def test_genera_la_primera_version(cliente_falso, completar_respuesta):
     assert argumentos["response_format"]["json_schema"]["name"] == "SalidaGeneracion"
     assert cliente.opciones == {"timeout": 600}
     (llamada,) = registro.llamadas
-    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.1")
+    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.2")
     assert llamada.costo_usd == Decimal("0.091")
 
 

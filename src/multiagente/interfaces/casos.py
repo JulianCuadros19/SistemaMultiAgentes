@@ -112,7 +112,10 @@ def exportar_caso_desarrollo(caso: CasoDiseno, diseno: Diseno, archivo: Path) ->
     Returns:
         El caso de desarrollo guardado.
     """
-    datos = caso.model_dump(mode="json") | diseno.model_dump(mode="json")
+    # El caso guarda el diseño aprobado; las capacidades no cubiertas eran un aviso para N9.
+    datos = caso.model_dump(mode="json") | diseno.model_dump(
+        mode="json", exclude={"capacidades_no_cubiertas"}
+    )
     datos["id"] = caso.id.replace("caso-diseno", "caso-desarrollo", 1)
     desarrollo = CasoDesarrollo.model_validate(datos)
     archivo.write_text(

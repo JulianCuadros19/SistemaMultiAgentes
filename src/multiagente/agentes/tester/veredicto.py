@@ -15,6 +15,7 @@ incumplido o con más hallazgos de severidad media que el umbral configurado.
 import ast
 import json
 import logging
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -129,6 +130,27 @@ def _funcion_base(nombre: str) -> str:
     return nombre.rsplit("::", 1)[-1].split("[", 1)[0]
 
 
+_LIBRERIA_FALTANTE = re.compile(r"No module named '(\w+)'")
+
+
+def sugerencia_de_ejecucion(texto: str) -> str | None:
+    """Sugerencia precisa si la falla se debe a una librería que el entorno no tiene.
+
+    Args:
+        texto: Mensaje de la falla, la traza de importación o el error de recolección.
+
+    Returns:
+        La sugerencia, o None si la falla es otra: entonces vale la sugerencia de la regla.
+    """
+    if (coincidencia := _LIBRERIA_FALTANTE.search(texto)) is None:
+        return None
+    return (
+        f"El entorno aislado no tiene instalada la librería «{coincidencia.group(1)}»: usa solo la "
+        "biblioteca estándar y las dependencias externas declaradas en la especificación, sin "
+        "motores ni extras opcionales."
+    )
+
+
 def hallazgos_de_ejecucion(
     ejecucion: EjecucionPruebas, reglas: dict[str, ReglaCalidad]
 ) -> list[Hallazgo]:
@@ -149,6 +171,7 @@ def hallazgos_de_ejecucion(
             modulo,
             f"El módulo {modulo} no se importa: {_detalle(traza)}",
             "ejecucion",
+            sugerencia_de_ejecucion(traza),
         )
         for modulo, traza in sorted(ejecucion.errores_importacion.items())
     ]
@@ -159,6 +182,7 @@ def hallazgos_de_ejecucion(
             error.split(":", 1)[0],
             f"El archivo de pruebas no se pudo recolectar: {_detalle(error)}",
             "ejecucion",
+            sugerencia_de_ejecucion(error),
         )
         for error in ejecucion.errores_recoleccion
     ]
@@ -169,6 +193,7 @@ def hallazgos_de_ejecucion(
             prueba.identificador,
             f"La prueba termina en {prueba.resultado.value}: {_detalle(prueba.mensaje)}",
             "ejecucion",
+            sugerencia_de_ejecucion(prueba.mensaje),
         )
         for prueba in ejecucion.pruebas
         if prueba.resultado in FALLIDAS

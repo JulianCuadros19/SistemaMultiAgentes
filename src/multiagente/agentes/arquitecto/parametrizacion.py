@@ -83,6 +83,7 @@ class SalidaEspecificacion(BaseModel):
     modelo_datos: list[EntidadModelo]
     dependencias_externas: list[DependenciaModelo]
     reglas_de_dependencia: list[str]
+    capacidades_no_cubiertas: list[str]
 
 
 def mensajes_parametrizacion(
@@ -151,7 +152,8 @@ def especificacion_desde_salida(
     Raises:
         ErrorValidacionSalida: Si incumple el esquema o tiene dependencias circulares.
     """
-    datos = salida.model_dump(mode="json")
+    # Las capacidades no cubiertas son un aviso para N9, no un campo del Anexo B.
+    datos = salida.model_dump(mode="json", exclude={"capacidades_no_cubiertas"})
     for modulo in datos["modulos"]:
         modulo["requerimientos"] = [rf.strip() for rf in modulo["requerimientos"]]
     for entidad in datos["modelo_datos"]:

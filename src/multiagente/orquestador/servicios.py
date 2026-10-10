@@ -80,10 +80,16 @@ class VerificacionCalidad(ModeloEstricto):
 
 
 class Diseno(ModeloEstricto):
-    """Registro de decisión y especificación que produce el arquitecto (N8)."""
+    """Registro de decisión y especificación que produce el arquitecto (N8).
+
+    Attributes:
+        capacidades_no_cubiertas: Lo que piden los requerimientos y el catálogo tecnológico no
+            permite (regla 4 de arq-004): el diseño las omite y la persona decide en N9.
+    """
 
     registro_decision: TextoObligatorio
     especificacion: EspecificacionDiseno
+    capacidades_no_cubiertas: tuple[TextoObligatorio, ...] = ()
 
 
 class AnalisisEstatico(ModeloEstricto):

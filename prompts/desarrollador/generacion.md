@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.1
+version: 1.2
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -35,8 +35,19 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
     archivos `__init__.py`: los paquetes son de espacio de nombres.
   - Las pruebas, en `tests/test_<nombre>.py`. Puedes agregar `tests/conftest.py` para fixtures
     compartidas.
-- `documentacion_uso`: el documento de uso del módulo en Markdown: su propósito, cómo usar cada
-  interfaz pública con un ejemplo breve y los supuestos que tomaste.
+- `documentacion_uso`: el documento de uso del módulo en Markdown, para quien lo pone en
+  marcha. Empieza con un título y su propósito, y sigue con estas secciones de segundo nivel, en
+  este orden y con estos nombres:
+  - `## Requisitos`: la versión de Python y las dependencias externas declaradas.
+  - `## Instalación`: cómo crear el entorno e instalar las dependencias (el paquete incluirá un
+    `requirements.txt`).
+  - `## Configuración`: los archivos, variables o datos que hay que preparar, o «No requiere».
+  - `## Ejecución`: cómo usarlo. Si hay un punto de entrada, el comando exacto de terminal desde
+    la raíz del código, por ejemplo `PYTHONPATH=src python -m comandos.principal`; si no, cómo
+    invocar sus interfaces.
+  - `## Pruebas`: `PYTHONPATH=src python -m pytest tests`.
+  - `## Interfaces`: cada interfaz pública con un ejemplo breve.
+  - `## Supuestos`: los que tomaste.
 
 En una corrección, `archivos` lleva solo los archivos que cambian, cada uno completo, y
 `documentacion_uso` va vacía si no cambia. Cambia únicamente lo necesario para atender cada
@@ -56,6 +67,10 @@ defecto; conserva el resto.
    (`from dominio.predio import Predio`). Cada módulo importa solo la biblioteca estándar, las
    `dependencias_externas` de la especificación y los módulos de sus `dependencias_permitidas`.
    Las pruebas pueden importar además `pytest` y cualquier módulo declarado.
+   - En el entorno aislado solo están instaladas la biblioteca estándar de Python 3.11, `pytest`
+     y las dependencias externas declaradas, sin extras ni motores opcionales. No dependas de
+     nada más, aunque una librería declarada pueda cargarlo por su cuenta (por ejemplo, el motor
+     de un formato de archivo): el código fallaría al ejecutarse.
    - No importes nombres privados, con prefijo `_`, de otro módulo: si otro módulo necesita
      algo, hazlo público en el suyo.
    - No dejes importaciones, variables ni definiciones sin uso.
@@ -104,7 +119,7 @@ Para un módulo `dominio.predio` en `src/dominio/predio.py` y su prueba (abrevia
       "contenido": "from decimal import Decimal\n\nimport pytest\n\nfrom dominio.predio import NumeroPredialInvalido, Predio\n\n\ndef test_rf_01_esc_01_predio_valido():\n    ...\n"
     }
   ],
-  "documentacion_uso": "# Predio\n\n..."
+  "documentacion_uso": "# Predio\n\nEntidad de predio y sus invariantes.\n\n## Requisitos\n\n...\n\n## Instalación\n\n...\n\n## Configuración\n\nNo requiere.\n\n## Ejecución\n\n...\n\n## Pruebas\n\n...\n\n## Interfaces\n\n...\n\n## Supuestos\n\n..."
 }
 ```
 

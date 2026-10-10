@@ -282,6 +282,15 @@ def trazabilidad_md(
     return "\n".join(lineas) + "\n"
 
 
+def _registro_con_preguntas(registro: str, capacidades: Sequence[str]) -> str:
+    """Registro de decisión con las capacidades no cubiertas como preguntas abiertas (arq-004)."""
+    texto = registro.rstrip() + "\n"
+    if capacidades:
+        texto += "\n## Preguntas abiertas\n\n"
+        texto += "\n".join(f"- {capacidad}" for capacidad in capacidades) + "\n"
+    return texto
+
+
 def paquete_del_modulo(
     estado: EstadoGrafo, historial: Sequence[tuple[VersionCodigo, Validacion]]
 ) -> dict[str, str]:
@@ -340,7 +349,9 @@ def paquete_del_modulo(
         "requerimientos.md": requerimientos_md(
             requerimientos.historias, requerimientos.requerimientos, requerimientos.referencias
         ),
-        "decision_arquitectura.md": arquitectura.registro_decision.rstrip() + "\n",
+        "decision_arquitectura.md": _registro_con_preguntas(
+            arquitectura.registro_decision, arquitectura.capacidades_no_cubiertas
+        ),
         "especificacion.json": a_json(especificacion.model_dump(mode="json")),
         "especificacion.md": especificacion_md(especificacion),
         "validacion.md": (estado["validacion"].reporte or "Sin reporte.").rstrip() + "\n",
