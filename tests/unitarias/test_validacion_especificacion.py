@@ -34,6 +34,7 @@ def test_catalogo_tecnologico_leido_de_la_base_de_conocimiento():
         "sqlalchemy",
         "psycopg",
         "pandas",
+        "openpyxl",
         "numpy",
         "pytest",
     }

@@ -4,8 +4,8 @@ titulo: Catálogo tecnológico autorizado
 fuente: Elaboración propia
 tipo_fuente: elaboracion_propia
 tags: [stack, librerias, dependencias]
-version: 1.1
-fecha: 2026-10-08
+version: 1.2
+fecha: 2026-10-10
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -36,6 +36,7 @@ de la especificación.
 | Acceso a base de datos relacional | `sqlalchemy` | Persistencia con mapeo de objetos |
 | Controlador PostgreSQL | `psycopg` | Acceso directo cuando no se requiere mapeo |
 | Manipulación tabular | `pandas` | Procesamiento de lotes en ARQ-03 |
+| Hojas de cálculo Excel | `openpyxl` | Leer y escribir archivos .xlsx con formato: estilos, colores y ancho de columnas |
 | Cómputo numérico | `numpy` | Operaciones vectorizadas |
 | Fechas y zonas horarias | Biblioteca estándar `datetime`, `zoneinfo` | Siempre |
 | Decimales financieros | Biblioteca estándar `decimal` | Obligatoria en cálculos monetarios |

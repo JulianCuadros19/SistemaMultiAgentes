@@ -8,6 +8,8 @@ uvicorn==0.53.0
 sqlalchemy==2.0.54
 psycopg[binary]==3.3.6
 pandas==3.0.6
+# Agregada al catálogo el 2026-10-10 (ADR-0014); 3.1.5 es la última versión, del 2024-06-28.
+openpyxl==3.1.5
 # numpy 2.5 exige Python 3.12; 2.4.6 es la última versión para 3.11.
 numpy==2.4.6
 pytest==9.1.1

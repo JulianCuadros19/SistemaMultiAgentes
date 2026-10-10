@@ -18,7 +18,7 @@ def test_imagen_con_python_311_y_el_catalogo(entorno_aislado):
             "python",
             "-c",
             "import sys, pydantic, typer, fastapi, uvicorn, sqlalchemy, psycopg, pandas, numpy,"
-            " pytest; print(sys.version_info[:2])",
+            " openpyxl, pytest; print(sys.version_info[:2])",
         ],
     )
     assert resultado.exito, resultado.errores
