@@ -11,9 +11,9 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
-from multiagente.interfaces.operacion import Operador
+from multiagente.interfaces.operacion import ErrorOperacion, Operador
 from multiagente.llm.invocador import ErrorValidacionSalida
-from multiagente.orquestador.estado import Decision, Destino
+from multiagente.orquestador.estado import Decision, Destino, Fase
 from multiagente.orquestador.grafo import PREGUNTA_REINTENTO, construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -218,3 +218,54 @@ def test_n10_sin_version_agota_el_ciclo_sin_ejecutar_nada():
         id_sesion, Decision.RECHAZADO, "Revisor", "Simplifica el diseño", destino=Destino.ARQUITECTO
     )
     assert avance.pausa.punto == "especificacion"
+
+
+# Cerrar: la salida que siempre existe ----------------------------------------------------
+
+
+@pytest.mark.parametrize("punto", ["dialogo", "requerimientos", "especificacion"])
+def test_se_cierra_desde_cualquier_pausa(punto):
+    op = operador(SimulacionConFallas({}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, punto)
+    op.cerrar(id_sesion, "Laura", "El cliente desistió")
+
+    vista = op.vista(id_sesion)
+    assert vista.fase is Fase.CERRADA and vista.pausa is None and not vista.pendientes
+    cierre = op.estado(id_sesion)["sesion"].cierre
+    assert (cierre.revisor, cierre.motivo) == ("Laura", "El cliente desistió")
+    assert cierre.desde.startswith("Espera")
+    assert "Cerrada por Laura" in op.trazabilidad(id_sesion)
+    with pytest.raises(ErrorOperacion, match="ya terminó"):
+        op.cerrar(id_sesion, "Laura", "Otra vez")
+
+
+def test_se_cierra_una_sesion_escalada_en_n17():
+    op = operador(SimulacionConFallas({"generar": SIEMPRE}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "especificacion")
+    op.decidir(id_sesion, Decision.APROBADO, "Arquitecto")
+    assert op.vista(id_sesion).pausa.datos["escalado"]
+    op.cerrar(id_sesion, "Revisor", "El catálogo no cubre la capacidad pedida")
+    assert op.vista(id_sesion).describir() == "Cerrada sin módulo validado"
+
+
+def test_se_cierra_una_sesion_detenida_por_infraestructura():
+    op = operador(SimulacionConFallas({"ejecutar": SIEMPRE}, ErrorDeRed))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "especificacion")
+    with pytest.raises(ErrorDeRed):
+        op.decidir(id_sesion, Decision.APROBADO, "Arquitecto")
+    assert op.vista(id_sesion).detenida
+
+    op.cerrar(id_sesion, "Julián", "Docker no está disponible")
+    vista = op.vista(id_sesion)
+    assert vista.fase is Fase.CERRADA and not vista.detenida
+    assert "N11" in op.estado(id_sesion)["sesion"].cierre.desde
+
+
+def test_cerrar_exige_revisor_y_motivo():
+    op = operador(SimulacionConFallas({}))
+    id_sesion = abrir(op)
+    with pytest.raises(ErrorOperacion, match="revisor y el motivo"):
+        op.cerrar(id_sesion, "Laura", "  ")

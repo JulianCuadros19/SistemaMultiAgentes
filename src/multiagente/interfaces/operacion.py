@@ -8,7 +8,7 @@ cada pausa, cómo se reanuda tras una falla y qué se exporta.
 import uuid
 from collections.abc import Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager, nullcontext
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import psycopg
@@ -35,6 +35,7 @@ from multiagente.orquestador.ejecucion import (
 )
 from multiagente.orquestador.estado import (
     RUTA_PRUEBA_PROPIA,
+    CierreSesion,
     Decision,
     Destino,
     EjecucionPruebas,
@@ -133,6 +134,8 @@ class VistaSesion(BaseModel):
             return f"Detenida antes de {nodos}: hay que reanudarla"
         if self.fase is Fase.VALIDADO:
             return "Módulo validado"
+        if self.fase is Fase.CERRADA:
+            return "Cerrada sin módulo validado"
         if self.fase is Fase.REQUIERE_INTERVENCION:
             return "Requiere intervención humana: se agotaron las iteraciones de corrección"
         return f"Terminada en la fase {self.fase}"
@@ -258,6 +261,42 @@ class Operador:
         if destino is not None:
             respuesta["destino"] = destino.value
         return self._avanzar(id_sesion, respuesta)
+
+    def cerrar(self, id_sesion: str, revisor: str, motivo: str) -> None:
+        """Cierra una sesión sin módulo validado, desde una pausa o detenida por una falla.
+
+        Es la salida que siempre existe: el cierre se aplica como si N17 lo hubiera decidido,
+        lo que termina el grafo y descarta la pausa o el nodo pendiente. Queda registrado en
+        `Sesion.cierre` (RF-33).
+
+        Args:
+            id_sesion: Identificador de la sesión.
+            revisor: Quién la cierra.
+            motivo: Por qué.
+
+        Raises:
+            ErrorOperacion: Si la sesión ya terminó, o si falta el revisor o el motivo.
+        """
+        vista = self.vista(id_sesion)
+        if vista.pausa is None and not vista.pendientes:
+            raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
+        if not revisor.strip() or not motivo.strip():
+            raise ErrorOperacion("Para cerrar la sesión se necesitan el revisor y el motivo.")
+        desde = (
+            ESPERAS[vista.pausa.punto]
+            if vista.pausa
+            else "Detenida antes de "
+            + ", ".join(NOMBRES_DE_NODO.get(n, n) for n in vista.pendientes)
+        )
+        sesion = self.estado(id_sesion)["sesion"]
+        cierre = CierreSesion(
+            revisor=revisor.strip(), motivo=motivo.strip(), desde=desde, fecha=datetime.now(UTC)
+        )
+        cerrada = sesion.model_copy(update={"fase": Fase.CERRADA, "cierre": cierre})
+        with self._en_sesion(id_sesion):
+            self.app.update_state(
+                configuracion_hilo(id_sesion), {"sesion": cerrada}, as_node=Nodo.N17
+            )
 
     def reanudar(self, id_sesion: str) -> Avance:
         """Reanuda una sesión detenida por una falla o por la interrupción del proceso (RF-28).

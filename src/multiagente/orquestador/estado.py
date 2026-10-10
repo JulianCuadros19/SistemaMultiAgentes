@@ -45,6 +45,7 @@ class Fase(StrEnum):
     APROBACION_FINAL = "aprobacion_final"
     VALIDADO = "validado"
     REQUIERE_INTERVENCION = "requiere_intervencion_humana"
+    CERRADA = "cerrada"
 
 
 class PuntoControl(StrEnum):
@@ -101,6 +102,22 @@ class AprobacionHumana(RespuestaHumana):
     fecha: datetime
 
 
+class CierreSesion(ModeloEstricto):
+    """Cierre de una sesión por una persona, sin módulo validado.
+
+    Attributes:
+        revisor: Quién la cerró.
+        motivo: Por qué.
+        desde: Dónde estaba la sesión: la pausa que esperaba o los nodos pendientes.
+        fecha: Momento del cierre.
+    """
+
+    revisor: TextoObligatorio
+    motivo: TextoObligatorio
+    desde: TextoObligatorio
+    fecha: datetime
+
+
 class Particion(ModeloEstricto):
     """Base de las particiones del estado: inmutables una vez creadas."""
 
@@ -116,6 +133,7 @@ class Sesion(Particion):
     fase: Fase
     creada: datetime
     aprobaciones: tuple[AprobacionHumana, ...] = ()
+    cierre: CierreSesion | None = None
 
     def ultima_aprobacion(self, punto: PuntoControl) -> AprobacionHumana | None:
         """Devuelve la decisión más reciente tomada en un punto de control.

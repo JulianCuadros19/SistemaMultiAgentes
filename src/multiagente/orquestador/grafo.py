@@ -243,10 +243,11 @@ def ruta_tras_aprobacion_final(estado: EstadoGrafo) -> str:
         estado: Estado tras N17.
 
     Returns:
-        FIN si la persona aprobó el módulo; N8 si lo devolvió al arquitecto; si no, N10.
+        FIN si la persona aprobó el módulo o cerró la sesión; N8 si lo devolvió al arquitecto;
+        si no, N10.
     """
     fase = estado["sesion"].fase
-    if fase is Fase.VALIDADO:
+    if fase in (Fase.VALIDADO, Fase.CERRADA):
         return END
     if fase is Fase.DISENO:
         return Nodo.N8

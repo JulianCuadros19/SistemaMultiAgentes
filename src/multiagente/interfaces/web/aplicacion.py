@@ -60,6 +60,7 @@ PARA_EL_CLIENTE = {
     Fase.APROBACION_FINAL: "El equipo está revisando el módulo terminado.",
     Fase.VALIDADO: "El módulo quedó validado. ¡Gracias por su tiempo!",
     Fase.REQUIERE_INTERVENCION: "El equipo revisará su caso personalmente.",
+    Fase.CERRADA: "El equipo cerró esta sesión. Gracias por su tiempo.",
 }
 """Estado de la sesión en el lenguaje del cliente, cuando no le toca responder (RNF-08)."""
 
