@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.2
+version: 1.3
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -35,12 +35,15 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
     archivos `__init__.py`: los paquetes son de espacio de nombres.
   - Las pruebas, en `tests/test_<nombre>.py`. Puedes agregar `tests/conftest.py` para fixtures
     compartidas.
+  - Ningún otro archivo: ni `requirements.txt`, que el sistema genera al exportar el módulo, ni
+    archivos de configuración del proyecto.
 - `documentacion_uso`: el documento de uso del módulo en Markdown, para quien lo pone en
   marcha. Empieza con un título y su propósito, y sigue con estas secciones de segundo nivel, en
   este orden y con estos nombres:
   - `## Requisitos`: la versión de Python y las dependencias externas declaradas.
-  - `## Instalación`: cómo crear el entorno e instalar las dependencias (el paquete incluirá un
-    `requirements.txt`).
+  - `## Instalación`: cómo crear el entorno e instalar las dependencias con
+    `pip install -r requirements.txt`. Ese archivo lo genera el sistema al exportar; no lo
+    incluyas en `archivos`.
   - `## Configuración`: los archivos, variables o datos que hay que preparar, o «No requiere».
   - `## Ejecución`: cómo usarlo. Si hay un punto de entrada, el comando exacto de terminal desde
     la raíz del código, por ejemplo `PYTHONPATH=src python -m comandos.principal`; si no, cómo
