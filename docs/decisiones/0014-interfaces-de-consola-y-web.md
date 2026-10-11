@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md y prompt 1.4), ADR-0012 (juez sin respuesta y sugerencia de instalación) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta y sugerencia de instalación) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -285,7 +285,18 @@ con salida, nunca en repetir lo mismo.
     El reintento no le muestra al modelo su respuesta anterior. En una generación, el modelo
     devolvió solo el archivo corregido, como en una corrección, y a la versión le faltaron los
     demás. El prompt pasa a la versión 1.4: en el reintento entrega todo, salvo en una
-    corrección, donde siguen bastando los archivos que cambian.
+    corrección, donde siguen bastando los archivos que cambian. No bastó; la reemplaza la
+    decisión 25.
+25. **El reintento de N10 es una corrección del intento rechazado** (modifica el ADR-0011).
+    - `invocar_validado` admite un armador del reintento; los demás nodos conservan el de
+      siempre, con `problemas_intento_anterior`.
+    - En N10, el reintento repite los mensajes de la generación y agrega `intento_rechazado`:
+      los archivos del intento ya combinados y los problemas de la verificación.
+    - El modelo devuelve solo lo que cambia, y el código lo combina sobre el intento, como en la
+      corrección del RF-19. Un reintento parcial ya no deja la versión incompleta.
+    - Si la salida no pudo combinarse, por rutas repetidas o fuera del esquema, el intento va
+      sin archivos y el modelo entrega la respuesta completa.
+    - El prompt pasa a la versión 1.5.
 
 `docs/arquitectura.md` pasa a la versión 1.2 con el flujo resultante. El RF-27 sigue cumplido: el
 caso se marca «requiere intervención humana» y el flujo se detiene de forma controlada en la
@@ -369,6 +380,20 @@ pausa de N17.
     lo fueron por una excepción declarada que el módulo no define ni importa. Tres son la misma:
     `ejecutar_lote`, de la liquidación por lotes, declara `TarifaFaltanteError`, que solo deja
     pasar desde `preparar_lote`, y el modelo no la importa.
+- **Reintento sobre el intento rechazado** (2026-10-10, prompt 1.5).
+  - **Pruebas unitarias con modelo falso:**
+    - un reintento parcial se combina sobre el intento;
+    - una salida que no se combina se reintenta completa;
+    - el reintento de una corrección parte del intento, no de la versión previa.
+  - **Dos corridas de la prueba del desarrollador** (0,55 USD): las 6 generaciones salen
+    válidas al primer intento, así que no ejercitan el reintento.
+  - **Reintento real forzado** (0,15 USD, sin cambios en el repositorio):
+    - una versión válida de la liquidación por lotes, a la que se le quitó la importación de
+      `TarifaFaltanteError`, reproduce el problema de las corridas;
+    - el modelo devolvió solo `src/orquestacion/ejecucion.py`, con la importación, y
+      `documentacion_uso` vacía;
+    - la versión combinada pasó la verificación con sus 8 archivos, 7 de ellos intactos;
+    - el reintento tardó 7,5 s y costó 0,034 USD, frente a 134 s y 0,117 USD de la generación.
 
 **Verificación con el equipo.** _Pendiente: el equipo repite una sesión tipo NotionSync por la
 web y una por consola que rechace en N17; si alguna escala, ejercita reabrir y cerrar, y exporta

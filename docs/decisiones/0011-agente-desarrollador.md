@@ -11,9 +11,10 @@ modifica: ADR-0003 (costo con escritura en caché) y ADR-0006 (entrada de N10 y 
 > N12, y alinea N10 con el umbral 0: su verificación rechaza las importaciones privadas y el
 > prompt de generación pasa a la versión 1.1.
 > El ADR-0014 (paso 12) fija las secciones de `USO.md`, que la verificación exige, y pasa el
-> prompt a la versión 1.4: no escribe `requirements.txt` y en el reintento entrega todo. Una
-> generación fallida cuenta como iteración rechazada y va de N10 a N15. Si la especificación
-> cambió, N10 genera de cero en lugar de corregir.
+> prompt a la versión 1.5: no escribe `requirements.txt`, y el reintento es una corrección del
+> intento rechazado, que el código combina como en el RF-19. Una generación fallida cuenta como
+> iteración rechazada y va de N10 a N15. Si la especificación cambió, N10 genera de cero en lugar
+> de corregir.
 
 ## Contexto y planteamiento del problema
 
