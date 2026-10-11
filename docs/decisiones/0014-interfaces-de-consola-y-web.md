@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md y prompt 1.3), ADR-0012 (juez sin respuesta y sugerencia de instalación) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md y prompt 1.4), ADR-0012 (juez sin respuesta y sugerencia de instalación) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -281,6 +281,11 @@ con salida, nunca en repetir lo mismo.
     `desarrollador.generacion` pasa a la versión 1.3: el sistema lo genera al exportar, y
     `archivos` no lleva nada fuera de los módulos y las pruebas. La verificación sigue estricta:
     si el modelo lo vuelve a escribir, el reintento lo corrige.
+24. **En el reintento, el desarrollador entrega la respuesta completa** (modifica el ADR-0011).
+    El reintento no le muestra al modelo su respuesta anterior. En una generación, el modelo
+    devolvió solo el archivo corregido, como en una corrección, y a la versión le faltaron los
+    demás. El prompt pasa a la versión 1.4: en el reintento entrega todo, salvo en una
+    corrección, donde siguen bastando los archivos que cambian.
 
 `docs/arquitectura.md` pasa a la versión 1.2 con el flujo resultante. El RF-27 sigue cumplido: el
 caso se marca «requiere intervención humana» y el flujo se detiene de forma controlada en la
@@ -354,6 +359,16 @@ pausa de N17.
     reintento devolvió solo el archivo corregido, como en una corrección, sin los demás. La
     generación fallida pasó de N10 a N15 sin detener la sesión (decisión 14), y la segunda
     iteración salió válida.
+- **Prompt 1.4 del desarrollador** (2026-10-10, la misma prueba dos veces, 0,86 USD). Las 6
+  generaciones terminan en una versión válida, y ninguna escribe `requirements.txt`.
+  - 3 salen válidas al primer intento.
+  - 2 las corrige el reintento, que esta vez entrega la respuesta completa.
+  - 1 necesita una segunda iteración: el reintento volvió a salir incompleto, sin `USO.md` ni
+    todas las pruebas de los escenarios. La instrucción del prompt no basta.
+  - En las 12 generaciones con los prompts 1.3 y 1.4, 4 de los 5 primeros intentos rechazados
+    lo fueron por una excepción declarada que el módulo no define ni importa. Tres son la misma:
+    `ejecutar_lote`, de la liquidación por lotes, declara `TarifaFaltanteError`, que solo deja
+    pasar desde `preparar_lote`, y el modelo no la importa.
 
 **Verificación con el equipo.** _Pendiente: el equipo repite una sesión tipo NotionSync por la
 web y una por consola que rechace en N17; si alguna escala, ejercita reabrir y cerrar, y exporta
