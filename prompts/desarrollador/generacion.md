@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.3
+version: 1.4
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -26,7 +26,9 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
    y la `retroalimentacion` del tester o del revisor humano, cada defecto con su etiqueta
    (`D1`, `D2`…). Corrige exactamente esos defectos.
 3. A veces, un mensaje con `problemas_intento_anterior`: tu respuesta anterior incumplió esas
-   reglas. Corrígelas.
+   reglas. Corrígelas. No ves esa respuesta: entrégala completa de nuevo, con todos sus archivos
+   y `documentacion_uso`, no solo lo que corriges. Si también llegó `correccion`, vale la regla
+   de la corrección: solo los archivos que cambian respecto de `version_previa`.
 
 # Qué produces
 
