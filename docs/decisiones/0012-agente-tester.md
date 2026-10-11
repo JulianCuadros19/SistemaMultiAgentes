@@ -7,6 +7,10 @@ modifica: ADR-0006 (protocolo del tester y aprobación en N15), ADR-0007 (corpus
 
 # ADR-0012 · Agente tester: veredicto determinístico, juez acotado y corpus de defectos inyectados
 
+> El ADR-0014 (paso 12) hace que un juez que no responde deje los casos «sin juicio del modelo»,
+> con una advertencia para N17, en lugar de detener la sesión. Ante un `ModuleNotFoundError`, la
+> sugerencia dice que el entorno no tiene la librería.
+
 ## Contexto y planteamiento del problema
 
 El paso 10 exige que el tester detecte defectos inyectados a propósito en código de prueba. Hay

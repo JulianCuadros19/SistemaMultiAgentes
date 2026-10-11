@@ -7,6 +7,9 @@ modifica: ADR-0008 (fidelidad de N3 con números en letras)
 
 # ADR-0013 · Integración de extremo a extremo: persona real, cliente simulado y costo por módulo
 
+> El ADR-0014 (paso 12) pasa `scripts/producir_modulo.py` al bucle de la consola `multiagente`.
+> La prueba de extremo a extremo falla con el reporte si una sesión escala.
+
 ## Contexto y planteamiento del problema
 
 El paso 11 exige que un módulo completo salga aprobado por el tester. Hasta ahora, los pasos 7 a

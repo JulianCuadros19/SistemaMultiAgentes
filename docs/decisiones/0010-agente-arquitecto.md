@@ -7,6 +7,11 @@ modifica: ADR-0006 (punto 5, retorno de N9) y ADR-0003 (tiempo de espera por lla
 
 # ADR-0010 · Agente arquitecto: catálogo cerrado, decisión trazable y validaciones del Anexo B
 
+> El ADR-0014 (paso 12) agrega a la salida de N8 las capacidades que el catálogo no cubre, que
+> N9 muestra como aviso, y pasa el prompt de parametrización a la versión 1.2, sin dependencias
+> transitivas implícitas. Un diseño fallido llega a N9 como error, y arq-004 pasa a la versión
+> 1.2 con `openpyxl`.
+
 ## Contexto y planteamiento del problema
 
 El paso 8 exige que la especificación de diseño que genera el arquitecto pase las tres

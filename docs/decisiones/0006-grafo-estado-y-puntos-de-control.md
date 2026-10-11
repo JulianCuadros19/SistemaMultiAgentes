@@ -15,6 +15,11 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 > `VersionCodigo` conserve el contenido de los archivos tal cual.
 > El ADR-0012 (paso 10) estructura la validación (ejecución, hallazgos, conformidad, veredicto y
 > reporte), cambia el protocolo del tester y hace que N15 exija el veredicto aprobado.
+> El ADR-0014 (paso 12) convierte las fallas de salida del modelo en N5, N8 y N10 en decisiones
+> del flujo, con la arista de N10 a N15; hace que N15 escale a N17 al agotar el ciclo; deja que
+> N17 devuelva el módulo al desarrollador o al arquitecto, con los hallazgos y en un ciclo nuevo;
+> registra las pruebas propias con la decisión, y agrega el cierre de una sesión en la fase
+> `cerrada`.
 
 ## Contexto y planteamiento del problema
 

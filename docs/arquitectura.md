@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo**      | **Contenido**                                               |
 |----------------|-------------------------------------------------------------|
 | Producto       | Entregable del Objetivo Específico 2                        |
-| Versión        | 1.1                                                         |
+| Versión        | 1.2                                                         |
 | Fecha          | 14 de septiembre de 2026                                    |
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |
@@ -47,9 +47,9 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 | **N12**  | Tester        | Análisis estático de estilo y seguridad, y verificación de conformidad arquitectónica.                           | Determinística          |
 | **N13**  | Tester        | Recuperación de los criterios de calidad aplicables al módulo.                                                   | Embeddings              |
 | **N14**  | Tester        | Veredicto por criterio y retroalimentación estructurada.                                                         | LLM                     |
-| **N15**  | Orquestador   | Decisión de enrutamiento: remite el módulo a la validación humana final (N17) o reabre el ciclo de corrección.  | Determinística          |
+| **N15**  | Orquestador   | Decisión de enrutamiento: remite el módulo aprobado por el tester a la validación humana final (N17), reabre el ciclo de corrección o, agotados los intentos, escala la sesión a N17 para que decida una persona. | Determinística          |
 | **N16**  | Tester        | Plan de pruebas de aceptación: al aprobarse los requerimientos (N6), deriva un caso de prueba por cada escenario Gherkin aprobado. Corre en paralelo con N7 y es la base del veredicto de N14. | Determinística          |
-| **N17**  | Orquestador   | Validación y aprobación humana final: la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo o lo devuelve a N10 con observaciones. | Humano                  |
+| **N17**  | Orquestador   | Validación y aprobación humana final: la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo devuelve con observaciones al desarrollador (N10) o al arquitecto (N8), o cierra la sesión. Una sesión escalada no puede aprobarse. | Humano                  |
 
 *Fuente: Elaboración propia.*
 
@@ -61,9 +61,11 @@ El flujo se inicia con la apertura de sesión (N1) y la carga de contexto (N2). 
 
 Aprobados los requerimientos, se entregan al arquitecto y al tester. El tester deriva de ellos el plan de pruebas de aceptación (N16), un caso por cada escenario aprobado, en paralelo con el trabajo del arquitecto. El arquitecto recupera del catálogo las alternativas aplicables (N7), selecciona y parametriza la arquitectura (N8) y somete la especificación a validación de esquema, verificación de cobertura y aprobación humana (N9). Si la persona la rechaza, el flujo regresa a N8 con sus observaciones.
 
-Con la especificación aprobada, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14), un dictamen por cada caso del plan de pruebas de aceptación. El nodo de decisión (N15) remite el módulo a la validación humana final (N17) si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación. En N17, la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo que cierra el flujo, o lo devuelve a N10 con sus observaciones.
+Con la especificación aprobada, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14), un dictamen por cada caso del plan de pruebas de aceptación. El nodo de decisión (N15) remite el módulo a la validación humana final (N17) si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación. Si el desarrollador no logra producir una versión válida, la iteración cuenta como rechazada y el flujo pasa de N10 a N15 sin ejecutar nada. Agotado el límite de iteraciones (RF-27), N15 marca la sesión para intervención humana y la detiene de forma controlada en N17, donde no puede aprobarse. En N17, la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo que cierra el flujo; o lo devuelve con sus observaciones y los hallazgos del tester al desarrollador (N10), que lo corrige, o al arquitecto (N8), que rehace el diseño y lo somete de nuevo a N9.
 
-**Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Además, cada uno de los tres puntos de control humano (N6, N9 y N17) puede devolver el flujo al agente anterior con observaciones. Ambos ciclos y estos retornos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
+**Cierre de una sesión.** Toda sesión en pausa o detenida por una falla puede cerrarse sin módulo validado. El cierre se aplica como una decisión de N17: termina el flujo en la fase `cerrada` y registra quién cerró, desde dónde, cuándo y por qué (RF-33). Así, ninguna sesión queda sin salida: cada falla termina en un reintento que puede funcionar o en una decisión humana.
+
+**Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Además, cada uno de los tres puntos de control humano (N6, N9 y N17) puede devolver el flujo al agente anterior con observaciones; desde N17, al desarrollador o al arquitecto. Cada devolución desde N17 abre un ciclo de corrección nuevo, con el mismo límite de iteraciones. Ambos ciclos y estos retornos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
 
 **3. BASES DE CONOCIMIENTO**
 
@@ -168,16 +170,18 @@ Los agentes no se comunican entre sí mediante mensajes conversacionales. Toda l
 
 | **Partición**  | **Contenido**                                                                                    | **Nodos que escriben** |
 |----------------|--------------------------------------------------------------------------------------------------|------------------------|
-| sesion         | Identificador, cliente, fase actual, marca de tiempo y bandera de espera de entrada del usuario. | N1, N4, N6, N9, N15, N17 |
+| sesion         | Identificador, cliente, fase actual, marca de tiempo, bandera de espera de entrada del usuario, aprobaciones humanas y cierre. | N1, N4, N6, N9, N15, N17 |
 | conversacion   | Historial de turnos y registro estructurado de información capturada.                            | N3                     |
 | requerimientos | Historias de usuario y requerimientos formales con su estado de aprobación.                      | N5, N6                 |
-| arquitectura   | Registro de decisión y especificación de diseño validada contra esquema.                               | N8, N9                 |
+| arquitectura   | Registro de decisión y especificación de diseño validada contra esquema.                               | N8, N9, N17            |
 | codigo         | Versiones de los módulos, pruebas y documentación generadas.                                     | N10                    |
-| validacion     | Plan de pruebas de aceptación, resultados de ejecución, hallazgos estáticos, conformidad arquitectónica y veredicto. | N11, N12, N14, N16 |
+| validacion     | Plan de pruebas de aceptación, resultados de ejecución, hallazgos estáticos, conformidad arquitectónica, veredicto y retroalimentación. | N10, N11, N12, N14, N16, N17 |
 | contexto       | Fragmentos recuperados por colección y contexto descartado.                                      | N2, N7, N13            |
 | control        | Número de iteración, límite configurado y costo acumulado.                                       | N15                    |
 
 *Fuente: Elaboración propia.*
+
+N10 escribe la validación solo cuando no logra una versión válida: la deja rechazada, con los problemas como retroalimentación. N17 escribe la retroalimentación de un rechazo y, si devuelve el diseño, las observaciones para el arquitecto.
 
 El estado se persiste mediante puntos de control tras cada transición, lo que permite reanudar una ejecución interrumpida, incluida una conversación de elicitación en curso, conforme al RF-28.
 
@@ -283,3 +287,4 @@ El presente documento se considera aprobado cuando el equipo técnico de Realtix
 |---|---|---|
 | 1.0 | 14 de septiembre de 2026 | Versión aprobada por el equipo técnico. |
 | 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): especificación de diseño en lugar de contrato; nodo N16 (plan de pruebas de aceptación del tester) y nodo N17 (validación y aprobación humana final); retornos con observaciones desde los tres puntos de control; entidad `aprobaciones_humanas`. |
+| 1.2 | 9 de octubre de 2026 | Flujo sin bloqueos (ADR-0014): N10 pasa a N15 si no logra una versión válida; agotado el ciclo de corrección, N15 escala la sesión a N17, donde no puede aprobarse; N17 devuelve el módulo al desarrollador (N10) o al arquitecto (N8), y cada devolución abre un ciclo nuevo; toda sesión en pausa o detenida puede cerrarse en la fase `cerrada`, con su registro. |

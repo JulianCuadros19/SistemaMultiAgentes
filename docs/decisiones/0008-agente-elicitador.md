@@ -11,6 +11,9 @@ modifica: ADR-0006 (puntos 1, 4 y 5)
 > `gpt-5-nano`.
 > El ADR-0013 (paso 11) hace que la fidelidad equipare los números en letras con sus cifras:
 > «cuatro dígitos» respalda «4 dígitos».
+> El ADR-0014 (paso 12) hace que N3 vuelva a preguntar si falla al procesar una respuesta del
+> cliente, que una síntesis fallida de N5 llegue a N6 como defecto y que, si la respuesta al
+> resumen no lo confirma ni lo corrige, el elicitador pregunte qué falta.
 
 ## Contexto y planteamiento del problema
 

@@ -41,12 +41,20 @@ multiagente web                  # interfaz web en http://127.0.0.1:8000/
 multiagente nueva                # sesión nueva por consola
 multiagente sesiones             # sesiones guardadas
 multiagente continuar ID         # retoma una sesión en pausa o detenida
+multiagente cerrar ID            # cierra una sesión sin módulo validado, con su motivo
 multiagente ver ID               # trazabilidad de la sesión
 multiagente exportar ID CARPETA  # entregables del módulo validado
 ```
 
 En la web, el equipo opera desde el panel y el cliente conversa en su propia vista
 (`/conversacion/ID`). La web solo responde en la máquina local.
+
+En la aprobación final (N17), el módulo se aprueba o se devuelve con observaciones al
+desarrollador o al arquitecto. Si el tester no lo aprueba tras el límite de iteraciones, la
+sesión escala a N17 sin poder aprobarse. Cualquier sesión en pausa o detenida se puede cerrar.
+
+El paquete exportado trae el código con su `USO.md`, un `requirements.txt` con las versiones con
+que se probó y, en `LEEME.md`, los pasos para ponerlo en marcha.
 
 ## Documentación
 
