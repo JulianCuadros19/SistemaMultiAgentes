@@ -4,10 +4,15 @@ No recibe recuperador ni conexión con la base de conocimiento: su entrada, requ
 especificación, ya es una definición completa (decisión 1 de `CLAUDE.md`, RF-29).
 """
 
+from collections.abc import Mapping
+
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from multiagente.agentes.desarrollador.generacion import (
+    IntentoRechazado,
     SalidaGeneracion,
+    mensaje_intento_rechazado,
     mensajes_generacion,
     version_desde_salida,
 )
@@ -18,9 +23,9 @@ from multiagente.core.configuracion import (
 )
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.estilo import EstiloGenerado, cargar_estilo
-from multiagente.llm.cliente import crear_cliente
+from multiagente.llm.cliente import ErrorSalidaInvalida, crear_cliente
 from multiagente.llm.costos import cargar_tarifas
-from multiagente.llm.invocador import InvocadorNodo, ParametrosNodo
+from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo, ParametrosNodo
 from multiagente.llm.prompts import cargar_prompt
 from multiagente.llm.traza import RegistradorLlamadas
 from multiagente.orquestador.estado import Requerimientos, Validacion, VersionCodigo
@@ -48,17 +53,31 @@ class AgenteDesarrollador:
     ) -> VersionCodigo:
         """Genera el módulo o corrige la versión previa con la retroalimentación (N10).
 
-        Una salida que no pasa la verificación estructural se reintenta una vez con los
-        problemas a la vista del modelo; si vuelve a fallar, el nodo falla y la sesión se
-        reanuda desde su último punto de control.
+        Una salida que no pasa la verificación estructural se reintenta una vez sobre el intento
+        rechazado: el modelo lo recibe con los problemas y devuelve solo lo que cambia, que se
+        combina sobre el intento. Si vuelve a fallar, el error llega a N10, que cuenta la
+        iteración como rechazada.
         """
-        return self.generacion.invocar_validado(
-            mensajes_generacion(requerimientos, especificacion, self.estilo, validacion, previa),
-            SalidaGeneracion,
-            lambda salida: version_desde_salida(
-                salida, requerimientos, especificacion, validacion, previa, self.estilo
-            ),
+        mensajes = mensajes_generacion(
+            requerimientos, especificacion, self.estilo, validacion, previa
         )
+        base: Mapping[str, str] = previa.archivos if previa is not None else {}
+
+        def validar(salida: SalidaGeneracion) -> VersionCodigo:
+            return version_desde_salida(
+                salida, requerimientos, especificacion, validacion, previa, self.estilo, base
+            )
+
+        def reintento(
+            error: ErrorSalidaInvalida | ErrorValidacionSalida, problemas: list[str]
+        ) -> list[ChatCompletionMessageParam]:
+            # Una salida que no pudo combinarse deja la base como estaba.
+            nonlocal base
+            if isinstance(error, IntentoRechazado):
+                base = error.archivos
+            return [*mensajes, mensaje_intento_rechazado(base, problemas)]
+
+        return self.generacion.invocar_validado(mensajes, SalidaGeneracion, validar, reintento)
 
 
 def crear_agente_desarrollador(

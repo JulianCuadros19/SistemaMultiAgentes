@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.4
+version: 1.5
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -25,10 +25,10 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
 2. A veces, un mensaje con `correccion`: la `version_previa` del código, con todos sus archivos,
    y la `retroalimentacion` del tester o del revisor humano, cada defecto con su etiqueta
    (`D1`, `D2`…). Corrige exactamente esos defectos.
-3. A veces, un mensaje con `problemas_intento_anterior`: tu respuesta anterior incumplió esas
-   reglas. Corrígelas. No ves esa respuesta: entrégala completa de nuevo, con todos sus archivos
-   y `documentacion_uso`, no solo lo que corriges. Si también llegó `correccion`, vale la regla
-   de la corrección: solo los archivos que cambian respecto de `version_previa`.
+3. A veces, un mensaje con `intento_rechazado`: tu respuesta anterior, ya combinada en
+   `archivos` (incluido `USO.md`), y los `problemas` que la verificación encontró en ella.
+   Corrige esos problemas sin deshacer lo demás. Si también llegó `correccion`, el intento ya
+   incluye lo que corregiste: trabaja sobre el intento, no sobre `version_previa`.
 
 # Qué produces
 
@@ -54,9 +54,11 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
   - `## Interfaces`: cada interfaz pública con un ejemplo breve.
   - `## Supuestos`: los que tomaste.
 
-En una corrección, `archivos` lleva solo los archivos que cambian, cada uno completo, y
-`documentacion_uso` va vacía si no cambia. Cambia únicamente lo necesario para atender cada
-defecto; conserva el resto.
+En una corrección o tras un intento rechazado, `archivos` lleva solo los archivos que cambian
+respecto de lo que recibiste (`version_previa` o `intento_rechazado`), cada uno completo, y
+`documentacion_uso` va vacía si no cambia. Si `intento_rechazado` llega sin archivos, entrega la
+respuesta completa. Cambia únicamente lo necesario para atender cada defecto o problema;
+conserva el resto.
 
 # Reglas
 

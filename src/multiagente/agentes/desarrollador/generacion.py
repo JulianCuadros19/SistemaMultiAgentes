@@ -5,9 +5,14 @@ configuración de estilo (decisiones 1 y 2 de `CLAUDE.md`). En una corrección r
 versión previa y la retroalimentación, y devuelve solo los archivos que cambian; el código los
 combina sobre la versión previa (RF-19). La versión resultante se verifica en código antes de
 pasar al tester (`verificacion.py`).
+
+Si no pasa la verificación, el reintento sigue la misma vía: el modelo recibe su intento ya
+combinado con los problemas y devuelve solo lo que cambia, que el código combina sobre el
+intento. Así un reintento parcial no deja la versión incompleta.
 """
 
 import json
+from collections.abc import Mapping
 
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict
@@ -17,6 +22,24 @@ from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.estilo import EstiloGenerado
 from multiagente.llm.invocador import ErrorValidacionSalida
 from multiagente.orquestador.estado import Requerimientos, Validacion, VersionCodigo
+
+
+class IntentoRechazado(ErrorValidacionSalida):
+    """La versión combinada de un intento no pasa la verificación.
+
+    Attributes:
+        archivos: Archivos del intento ya combinados, sobre los que se corrige al reintentar.
+    """
+
+    def __init__(self, problemas: list[str], archivos: dict[str, str]) -> None:
+        """Crea el error con los problemas y los archivos del intento.
+
+        Args:
+            problemas: Incumplimientos encontrados.
+            archivos: Archivos del intento, combinados sobre su base.
+        """
+        super().__init__(problemas)
+        self.archivos = archivos
 
 
 class ArchivoModelo(BaseModel):
@@ -100,6 +123,31 @@ def mensajes_generacion(
     return mensajes
 
 
+def mensaje_intento_rechazado(
+    archivos: Mapping[str, str], problemas: list[str]
+) -> ChatCompletionMessageParam:
+    """Arma el mensaje del reintento: el intento rechazado y los problemas de la verificación.
+
+    El modelo no ve su respuesta anterior; con este mensaje la corrige y devuelve solo los
+    archivos que cambian.
+
+    Args:
+        archivos: Archivos del intento rechazado, ya combinados; vacío si la salida no pudo
+            combinarse y no hay versión previa.
+        problemas: Incumplimientos que encontró la verificación.
+
+    Returns:
+        El mensaje de datos que se agrega a los de la generación.
+    """
+    intento = {
+        "archivos": [
+            {"ruta": ruta, "contenido": contenido} for ruta, contenido in sorted(archivos.items())
+        ],
+        "problemas": problemas,
+    }
+    return {"role": "user", "content": _json({"intento_rechazado": intento})}
+
+
 def _normalizar(contenido: str) -> str:
     """Finales de línea LF y un salto de línea al final, como exige el estilo."""
     return contenido.replace("\r\n", "\n").rstrip("\n") + "\n"
@@ -112,8 +160,9 @@ def version_desde_salida(
     validacion: Validacion,
     previa: VersionCodigo | None,
     estilo: EstiloGenerado,
+    base: Mapping[str, str] | None = None,
 ) -> VersionCodigo:
-    """Combina la salida sobre la versión previa y verifica la estructura del resultado.
+    """Combina la salida sobre su base y verifica la estructura del resultado.
 
     Args:
         salida: Salida del modelo.
@@ -122,31 +171,38 @@ def version_desde_salida(
         validacion: Validación vigente; su retroalimentación queda como defectos atendidos.
         previa: Versión anterior, o None en la primera generación.
         estilo: Configuración de estilo que rigió la generación.
+        base: Archivos sobre los que se combina la salida; si se omite, los de la versión
+            previa. En el reintento, los del intento rechazado.
 
     Returns:
         La versión nueva, con el número siguiente.
 
     Raises:
-        ErrorValidacionSalida: Si la salida repite rutas, si una corrección no cambia nada o si
+        ErrorValidacionSalida: Si la salida repite rutas.
+        IntentoRechazado: Si una corrección no cambia nada respecto de la versión previa o si
             la versión resultante no pasa la verificación estructural.
     """
     rutas = [archivo.ruta.strip() for archivo in salida.archivos]
     if repetidas := sorted({ruta for ruta in rutas if rutas.count(ruta) > 1}):
         raise ErrorValidacionSalida([f"Archivos repetidos en la salida: {repetidas}"])
-    archivos = dict(previa.archivos) if previa is not None else {}
-    nuevos = {archivo.ruta.strip(): _normalizar(archivo.contenido) for archivo in salida.archivos}
+    if base is None:
+        base = previa.archivos if previa is not None else {}
+    archivos = dict(base)
+    archivos.update(
+        {archivo.ruta.strip(): _normalizar(archivo.contenido) for archivo in salida.archivos}
+    )
     if documentacion := salida.documentacion_uso.strip():
-        nuevos[RUTA_USO] = _normalizar(documentacion)
-    if previa is not None and all(archivos.get(r) == c for r, c in nuevos.items()):
-        raise ErrorValidacionSalida(
+        archivos[RUTA_USO] = _normalizar(documentacion)
+    if previa is not None and archivos == previa.archivos:
+        raise IntentoRechazado(
             [
                 "La corrección no modifica ningún archivo: atiende cada defecto de la "
                 "retroalimentación"
-            ]
+            ],
+            archivos,
         )
-    archivos.update(nuevos)
     if problemas := verificar_version(archivos, especificacion, requerimientos):
-        raise ErrorValidacionSalida(problemas)
+        raise IntentoRechazado(problemas, archivos)
     return VersionCodigo(
         numero=previa.numero + 1 if previa is not None else 1,
         archivos=archivos,

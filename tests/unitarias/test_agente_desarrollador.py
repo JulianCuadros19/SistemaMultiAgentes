@@ -10,6 +10,7 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.agentes.desarrollador.generacion import (
+    IntentoRechazado,
     SalidaGeneracion,
     mensajes_generacion,
     version_desde_salida,
@@ -237,22 +238,53 @@ def test_genera_la_primera_version(cliente_falso, completar_respuesta):
     assert argumentos["response_format"]["json_schema"]["name"] == "SalidaGeneracion"
     assert cliente.opciones == {"timeout": 600}
     (llamada,) = registro.llamadas
-    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.4")
+    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.5")
     assert llamada.costo_usd == Decimal("0.091")
 
 
-def test_reintenta_con_los_problemas_de_la_verificacion(cliente_falso, completar_respuesta):
+def test_reintenta_sobre_el_intento_rechazado(cliente_falso, completar_respuesta):
+    # El reintento devuelve solo la prueba corregida: se combina sobre el intento, y la versión
+    # conserva el módulo y el documento de uso del primero.
     sin_esc_02 = salida(
         {RUTA_MODULO: MODULO, "tests/test_modulo.py": PRUEBAS.replace("rf_01_esc_02_", "")}
     )
     cliente = cliente_falso(
         completar_respuesta(sin_esc_02, modelo=MODELO),
+        completar_respuesta(salida({"tests/test_modulo.py": PRUEBAS}, uso=""), modelo=MODELO),
+    )
+    version = agente(cliente).generar(REQUERIMIENTOS, ESPECIFICACION, Validacion(), None)
+
+    assert version.numero == 1
+    assert version.archivos == primera_version().archivos
+    intento = datos_de(cliente.llamadas[1], -1)["intento_rechazado"]
+    assert {archivo["ruta"] for archivo in intento["archivos"]} == {
+        RUTA_MODULO,
+        "tests/test_modulo.py",
+        "USO.md",
+    }
+    assert any("falta una prueba test_rf_01_esc_02_" in p for p in intento["problemas"])
+    # El reintento repite los mensajes de la generación y agrega el intento.
+    assert datos_de(cliente.llamadas[1], 1) == datos_de(cliente.llamadas[0], 1)
+    assert len(cliente.llamadas[1]["messages"]) == len(cliente.llamadas[0]["messages"]) + 1
+
+
+def test_una_salida_que_no_se_combina_se_reintenta_completa(cliente_falso, completar_respuesta):
+    repetida = {
+        "archivos": [
+            {"ruta": RUTA_MODULO, "contenido": MODULO},
+            {"ruta": RUTA_MODULO, "contenido": MODULO},
+        ],
+        "documentacion_uso": USO,
+    }
+    cliente = cliente_falso(
+        completar_respuesta(repetida, modelo=MODELO),
         completar_respuesta(VALIDA, modelo=MODELO),
     )
     version = agente(cliente).generar(REQUERIMIENTOS, ESPECIFICACION, Validacion(), None)
-    assert version.numero == 1
-    problemas = datos_de(cliente.llamadas[1], -1)["problemas_intento_anterior"]
-    assert any("falta una prueba test_rf_01_esc_02_" in problema for problema in problemas)
+    assert version.archivos == primera_version().archivos
+    intento = datos_de(cliente.llamadas[1], -1)["intento_rechazado"]
+    assert intento["archivos"] == []
+    assert "repetidos" in intento["problemas"][0]
 
 
 def test_dos_salidas_invalidas_hacen_fallar_el_nodo(cliente_falso, completar_respuesta):
@@ -296,11 +328,35 @@ def test_correccion_combina_solo_los_archivos_que_cambian(cliente_falso, complet
     assert len(datos_de(cliente.llamadas[0], 2)["correccion"]["version_previa"]["archivos"]) == 3
 
 
+def test_el_reintento_de_una_correccion_parte_del_intento(cliente_falso, completar_respuesta):
+    # La corrección cambia el módulo pero rompe una prueba; el reintento arregla solo la prueba.
+    previa = primera_version()
+    corregido = MODULO.replace("if not dato:", "if not dato.strip():")
+    rota = PRUEBAS.replace("rf_01_esc_02_", "")
+    cliente = cliente_falso(
+        completar_respuesta(
+            salida({RUTA_MODULO: corregido, "tests/test_modulo.py": rota}, uso=""), modelo=MODELO
+        ),
+        completar_respuesta(salida({"tests/test_modulo.py": PRUEBAS}, uso=""), modelo=MODELO),
+    )
+    validacion = Validacion(retroalimentacion=("Un dato con solo espacios debe rechazarse",))
+    version = agente(cliente).generar(REQUERIMIENTOS, ESPECIFICACION, validacion, previa)
+
+    assert version.numero == 2
+    assert version.archivos[RUTA_MODULO] == corregido
+    assert version.archivos["tests/test_modulo.py"] == PRUEBAS
+    assert version.defectos_atendidos == validacion.retroalimentacion
+    intento = datos_de(cliente.llamadas[1], -1)["intento_rechazado"]
+    archivos = {archivo["ruta"]: archivo["contenido"] for archivo in intento["archivos"]}
+    assert archivos[RUTA_MODULO] == corregido
+    assert "correccion" in datos_de(cliente.llamadas[1], 2)
+
+
 def test_correccion_que_no_cambia_nada_se_rechaza():
     previa = primera_version()
     sin_cambios = SalidaGeneracion.model_validate(salida({RUTA_MODULO: MODULO}, uso=""))
     validacion = Validacion(retroalimentacion=("Defecto",))
-    with pytest.raises(ErrorValidacionSalida, match="no modifica ningún archivo"):
+    with pytest.raises(IntentoRechazado, match="no modifica ningún archivo"):
         version_desde_salida(
             sin_cambios, REQUERIMIENTOS, ESPECIFICACION, validacion, previa, ESTILO
         )

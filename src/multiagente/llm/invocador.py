@@ -51,6 +51,12 @@ class ErrorValidacionSalida(ValueError):
         self.problemas = problemas
 
 
+ArmaReintento = Callable[
+    [ErrorSalidaInvalida | ErrorValidacionSalida, list[str]], list[ChatCompletionMessageParam]
+]
+"""Arma los mensajes del reintento a partir del error del intento y de sus problemas."""
+
+
 @dataclass(frozen=True)
 class ParametrosNodo:
     """Despliegue, razonamiento y tiempo de espera de un nodo, tomados de la configuración.
@@ -133,19 +139,21 @@ class InvocadorNodo:
         mensajes: list[ChatCompletionMessageParam],
         esquema: type[M],
         validar: Callable[[M], R],
+        reintento: ArmaReintento | None = None,
     ) -> R:
         """Invoca, valida la salida y, si no es válida, reintenta una vez con los problemas.
 
-        El reintento repite los mismos mensajes más uno de datos con la clave
+        Por defecto, el reintento repite los mismos mensajes más uno de datos con la clave
         `problemas_intento_anterior`, que el prompt del nodo indica cómo atender. Si el segundo
-        intento también falla, el error se propaga: el nodo falla y la sesión se reanuda desde
-        su último punto de control.
+        intento también falla, el error se propaga al nodo.
 
         Args:
             mensajes: Mensajes de datos que acompañan al prompt.
             esquema: Modelo Pydantic de la salida.
             validar: Convierte la salida en el resultado del nodo o lanza
                 `ErrorValidacionSalida`.
+            reintento: Arma los mensajes del reintento con el error y sus problemas, en lugar de
+                los de por defecto. N10 lo usa para reintentar sobre su intento rechazado.
 
         Returns:
             El resultado que entrega `validar`.
@@ -172,8 +180,11 @@ class InvocadorNodo:
                     self.prompt.identificador,
                     "; ".join(problemas),
                 )
-                contenido = json.dumps({CLAVE_PROBLEMAS: problemas}, ensure_ascii=False)
-                actuales = [*mensajes, {"role": "user", "content": contenido}]
+                if reintento is not None:
+                    actuales = reintento(error, problemas)
+                else:
+                    contenido = json.dumps({CLAVE_PROBLEMAS: problemas}, ensure_ascii=False)
+                    actuales = [*mensajes, {"role": "user", "content": contenido}]
         raise AssertionError("inalcanzable")
 
     def _registrar(self, respuesta: RespuestaModelo, error: str | None = None) -> None:
