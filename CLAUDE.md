@@ -313,8 +313,36 @@ Mantener esta sección actualizada al cerrar cada paso.
     importar y sangría rota). El reintento lo corrige, pero duplica su costo;
   - el paso 12 debe mostrar cuántas iteraciones quedan antes de decidir en N17, porque un rechazo
     allí consume el ciclo de corrección.
-- **Paso actual: 12.** Interfaces de consola y web: un analista opera el flujo completo sin tocar
-  código.
+- **Paso actual: 12, implementado; falta la verificación del equipo.** Interfaces de consola y
+  web (ADR-0014; `docs/arquitectura.md` 1.2):
+  - comando `multiagente` (nueva, continuar, cerrar, sesiones, ver, exportar, web) y web local
+    en `http://127.0.0.1:8000/`, con panel del equipo y vista del cliente; ambas usan el
+    `Operador` de `interfaces/operacion.py`;
+  - flujo sin bloqueos:
+    - N3 vuelve a preguntar si falla;
+    - las fallas del modelo en N5, N8, N10 y N14 se vuelven decisiones;
+    - al agotar el ciclo, N15 escala a N17, que devuelve al desarrollador o al arquitecto en un
+      ciclo nuevo;
+    - toda sesión en pausa o detenida se puede cerrar (fase `cerrada`);
+  - `openpyxl` en el catálogo y en el entorno aislado; el paquete exportado trae
+    `requirements.txt` y «Cómo ponerlo en marcha»;
+  - prompts: arquitecto 1.2 y desarrollador 1.5, cuyo reintento corrige el intento rechazado.
+
+  Verificado:
+  - 509 pruebas unitarias, 30 de integración, 19 de embeddings y 26 del entorno aislado;
+  - extremo a extremo, 3 de 3 casos validados;
+  - la web se reconecta tras reiniciar el contenedor `db`.
+
+  Pendiente para cerrar el paso (sección «Verificación con el equipo» del ADR-0014):
+  - el equipo opera una sesión tipo NotionSync por la web, en la que N9 debe declarar
+    `openpyxl`, y una por consola que rechace en N17; si alguna escala, ejercita devolver y
+    cerrar; exporta y revisa `USO.md` y `requirements.txt`;
+  - con los identificadores, Claude analiza cada sesión con `abrir_operador` (estado, historial
+    de versiones y traza en `data/local/traza-llamadas.jsonl`), registra el resultado en el
+    ADR-0014 y cierra el paso aquí;
+  - decisión abierta del equipo: 4 de 5 primeros intentos rechazados de N10 fueron por una
+    excepción declarada que el módulo solo propaga; relajar esa regla de `core/conformidad.py`
+    cambiaría una regla de calidad de los pasos 9 y 10.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
