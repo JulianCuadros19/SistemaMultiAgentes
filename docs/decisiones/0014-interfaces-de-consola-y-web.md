@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta y sugerencia de instalación) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -302,6 +302,66 @@ con salida, nunca en repetir lo mismo.
 caso se marca «requiere intervención humana» y el flujo se detiene de forma controlada en la
 pausa de N17.
 
+### Corrección tras la segunda verificación con el equipo
+
+El equipo operó por la web la sesión `9da543db` (NotionSync2), con la misma necesidad que
+`e7d6f80b`.
+- **Lo que se corrigió desde `e7d6f80b`:** N9 declaró `openpyxl` y no hubo `ModuleNotFoundError`.
+- **Resultado:** el módulo quedó validado, pero en la **iteración 3 de 3**, a punto de escalar.
+- **Causa:** dos de las tres versiones se rechazaron por **falsos positivos de CAL-SG-001**, de
+  severidad alta.
+
+| Versión | Qué se marcó | Quién lo marcó |
+|---|---|---|
+| v1 | `_MENSAJE_TOKEN`, el mensaje «Error: No se encontró un token de Notion válido…» que pidió el cliente, en dos módulos | el detector de N12 y Ruff S105: dos hallazgos por línea |
+| v1 | `assert resultado.token_notion == "token-entorno"`, en una prueba | Ruff S105 |
+| v2 | el mismo mensaje, renombrado a `_MENSAJE_CREDENCIALES` | el detector de N12 |
+| v3 | el mensaje renombrado a `_MENSAJE_ERROR` | nadie: aprobada |
+
+- **Lo demás de la v1:** el otro hallazgo alto fue un CAL-FS-001 legítimo del juez.
+- **Prueba debilitada:** en la v2, el desarrollador cambió `"token-entorno"` por
+  `configuracion.os.environ["NOTION_TOKEN"]` para esquivar la regla.
+- **Costo:** la sesión costó 0,58 USD, 0,45 de ellos en N10. La tercera generación (0,092 USD,
+  59 s) solo corrigió el falso positivo.
+
+**Causa.** Los dos detectores miraban solo el nombre:
+- El de N12 marcaba cualquier texto no vacío asignado a un nombre como `token` o `credencial`.
+- Ruff S105, S106 y S107 hacían lo mismo con los nombres en inglés y duplicaban los hallazgos.
+- Las pruebas, cuyos valores son datos inventados, se revisaban igual.
+
+**Decisiones del equipo:**
+- un solo detector propio para CAL-SG-001;
+- las pruebas quedan fuera de la regla.
+
+26. **Un solo detector de secretos con criterio de valor** (modifica el ADR-0012).
+    - **Criterio, `es_valor_secreto`:** un literal con nombre de secreto no cuenta como secreto
+      si:
+      - está vacío;
+      - tiene espacios, porque es texto en lenguaje natural, como un mensaje;
+      - es un nombre de variable de entorno, como `"NOTION_TOKEN"`.
+    - **Cobertura:** el detector de N12 cubre lo que cubrían S105, S106 y S107, con nombres en
+      español e inglés: asignaciones, asignaciones anotadas, argumentos por nombre, valores por
+      defecto y comparaciones de igualdad. Cada secreto da un solo hallazgo.
+    - **Pruebas:** no se revisan los archivos de `tests/`.
+    - **Ruff:** `config/estilo_generado/ruff.toml` ignora S105, S106 y S107. CAL-SG-001 entra
+      explícitamente en `EVALUADAS`, porque antes entraba por la tabla de Ruff.
+    - **Base de conocimiento:** la «Verificación» de CAL-SG-001 en cal-sg (versión 1.1) describe
+      el criterio. El enunciado, la severidad y la evidencia no cambian. El corpus se reingirió:
+      36 documentos y 186 fragmentos.
+    - **Verificación, sin costo:**
+      - 524 pruebas unitarias. Las 15 nuevas cubren:
+        - cada forma de secreto, con un solo hallazgo;
+        - el mensaje de NotionSync y los nombres de variables de entorno, que no se marcan;
+        - los datos de prueba, que no se marcan en `tests/` y sí en un módulo;
+        - Ruff, que ya no reporta S105, S106 ni S107.
+
+        Fallan 13 de ellas con el código anterior.
+      - El corpus de defectos con Docker real: D05 (`CONTRASENA_BD`) sigue rechazado con
+        CAL-SG-001 y los controles salen sin hallazgos.
+      - Las tres versiones reales de `9da543db`, analizadas de nuevo con N12, dan cero
+        CAL-SG-001. La v1 habría fallado solo por el CAL-FS-001 del juez. La v2 habría salido
+        aprobada, con solo hallazgos de severidad baja: el módulo se validaba en la iteración 2.
+
 ### Verificación
 
 - **Pruebas:** 507 unitarias, 30 de integración, 19 de embeddings y 26 del entorno aislado.
@@ -395,9 +455,11 @@ pausa de N17.
     - la versión combinada pasó la verificación con sus 8 archivos, 7 de ellos intactos;
     - el reintento tardó 7,5 s y costó 0,034 USD, frente a 134 s y 0,117 USD de la generación.
 
-**Verificación con el equipo.** _Pendiente: el equipo repite una sesión tipo NotionSync por la
-web y una por consola que rechace en N17; si alguna escala, ejercita reabrir y cerrar, y exporta
-el paquete para revisar `USO.md` y `requirements.txt`._
+**Verificación con el equipo.**
+- **Hecho:** la sesión tipo NotionSync por la web, `9da543db`, quedó validada y dio lugar a la
+  decisión 26.
+- _Pendiente: una sesión por consola que rechace en N17; si alguna escala, el equipo ejercita
+  reabrir y cerrar, y exporta el paquete para revisar `USO.md` y `requirements.txt`._
 
 ### Consecuencias
 
@@ -419,6 +481,13 @@ el paquete para revisar `USO.md` y `requirements.txt`._
 - **Desfavorable: las capacidades no cubiertas dependen de que el modelo las declare.** El
   código no verifica que el diseño cubra todo lo que pidió el cliente; la persona lo revisa en
   N9 con el aviso.
+- **Desfavorable: algunos secretos escapan al detector.** No se marca:
+  - un secreto con espacios, como una frase de paso;
+  - uno con forma de nombre de variable de entorno;
+  - uno escrito en una prueba.
+
+  La persona los revisa en N17. El modelo no tiene secretos reales, salvo que el cliente los
+  escriba en la conversación.
 - **Desfavorable: la web no tiene autenticación.** Solo escucha en la máquina local; el acceso
   remoto exige decidir autenticación en el paso 14.
 - **Desfavorable: las tareas viven en el proceso.** Si el servidor se reinicia, la tarea en curso
