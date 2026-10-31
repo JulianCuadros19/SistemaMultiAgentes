@@ -480,6 +480,80 @@ La corrida ampliada de extremo a extremo (sección «Verificación») destapó u
     - la versión combinada pasó la verificación con sus 8 archivos, 7 de ellos intactos;
     - el reintento tardó 7,5 s y costó 0,034 USD, frente a 134 s y 0,117 USD de la generación.
 
+**Corrida ampliada de extremo a extremo** (2026-10-31, `scripts/evaluar_extremo_a_extremo.py`).
+- **Método:**
+  - 20 casos sintéticos nuevos en `evaluacion/casos/ampliada/`, de 3 a 4 por arquitectura del
+    catálogo. Cada uno declara en su cabecera la arquitectura que espera; el cliente simulado no
+    la ve y N8 elige por su cuenta;
+  - el cliente simulado y la política del analista del ADR-0013 en N6, N9 y N17. Las sesiones
+    escaladas quedan en pausa en N17;
+  - un caso a la vez, con un tope de 15 USD;
+  - la traza, `docs/mediciones/paso-12-corrida-ampliada.jsonl`, guarda las 745 llamadas solo con
+    sus métricas.
+- **Gasto:** 6,51 USD, 0,62 de ellos del cliente simulado, en 1 h 46 min de reloj.
+
+| Caso | Tema | Esperada | Elegida | Desenlace | Bloqueantes de la v1 | Min | USD |
+|---|---|---|---|---|---|---|---|
+| 01 | Comisiones de corretaje | ARQ-01 | ARQ-01 | validado en la v2 | CAL-FS-002 | 3,24 | 0,21 |
+| 02 | Reajuste del canon | ARQ-01 | ARQ-01 | validado en la v1 | — | 2,81 | 0,18 |
+| 03 | Mantenimientos preventivos | ARQ-01 | ARQ-01 | validado en la v1 | — | 2,53 | 0,16 |
+| 04 | Contratos de arrendamiento | ARQ-02 | ARQ-02 | validado en la v1 | — | 3,84 | 0,26 |
+| 05 | Cupo de crédito rotativo | ARQ-02 | ARQ-02 | validado en la v2 | CAL-FS-001 | 3,05 | 0,20 |
+| 06 | Despacho por lotes | ARQ-02 | ARQ-02 | validado en la v1 | — | 3,11 | 0,21 |
+| 07 | Conciliación del recaudo | ARQ-03 | ARQ-03 | validado en la v1 | — | 4,86 | 0,31 |
+| 08 | Depuración de predios | ARQ-03 | ARQ-03 | validado en la v2 | CAL-FS-001 | 4,78 | 0,32 |
+| 09 | Indicadores desde Excel | ARQ-03 | ARQ-03 | validado en la v2 | CAL-FS-001 | 4,37 | 0,30 |
+| 10 | Tarifa predial por HTTP | ARQ-04 | ARQ-04 | validado en la v1 | — | 4,14 | 0,27 |
+| 11 | Inmuebles en arriendo | ARQ-04 | ARQ-04 | validado en la v2 | CAL-FS-001, CAL-MT-003 | 6,12 | 0,40 |
+| 12 | Dígito de verificación del NIT | ARQ-04 | ARQ-04 | validado en la v2 | CAL-FS-002 | 3,83 | 0,21 |
+| 13 | Reservas de parqueadero | ARQ-04 | ARQ-04 | validado en la v2 | CAL-MT-002 | 8,15 | 0,49 |
+| 14 | Escaneos de expedientes | ARQ-05 | ARQ-05 | validado en la v1 | — | 4,20 | 0,30 |
+| 15 | Rotación de registros | ARQ-05 | ARQ-05 | validado en la v1 | — | 5,05 | 0,33 |
+| 16 | Amortización de crédito | ARQ-05 | ARQ-05 | validado en la v1 | — | 4,06 | 0,28 |
+| 17 | Trámites catastrales | ARQ-06 | ARQ-06 | validado en la v2 | CAL-SG-006 | 4,62 | 0,31 |
+| 18 | Ventas de la caja | ARQ-06 | — | en pausa en N6 | — | 4,03 | 0,20 |
+| 19 | Pagos de pensiones | ARQ-06 | ARQ-06 | escalado en N17 | CAL-FS-001, también en la v2 | 9,01 | 0,61 |
+| 20 | Sensores del cuarto frío | ARQ-06 | ARQ-06 | validado en la v1 | — | 5,94 | 0,35 |
+
+- **Arquitectura:** N8 eligió la esperada en los 19 casos que llegaron al diseño, y salen las
+  seis. ARQ-06 se usa por primera vez, en tres casos.
+- **Desenlaces:** 18 validados, 10 en la v1 y 8 en la v2; 1 escalado en N17 y 1 en pausa en N6.
+  Ninguna sesión se detuvo y ninguna llamada dio error.
+- **Tiempo del sistema:** media de 4,6 min y máximo de 9,0 min, en el caso escalado, frente a los
+  20 min del RNF-01.
+  - El turno de diálogo más largo midió 9,4 s, dentro de los 15 s del RNF-01.
+  - El cierre de la elicitación, que incluye la síntesis, pasó de 30 s en 5 casos: 104 s en el
+    caso 13, con cinco requerimientos, y 97 s en el 18. La consola lo acusa antes (decisión 10).
+- **Costo:** 0,28 USD de media por módulo validado, de 0,16 a 0,49. Del costo del sistema, 5,89
+  USD, N10 lleva el 46 %, N8 el 22 %, N3 el 18 %, N5 el 14 % y N14 el 1 %.
+- **Analista simulado:** devolvió los requerimientos al diálogo en 10 casos. En 9 aprobó después
+  con defectos de calidad sin corregir, como prevé su política.
+- **Desarrollador:** 36 llamadas para 29 generaciones.
+  - Se rechazaron 7 de los 29 primeros intentos, en 6 sesiones, y el reintento corrigió 6.
+  - Los motivos se combinan: sangría rota en 4, `self` anotado con su clase en 3, respuesta
+    incompleta en 2 y una excepción declarada sin importar en 1.
+  - La verificación de firmas (`core/conformidad.py`) trata `self: Clase` como distinto de
+    `self`. Queda para decisión del equipo, como la regla de las excepciones declaradas.
+  - En el caso 19, además, la especificación declaró `callable` como tipo y N9 no lo objetó.
+- **`httpx`:** el riesgo no se dio. Las pruebas de ARQ-04 llaman a la aplicación ASGI
+  directamente, sin `TestClient`.
+- **Caso 19, escalado:**
+  - N10 falló sus dos intentos en la iteración 1.
+  - El juez rechazó la v1 y la v2 con CAL-FS-001: las pruebas simulaban en diccionarios locales el
+    estado que el escenario pide al módulo, como el recibo anulado o la factura restaurada.
+  - Destapó el defecto de la decisión 27, que hizo fallar el script al medir. Su resultado se
+    rehízo sin costo desde la sesión y la traza; el cálculo del tiempo reproduce los otros 19
+    casos con ±0,3 s.
+- **Caso 18, en pausa en N6:**
+  - el elicitador anotó como resultados los datos que trae el aviso. El cliente lo corrigió seis
+    veces, pero el registro no cambió: una extracción vacía conserva lo anterior, y el cliente
+    dijo qué no eran resultados, no cuáles sí;
+  - la síntesis falló la verificación de fidelidad en sus 12 llamadas (0,15 USD) y N6 recibió
+    cero requerimientos;
+  - _pendiente: la corrección, con un plan aparte (modifica el ADR-0008)._
+- **Sesiones para la verificación con el equipo:** `5f5d2739`, escalada en N17, y `b271c343`, en
+  pausa en N6.
+
 **Verificación con el equipo.**
 - **Hecho:** la sesión tipo NotionSync por la web, `9da543db`, quedó validada y dio lugar a la
   decisión 26.
