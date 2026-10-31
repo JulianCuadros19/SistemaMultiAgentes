@@ -1,20 +1,33 @@
-"""Casos sintéticos de elicitación que usa el cliente simulado en el flujo de extremo a extremo."""
+"""Casos sintéticos de elicitación: carga, identificadores y cobertura de arquitecturas."""
+
+from collections import Counter
+from pathlib import Path
 
 import pytest
 
 from multiagente.interfaces.cliente_simulado import RAIZ_EVALUACION, cargar_caso
 
-CASOS = sorted((RAIZ_EVALUACION / "casos").glob("elicitacion-*.md"))
+CATALOGO = (
+    Path(__file__).resolve().parents[2] / "knowledge_base" / "arquitecturas_referencia" / "catalogo"
+)
+ARQUITECTURAS = {archivo.name[:6] for archivo in CATALOGO.glob("ARQ-*.md")}
+BASICOS = sorted((RAIZ_EVALUACION / "casos").glob("elicitacion-*.md"))
+AMPLIADA = sorted((RAIZ_EVALUACION / "casos" / "ampliada").glob("elicitacion-*.md"))
 
 
-@pytest.mark.parametrize("archivo", CASOS, ids=[caso.stem for caso in CASOS])
-def test_cada_caso_carga_con_su_cabecera_y_lo_que_sabe_el_cliente(archivo):
+@pytest.mark.parametrize("archivo", BASICOS + AMPLIADA, ids=lambda archivo: archivo.stem)
+def test_cada_caso_carga_y_apunta_al_catalogo(archivo):
     caso = cargar_caso(archivo)
-    assert "## Lo que sabes" in caso.conocimiento
-    assert "## Lo que no sabes" in caso.conocimiento
+    assert set(caso.arquitecturas_esperadas) <= ARQUITECTURAS
+    # El cliente simulado solo recibe lo que sabe la persona, no la arquitectura esperada.
+    assert "ARQ-" not in caso.conocimiento
 
 
-def test_los_casos_tienen_identificadores_unicos():
-    identificadores = [cargar_caso(archivo).id for archivo in CASOS]
-    assert len(identificadores) >= 3
-    assert len(set(identificadores)) == len(identificadores)
+def test_la_corrida_ampliada_cubre_las_seis_arquitecturas():
+    casos = [cargar_caso(archivo) for archivo in AMPLIADA]
+    assert len(casos) == 20
+    assert len({caso.id for caso in casos + [cargar_caso(a) for a in BASICOS]}) == 23
+    assert all(len(caso.arquitecturas_esperadas) == 1 for caso in casos)
+    objetivos = Counter(caso.arquitecturas_esperadas[0] for caso in casos)
+    assert set(objetivos) == ARQUITECTURAS == {f"ARQ-0{n}" for n in range(1, 7)}
+    assert min(objetivos.values()) >= 3

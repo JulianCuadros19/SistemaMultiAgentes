@@ -13,7 +13,12 @@ from openai import OpenAI
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from multiagente.core.cabecera import ErrorCabecera, separar_cabecera
-from multiagente.core.esquemas.comunes import ModeloEstricto, TextoObligatorio, Version
+from multiagente.core.esquemas.comunes import (
+    IdArquitectura,
+    ModeloEstricto,
+    TextoObligatorio,
+    Version,
+)
 from multiagente.llm.invocador import InvocadorNodo, ParametrosNodo
 from multiagente.llm.prompts import leer_prompt
 from multiagente.llm.traza import RegistradorLlamadas
@@ -24,7 +29,13 @@ RAIZ_EVALUACION = Path(__file__).resolve().parents[3] / "evaluacion"
 
 
 class CasoElicitacion(ModeloEstricto):
-    """Caso sintético: datos de apertura de la sesión y lo que sabe el cliente."""
+    """Caso sintético: datos de apertura de la sesión y lo que sabe el cliente.
+
+    Attributes:
+        arquitecturas_esperadas: Arquitecturas del catálogo a las que apuntan las señales del
+            caso, según los criterios de arq-003. Solo sirven para evaluar la selección de N8:
+            el cliente simulado no las ve, porque recibe únicamente `conocimiento`.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -35,6 +46,7 @@ class CasoElicitacion(ModeloEstricto):
     necesidad: TextoObligatorio
     version: Version
     conocimiento: TextoObligatorio
+    arquitecturas_esperadas: tuple[IdArquitectura, ...] = ()
 
 
 class ErrorCaso(ValueError):
