@@ -201,7 +201,6 @@ def test_reglas_y_severidades_salen_de_la_base_de_conocimiento():
     ("codigo", "regla"),
     [
         ("S307", "CAL-SG-002"),
-        ("S105", "CAL-SG-001"),
         ("S602", "CAL-SG-004"),
         ("S110", "CAL-SG-006"),
         ("BLE001", "CAL-SG-006"),
@@ -414,3 +413,63 @@ def test_clave_sola_no_es_un_secreto():
         'from dominio.predio import Predio\n\nCLAVE_CATASTRAL = "numero_predial"\n',
     )(archivos)
     assert [h for h in analizar(archivos).hallazgos if h.regla == "CAL-SG-001"] == []
+
+
+def secretos(archivos):
+    return [h for h in analizar(archivos).hallazgos if h.regla == "CAL-SG-001"]
+
+
+def con_codigo(codigo, ruta=AVALUO_PY):
+    archivos = archivos_validos()
+    archivos[ruta] += f"\n\n{codigo}\n"
+    return archivos
+
+
+@pytest.mark.parametrize(
+    "codigo",
+    [
+        'CONTRASENA_BD = "admin123"',
+        'DB_PASSWORD = "catastro2026"',
+        'TOKEN: str = "abc123"',
+        'conectar(password="admin123")',
+        'def conectar(token: str = "abc123") -> None:\n    """Conecta."""',
+        'def conectar(*, clave_api: str = "abc123") -> None:\n    """Conecta."""',
+        'if clave_api == "abc123":\n    pass',
+        'if "abc123" != token_notion:\n    pass',
+    ],
+)
+def test_cada_secreto_se_reporta_una_vez(codigo):
+    (hallazgo,) = secretos(con_codigo(codigo))
+    assert hallazgo.severidad is Severidad.ALTA
+    assert hallazgo.ubicacion.startswith(f"{AVALUO_PY}:")
+    assert "abc123" not in hallazgo.descripcion and "admin123" not in hallazgo.descripcion
+
+
+@pytest.mark.parametrize(
+    "codigo",
+    [
+        # El mensaje que pidió el cliente de NotionSync (sesión 9da543db), que se marcó en la v1
+        # y, renombrado, en la v2.
+        '_MENSAJE_TOKEN = (\n    "Error: No se encontró un token de Notion válido. "\n'
+        '    "Por favor, verifica tu archivo .env"\n)',
+        '_MENSAJE_CREDENCIALES = "Error: No se encontró un token de Notion válido."',
+        'VARIABLE_TOKEN = "NOTION_TOKEN"',
+        'def leer(nombre_token: str = "NOTION_TOKEN") -> None:\n    """Lee."""',
+        'TOKEN_VACIO = ""',
+    ],
+)
+def test_mensajes_y_variables_de_entorno_no_son_secretos(codigo):
+    assert secretos(con_codigo(codigo)) == []
+
+
+@pytest.mark.parametrize(
+    "codigo",
+    [
+        'CONFIGURACION = dict(token_notion="token-prueba")',
+        'assert CONFIGURACION["token_notion"] == "token-entorno"',
+    ],
+)
+def test_los_datos_de_las_pruebas_no_son_secretos(codigo):
+    assert secretos(con_codigo(codigo, "tests/test_avaluo.py")) == []
+    # El mismo código en un módulo sí se reporta.
+    assert len(secretos(con_codigo(codigo))) == 1

@@ -10,8 +10,12 @@ Todo es determinístico y reproducible (cal-pg), sin ejecutar el código:
   módulo asignado a él.
 - **Dinero (CAL-FS-005):** `float` en nombres monetarios, `float(…)` sobre ellos y `Decimal`
   construido desde un `float`.
-- **Secretos (CAL-SG-001):** literales de texto asignados a nombres de secretos en español, que
-  Ruff no reconoce porque solo busca nombres en inglés (`password`, `secret`…).
+- **Secretos (CAL-SG-001):** literales de texto asignados, comparados, pasados como argumento o
+  usados como valor por defecto con nombres de secretos en español o inglés. Es el único detector
+  de la regla: la configuración del código generado ignora S105, S106 y S107 de Ruff, que solo
+  reconoce nombres en inglés y marca cualquier texto, también un mensaje que menciona un token.
+  No cuentan los textos en lenguaje natural ni los nombres de variables de entorno, y las pruebas
+  no se revisan, porque sus valores son datos de prueba.
 
 Los casos de aceptación, la ejecución y el veredicto son de N14.
 """
@@ -188,30 +192,89 @@ SECRETO = re.compile(
 """Nombres que delatan un secreto. «clave» sola no cuenta: en el dominio es también la llave de
 un diccionario o la clave catastral."""
 
+VARIABLE_DE_ENTORNO = re.compile(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+")
+"""Nombre de una variable de entorno, como `NOTION_TOKEN`: dice dónde vive el secreto."""
+
+
+def es_valor_secreto(valor: str) -> bool:
+    """Indica si un literal asignado a un nombre de secreto puede ser el secreto mismo.
+
+    No lo es un texto vacío, un texto en lenguaje natural (con espacios), como un mensaje de
+    error que menciona el token, ni el nombre de una variable de entorno.
+
+    Args:
+        valor: Contenido del literal de texto.
+
+    Returns:
+        True si el valor tiene forma de credencial.
+    """
+    valor = valor.strip()
+    return bool(valor) and not re.search(r"\s", valor) and not VARIABLE_DE_ENTORNO.fullmatch(valor)
+
+
+def _texto(nodo: ast.expr | None) -> str | None:
+    """Contenido del nodo si es un literal de texto; None en otro caso."""
+    if isinstance(nodo, ast.Constant) and isinstance(nodo.value, str):
+        return nodo.value
+    return None
+
+
+def _literales_con_nombre(arbol: ast.Module) -> Iterator[tuple[int, str, str]]:
+    """Recorre cada literal de texto con el nombre que lo recibe o con el que se compara.
+
+    Cubre asignaciones, asignaciones anotadas, argumentos por nombre, valores por defecto de
+    parámetros y comparaciones de igualdad, en cualquier orden.
+
+    Yields:
+        La línea, el nombre y el valor del literal.
+    """
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Assign) and (valor := _texto(nodo.value)) is not None:
+            for destino in nodo.targets:
+                yield nodo.lineno, ast.unparse(destino), valor
+        elif isinstance(nodo, ast.AnnAssign) and (valor := _texto(nodo.value)) is not None:
+            yield nodo.lineno, ast.unparse(nodo.target), valor
+        elif isinstance(nodo, ast.keyword) and nodo.arg is not None:
+            if (valor := _texto(nodo.value)) is not None:
+                yield nodo.lineno, nodo.arg, valor
+        elif isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            argumentos = nodo.args
+            posicionales = [*argumentos.posonlyargs, *argumentos.args]
+            con_defecto = posicionales[len(posicionales) - len(argumentos.defaults) :]
+            pares = [
+                *zip(con_defecto, argumentos.defaults, strict=True),
+                *zip(argumentos.kwonlyargs, argumentos.kw_defaults, strict=True),
+            ]
+            for argumento, defecto in pares:
+                if (valor := _texto(defecto)) is not None:
+                    yield argumento.lineno, argumento.arg, valor
+        elif isinstance(nodo, ast.Compare):
+            operandos = [nodo.left, *nodo.comparators]
+            for operador, izquierda, derecha in zip(
+                nodo.ops, operandos[:-1], operandos[1:], strict=True
+            ):
+                if not isinstance(operador, ast.Eq | ast.NotEq):
+                    continue
+                for nombre, literal in ((izquierda, derecha), (derecha, izquierda)):
+                    if _texto(nombre) is None and (valor := _texto(literal)) is not None:
+                        yield nodo.lineno, ast.unparse(nombre), valor
+
 
 def _secretos_embebidos(arbol: ast.Module) -> Iterator[tuple[int, str]]:
-    """Recorre los literales de texto asignados a nombres de secretos, también como argumento."""
-    for nodo in ast.walk(arbol):
-        literal: ast.expr | None = None
-        nombres: list[str] = []
-        if isinstance(nodo, ast.Assign):
-            literal = nodo.value
-            nombres = [ast.unparse(destino) for destino in nodo.targets]
-        elif isinstance(nodo, ast.AnnAssign) and nodo.value is not None:
-            literal, nombres = nodo.value, [ast.unparse(nodo.target)]
-        elif isinstance(nodo, ast.keyword) and nodo.arg is not None:
-            literal, nombres = nodo.value, [nodo.arg]
-        es_texto = isinstance(literal, ast.Constant) and isinstance(literal.value, str)
-        if es_texto and literal.value.strip():
-            for nombre in nombres:
-                if SECRETO.search(nombre):
-                    yield getattr(nodo, "lineno", 0), f"{nombre} recibe un secreto literal"
+    """Recorre los literales con forma de credencial que recibe un nombre de secreto."""
+    for linea, nombre, valor in _literales_con_nombre(arbol):
+        if SECRETO.search(nombre) and es_valor_secreto(valor):
+            yield linea, f"{nombre} recibe un secreto literal"
 
 
 def hallazgos_de_secretos(
     informe: InformeConformidad, reglas: dict[str, ReglaCalidad]
 ) -> list[Hallazgo]:
     """Secretos escritos en el código con nombres en español o inglés (CAL-SG-001).
+
+    Es el único detector de la regla (Ruff ignora S105, S106 y S107). Las pruebas no se revisan:
+    sus valores, como el token de una configuración de prueba, son datos inventados, y marcarlos
+    empuja al desarrollador a retorcer las pruebas para esquivar la regla.
 
     La evidencia no reproduce el valor detectado, como pide la regla.
 
@@ -227,6 +290,7 @@ def hallazgos_de_secretos(
             reglas, "CAL-SG-001", f"{ruta}:{linea}", f"Credencial embebida: {detalle}", "secretos"
         )
         for ruta, arbol in sorted(informe.arboles.items())
+        if not ruta.startswith("tests/")
         for linea, detalle in _secretos_embebidos(arbol)
     ]
 

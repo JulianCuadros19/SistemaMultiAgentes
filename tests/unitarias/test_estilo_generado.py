@@ -50,3 +50,18 @@ def test_reporta_seguridad_documentacion_y_anotaciones():
     assert {"S307", "D103", "ANN001", "ANN201"} <= codigos
     (primero, *_) = hallazgos_de_estilo(archivos)
     assert primero.archivo == "src/dominio/riesgo.py"
+
+
+def test_los_secretos_no_los_reporta_ruff():
+    # CAL-SG-001 la verifica N12 con un solo criterio; Ruff marcaría también los mensajes.
+    archivos = {
+        "src/dominio/acceso.py": (
+            '"""Acceso."""\n\nDB_PASSWORD = "catastro2026"\n'
+            '_MENSAJE_TOKEN = "Error: No se encontró un token válido"\n\n\n'
+            'def conectar(token: str = "abc123") -> bool:\n'
+            '    """Conecta.\n\n    Args:\n        token: Token.\n\n    Returns:\n'
+            '        Si conectó.\n    """\n    return token == "abc123"\n'
+        )
+    }
+    codigos = {hallazgo.codigo for hallazgo in hallazgos_de_estilo(archivos)}
+    assert not codigos & {"S105", "S106", "S107"}

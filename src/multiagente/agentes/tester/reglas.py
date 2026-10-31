@@ -21,9 +21,6 @@ REGLA_ESTILO = "CAL-MT-009"
 """Regla de las infracciones de estilo que no corresponden a otra regla."""
 
 REGLAS_RUFF: tuple[tuple[str, str], ...] = (
-    ("S105", "CAL-SG-001"),
-    ("S106", "CAL-SG-001"),
-    ("S107", "CAL-SG-001"),
     ("S102", "CAL-SG-002"),
     ("S307", "CAL-SG-002"),
     ("S608", "CAL-SG-003"),
@@ -43,7 +40,8 @@ REGLAS_RUFF: tuple[tuple[str, str], ...] = (
     ("N", "CAL-MT-007"),
 )
 """Prefijo de código de Ruff y regla que lo verifica; gana el prefijo más largo. Un código sin
-prefijo en la tabla se reporta con la regla de estilo (CAL-MT-009)."""
+prefijo en la tabla se reporta con la regla de estilo (CAL-MT-009). Los secretos (S105, S106 y
+S107) no están: la configuración del código generado los ignora y CAL-SG-001 la verifica N12."""
 
 EVALUADAS: frozenset[str] = frozenset(
     {regla for _, regla in REGLAS_RUFF}
@@ -51,9 +49,11 @@ EVALUADAS: frozenset[str] = frozenset(
     | {"CAL-AR-001", "CAL-AR-002", "CAL-AR-003", "CAL-AR-004", "CAL-AR-005"}
     | {"CAL-MT-005", "CAL-MT-006", "CAL-MT-008", "CAL-MT-010"}
     | {"CAL-FS-001", "CAL-FS-002", "CAL-FS-003", "CAL-FS-005"}
+    | {"CAL-SG-001"}
 )
-"""Reglas con comprobación automática. CAL-MT-005 se verifica con CAL-AR-001 y CAL-AR-003, y
-CAL-MT-008 al ejecutar las pruebas de dominio en el entorno aislado, que no tiene red."""
+"""Reglas con comprobación automática. CAL-MT-005 se verifica con CAL-AR-001 y CAL-AR-003,
+CAL-MT-008 al ejecutar las pruebas de dominio en el entorno aislado, que no tiene red, y
+CAL-SG-001 con el detector de secretos de N12."""
 
 SUGERENCIAS: dict[str, str] = {
     "CAL-AR-001": "Crea el módulo en la ruta que declara la especificación.",

@@ -4,8 +4,8 @@ titulo: Seguridad
 fuente: ISO/IEC 25010:2023 e ISO/IEC 27001:2022, controles A.8.25 y A.8.28
 tipo_fuente: estandar_internacional
 tags: [25010, 27001, seguridad, reglas]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-31
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -23,7 +23,7 @@ coleccion: criterios_calidad
 
 **Enunciado.** El código no debe contener contraseñas, claves de acceso, cadenas de conexión con credenciales ni secretos de ningún tipo escritos directamente.
 
-**Verificación.** Análisis estático con las reglas de seguridad del linter (familia S) orientadas a secretos embebidos.
+**Verificación.** Análisis estático del árbol sintáctico: literales de texto asignados, comparados, pasados como argumento o usados como valor por defecto con nombres de secretos, en español o inglés. No cuentan los textos en lenguaje natural, como los mensajes, ni los nombres de variables de entorno. No se aplica a los archivos de prueba, cuyos valores son datos de prueba.
 
 **Evidencia esperada.** Ubicación exacta de cada hallazgo, sin reproducir el valor detectado.
 

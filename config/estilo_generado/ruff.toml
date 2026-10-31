@@ -19,7 +19,7 @@ select = [
     "N",    # convención de nombres (CAL-MT-007)
     "D",    # documentación de lo público (CAL-MT-001, RF-18)
     "ANN",  # anotación de tipos (CAL-MT-002)
-    "S",    # seguridad: secretos, eval, subprocesos, consultas (CAL-SG-001 a CAL-SG-004)
+    "S",    # seguridad: eval, subprocesos y consultas (CAL-SG-002 a CAL-SG-004)
     "BLE",  # captura genérica de excepciones (CAL-SG-006)
     "B",    # errores probables
     "UP",   # sintaxis vigente para Python 3.11
@@ -27,7 +27,12 @@ select = [
 ]
 # N818 exige el sufijo inglés «Error»; las excepciones del dominio van en español, como
 # `NumeroPredialInvalido` en el esquema de la especificación (arq-002).
-ignore = ["N818"]
+#
+# S105, S106 y S107 buscan secretos solo por el nombre en inglés y marcan cualquier texto, también
+# un mensaje de error que menciona un token. Los secretos (CAL-SG-001) los verifica N12 con
+# nombres en español e inglés y un solo criterio: no cuentan los mensajes, los nombres de
+# variables de entorno ni los datos de las pruebas.
+ignore = ["N818", "S105", "S106", "S107"]
 
 [lint.pydocstyle]
 convention = "google"
