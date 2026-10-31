@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -361,6 +361,31 @@ El equipo operó por la web la sesión `9da543db` (NotionSync2), con la misma ne
       - Las tres versiones reales de `9da543db`, analizadas de nuevo con N12, dan cero
         CAL-SG-001. La v1 habría fallado solo por el CAL-FS-001 del juez. La v2 habría salido
         aprobada, con solo hallazgos de severidad baja: el módulo se validaba en la iteración 2.
+
+### Corrección tras la corrida ampliada
+
+La corrida ampliada de extremo a extremo (sección «Verificación») destapó un defecto en el caso
+19, sesión `5f5d2739`.
+- **Qué pasó:** el desarrollador falló sus dos intentos en la primera iteración. La sesión siguió
+  como prevé la decisión 14 y escaló en N17 tras rechazarse la v1 y la v2.
+- **Defecto:** `ejecucion.validaciones`, que arma el historial de versiones (ADR-0013), tomaba como
+  veredicto todo punto de control que va a N15. Desde la decisión 14, a N15 también va una
+  generación fallida, que no deja versión nueva:
+  - **en la primera iteración,** el historial traía una versión vacía. `multiagente ver`, la
+    trazabilidad de la web y el script de la corrida fallaban con `AttributeError`;
+  - **en una iteración posterior,** nada fallaba, pero el historial repetía la versión anterior
+    con la validación de la falla.
+
+27. **El historial solo lista versiones dictaminadas** (completa la decisión 14 y modifica el
+    ADR-0013).
+    - **Criterio:** `validaciones` omite los puntos de control con `Codigo.fallo_generacion`. Es el
+      mismo dato con que `ruta_tras_generacion` envía a N15.
+    - **Generaciones fallidas:** cuentan como iteración y sus llamadas quedan en la traza de
+      costo. No son versiones, así que la trazabilidad no las lista.
+    - **Verificación, sin costo:**
+      - 545 pruebas unitarias. La matriz de fallas cubre la falla en la primera iteración, en una
+        corrección y en todas; las tres pruebas fallan con el código anterior.
+      - `multiagente ver 5f5d2739…` lista la v1 y la v2 de la sesión real.
 
 ### Verificación
 

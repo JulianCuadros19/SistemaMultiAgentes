@@ -129,7 +129,8 @@ def validaciones(app: CompiledStateGraph, id_sesion: str) -> list[tuple[VersionC
     """Devuelve cada versión dictaminada del módulo con su validación, en orden (RF-33).
 
     El estado solo conserva la validación vigente; las de las versiones anteriores se leen de
-    los puntos de control guardados justo después de cada veredicto (N14).
+    los puntos de control guardados justo después de cada veredicto (N14). Una generación
+    fallida también pasa a N15, pero no deja versión: cuenta como iteración y no se lista.
 
     Args:
         app: Grafo compilado con checkpointer.
@@ -141,6 +142,6 @@ def validaciones(app: CompiledStateGraph, id_sesion: str) -> list[tuple[VersionC
     tras_veredicto = [
         punto.values
         for punto in app.get_state_history(configuracion_hilo(id_sesion))
-        if punto.next == (Nodo.N15.value,)
+        if punto.next == (Nodo.N15.value,) and not punto.values["codigo"].fallo_generacion
     ]
     return [(valores["codigo"].vigente, valores["validacion"]) for valores in tras_veredicto[::-1]]

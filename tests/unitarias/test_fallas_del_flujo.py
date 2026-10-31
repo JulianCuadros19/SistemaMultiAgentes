@@ -13,7 +13,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.operacion import ErrorOperacion, Operador
 from multiagente.llm.invocador import ErrorValidacionSalida
-from multiagente.orquestador.estado import Decision, Destino, Fase
+from multiagente.orquestador.estado import Decision, Destino, Fase, Veredicto
 from multiagente.orquestador.grafo import PREGUNTA_REINTENTO, construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -30,13 +30,18 @@ class SimulacionConFallas(ServiciosSimulados):
 
     Attributes:
         fallas: Veces que falla cada método antes de funcionar; `SIEMPRE` para una falla
-            persistente.
+            persistente. La clave `corregir` solo cuenta las generaciones con versión previa.
         error: Excepción con que fallan.
         vistas: Respuestas nuevas del cliente que recibió el diálogo, en orden.
     """
 
-    def __init__(self, fallas: dict[str, int], error: type[Exception] = ErrorValidacionSalida):
-        super().__init__(fallos_veredicto=0)
+    def __init__(
+        self,
+        fallas: dict[str, int],
+        error: type[Exception] = ErrorValidacionSalida,
+        fallos_veredicto: int = 0,
+    ):
+        super().__init__(fallos_veredicto=fallos_veredicto)
         self.fallas = Counter(fallas)
         self.error = error
         self.vistas: list[str | None] = []
@@ -64,6 +69,8 @@ class SimulacionConFallas(ServiciosSimulados):
 
     def generar(self, requerimientos, especificacion, validacion, previa):
         self._quizas_fallar("generar")
+        if previa is not None:
+            self._quizas_fallar("corregir")
         return super().generar(requerimientos, especificacion, validacion, previa)
 
     def ejecutar(self, version, especificacion):
@@ -196,6 +203,22 @@ def test_n10_que_falla_una_vez_cuenta_la_iteracion_y_sigue():
     vista = op.vista(id_sesion)
     assert vista.iteracion == 2
     assert vista.pausa.datos["version"] == 1
+    # La generación fallida cuenta como iteración, pero no es una versión del historial.
+    assert [version.numero for version, _ in op.historial(id_sesion)] == [1]
+    assert "- Versión 1 ·" in op.trazabilidad(id_sesion)
+
+
+def test_n10_que_falla_al_corregir_no_repite_versiones_en_el_historial():
+    # La v1 se rechaza, su corrección falla y la siguiente se aprueba en la iteración 3.
+    op = operador(SimulacionConFallas({"corregir": 1}, fallos_veredicto=1))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "final")
+    assert op.vista(id_sesion).iteracion == 3
+    historial = op.historial(id_sesion)
+    assert [(version.numero, validacion.veredicto) for version, validacion in historial] == [
+        (1, Veredicto.RECHAZADO),
+        (2, Veredicto.APROBADO),
+    ]
 
 
 def test_n10_sin_version_agota_el_ciclo_sin_ejecutar_nada():
@@ -214,6 +237,8 @@ def test_n10_sin_version_agota_el_ciclo_sin_ejecutar_nada():
     datos = op.vista(id_sesion).pausa.datos
     assert datos["escalado"] is True
     assert datos["version"] is None and datos["archivos"] == []
+    assert op.historial(id_sesion) == []
+    assert "Aún no hay versiones dictaminadas." in op.trazabilidad(id_sesion)
     avance = op.decidir(
         id_sesion, Decision.RECHAZADO, "Revisor", "Simplifica el diseño", destino=Destino.ARQUITECTO
     )
