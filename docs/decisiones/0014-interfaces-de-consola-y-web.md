@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla y respuesta al resumen), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla, respuesta al resumen y retiro de lo rechazado), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -362,10 +362,10 @@ El equipo operó por la web la sesión `9da543db` (NotionSync2), con la misma ne
         CAL-SG-001. La v1 habría fallado solo por el CAL-FS-001 del juez. La v2 habría salido
         aprobada, con solo hallazgos de severidad baja: el módulo se validaba en la iteración 2.
 
-### Corrección tras la corrida ampliada
+### Correcciones tras la corrida ampliada
 
-La corrida ampliada de extremo a extremo (sección «Verificación») destapó un defecto en el caso
-19, sesión `5f5d2739`.
+La corrida ampliada de extremo a extremo (sección «Verificación») destapó dos defectos. El
+primero, en el caso 19, sesión `5f5d2739`:
 - **Qué pasó:** el desarrollador falló sus dos intentos en la primera iteración. La sesión siguió
   como prevé la decisión 14 y escaló en N17 tras rechazarse la v1 y la v2.
 - **Defecto:** `ejecucion.validaciones`, que arma el historial de versiones (ADR-0013), tomaba como
@@ -386,6 +386,43 @@ La corrida ampliada de extremo a extremo (sección «Verificación») destapó u
       - 545 pruebas unitarias. La matriz de fallas cubre la falla en la primera iteración, en una
         corrección y en todas; las tres pruebas fallan con el código anterior.
       - `multiagente ver 5f5d2739…` lista la v1 y la v2 de la sesión real.
+
+El segundo, en el caso 18, sesión `b271c343`:
+- **Qué pasó:** N3 anotó como resultados los datos que trae el aviso. El cliente lo corrigió seis
+  veces sin decir cuáles eran los resultados, y el registro no cambió. N5 sintetizó con ese
+  registro, falló la fidelidad en sus 12 llamadas y N6 recibió cero requerimientos.
+- **Defecto:** el prompt de extracción pide devolver la lista vigente de un atributo corregido,
+  que aquí quedaba vacía. El código trata una lista vacía como «sin cambios», para que nada se
+  pierda por omisión del modelo (ADR-0008). Una corrección que solo niega no tenía cómo entrar.
+
+28. **La extracción retira lo que el cliente rechaza** (modifica el ADR-0008).
+    - **Campo nuevo, `retirar`:** la extracción (prompt 1.2) lista lo que la respuesta rechaza
+      sin decir el reemplazo. Cada entrada lleva su lista (`reglas_negocio`, `datos_entrada`,
+      `datos_salida` o `excepciones`) y su texto tal como figura en el registro. La lista importa:
+      en el caso 18, los mismos nombres eran entradas y salidas.
+    - **Regla en código** (`retirar_rechazados`): una entrada sale solo si figura en esa lista y
+      la respuesta nueva la menciona, con al menos una raíz o, si es un nombre corto como «NIT»,
+      con la palabra entera. La lista vacía sigue conservando lo previo, y en la respuesta que
+      confirma el resumen las listas solo suman (decisión 8 del ADR-0008).
+    - **Efecto:** si la lista queda vacía, el atributo vuelve a estar pendiente y N3 pregunta por
+      él en lugar de «¿Qué falta…?». Si no, el resumen siguiente muestra el cambio.
+    - **Verificación:**
+      - 552 pruebas unitarias. Las 7 nuevas cubren:
+        - el caso 18;
+        - lo que no se retira: sin mención, fuera del registro o de otra lista;
+        - la respuesta que confirma;
+        - el nombre corto;
+        - la pregunta siguiente, con el modelo falso.
+      - El turno exacto del caso 18, tomado de los puntos de control de `b271c343`, con el modelo
+        real, tres veces (0,02 USD). En las tres:
+        - la extracción retira las tres salidas y conserva las entradas;
+        - suma las reglas de las alertas y del acumulado;
+        - N3 pregunta por los resultados.
+      - El caso 18 hasta N6, tres veces, con `scripts/conversar_elicitador.py --simulado` y la
+        traza fuera del repositorio (0,27 USD). Las tres llegan a N6 con requerimientos: una sin
+        defectos y dos con defectos escalados al analista. En ninguna el cliente rechazó los
+        resultados, así que no pasaron por el retiro (ver «Caso 18» en «Verificación»).
+      - La prueba `nube` del paso 7, sobre el caso de mutación, pasa (0,04 USD).
 
 ### Verificación
 
@@ -550,7 +587,15 @@ La corrida ampliada de extremo a extremo (sección «Verificación») destapó u
     dijo qué no eran resultados, no cuáles sí;
   - la síntesis falló la verificación de fidelidad en sus 12 llamadas (0,15 USD) y N6 recibió
     cero requerimientos;
-  - _pendiente: la corrección, con un plan aparte (modifica el ADR-0008)._
+  - lo corrige la decisión 28. Sus tres corridas de verificación agotaron los 15 turnos por otro
+    problema: el elicitador plantea la necesidad desde quien publica el aviso («Como la caja,
+    quiero publicar un aviso»), no desde las reacciones que pidió el cliente. Por eso cada una se
+    atascó en una pregunta distinta:
+    - una, si los datos del aviso eran obligatorios;
+    - otra, qué resultado deja publicar el aviso;
+    - la tercera repitió «¿Qué falta…?», porque el cliente pedía la prioridad y el registro no la
+      recoge;
+  - _pendiente: decisión del equipo sobre ese problema._
 - **Sesiones para la verificación con el equipo:** `5f5d2739`, escalada en N17, y `b271c343`, en
   pausa en N6.
 

@@ -36,7 +36,7 @@ from multiagente.agentes.elicitador.sintesis import (
     validar_sintesis,
 )
 from multiagente.core.configuracion import ConfiguracionOrquestador
-from multiagente.core.esquemas.requerimiento import DatoEntrada
+from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida
 from multiagente.llm.costos import Tarifa
 from multiagente.llm.invocador import (
     CLAVE_PROBLEMAS,
@@ -237,6 +237,7 @@ def salida_extraccion(**cambios) -> SalidaExtraccion:
         "datos_entrada": None,
         "datos_salida": None,
         "excepciones": None,
+        "retirar": [],
         "supuestos": [],
         "preguntas_abiertas": [],
         "confirma_resumen": False,
@@ -325,6 +326,88 @@ def test_lo_capturado_no_se_pierde_por_omision():
     assert registro.rol == previo.rol
     assert registro.datos_entrada == previo.datos_entrada
     assert len(registro.reglas_negocio) == 2
+
+
+# Caso 18 de la corrida ampliada: el registro tomó como resultados los datos que trae el aviso,
+# los mismos que ya estaban como entradas.
+AVISO = (("número de la venta", "texto"), ("fecha y hora", "fecha"), ("lista de ítems", "lista"))
+RECHAZO_DE_RESULTADOS = (
+    "No, falta algo. No me cuadra que ponga como resultados el número, la fecha y los ítems; eso "
+    "es lo que trae el aviso, no lo que entrega el proceso."
+)
+RETIRO_DE_RESULTADOS = [{"lista": "datos_salida", "entrada": nombre} for nombre, _ in AVISO]
+
+
+def registro_de_la_caja() -> RegistroCaptura:
+    return registro_completo().model_copy(
+        update={
+            "datos_entrada": tuple(
+                DatoEntrada(nombre=nombre, tipo=tipo, obligatorio=True) for nombre, tipo in AVISO
+            ),
+            "datos_salida": tuple(DatoSalida(nombre=nombre, tipo=tipo) for nombre, tipo in AVISO),
+        }
+    )
+
+
+def rechazo_del_resumen(registro: RegistroCaptura, respuesta: str) -> Conversacion:
+    return con_respuesta(
+        registro, f"{resumen_para_confirmar(registro)}\n{PREGUNTA_CIERRE}", respuesta
+    )
+
+
+def test_retira_lo_que_el_cliente_rechaza_sin_reemplazo():
+    previo = registro_de_la_caja()
+    registro = aplicar_extraccion(
+        salida_extraccion(retirar=RETIRO_DE_RESULTADOS),
+        rechazo_del_resumen(previo, RECHAZO_DE_RESULTADOS),
+    )
+    assert registro.datos_salida == ()
+    # Los mismos nombres siguen como entradas: el retiro es de la lista indicada.
+    assert registro.datos_entrada == previo.datos_entrada
+    assert registro.pendientes == ["datos_salida", "confirmacion"]
+
+
+@pytest.mark.parametrize(
+    ("retiro", "respuesta"),
+    [
+        # La respuesta no habla de esa entrada.
+        (RETIRO_DE_RESULTADOS[0], "Las alertas salen una sola vez por día"),
+        # La respuesta la menciona, pero no está en el registro, o no en esa lista.
+        (
+            {"lista": "datos_salida", "entrada": "código de producto"},
+            "El código de producto no es un resultado",
+        ),
+        ({"lista": "reglas_negocio", "entrada": "número de la venta"}, RECHAZO_DE_RESULTADOS),
+    ],
+)
+def test_no_retira_lo_que_la_respuesta_no_menciona_ni_lo_que_no_esta(retiro, respuesta):
+    previo = registro_de_la_caja()
+    registro = aplicar_extraccion(
+        salida_extraccion(retirar=[retiro]), rechazo_del_resumen(previo, respuesta)
+    )
+    assert registro == previo
+
+
+def test_la_respuesta_que_confirma_no_retira_nada():
+    previo = registro_de_la_caja()
+    registro = aplicar_extraccion(
+        salida_extraccion(retirar=RETIRO_DE_RESULTADOS, confirma_resumen=True),
+        rechazo_del_resumen(previo, "Sí, es correcto, con el número de la venta y la fecha"),
+    )
+    assert registro.datos_salida == previo.datos_salida
+    assert registro.resumen_confirmado
+
+
+def test_retira_un_nombre_corto_si_la_respuesta_lo_dice():
+    previo = registro_completo()
+    previo = previo.model_copy(
+        update={"datos_salida": (*previo.datos_salida, DatoSalida(nombre="NIT", tipo="texto"))}
+    )
+    registro = aplicar_extraccion(
+        salida_extraccion(retirar=[{"lista": "datos_salida", "entrada": "NIT"}]),
+        rechazo_del_resumen(previo, "El NIT no se entrega como resultado"),
+    )
+    assert [dato.nombre for dato in registro.datos_salida] == ["radicado"]
 
 
 def test_confirmacion_valida():
@@ -881,6 +964,21 @@ def test_n3_vuelve_al_resumen_cuando_el_cliente_dice_que_falta(cliente_falso, co
     dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
     assert dialogo.siguiente_pregunta.startswith("Le resumo lo que entendí:")
     assert nueva in dialogo.siguiente_pregunta
+
+
+def test_n3_pregunta_por_lo_retirado_en_lugar_de_que_falta(cliente_falso, completar_respuesta):
+    # Caso 18: retirar los resultados cambia el registro, así que N3 pregunta por ellos.
+    siguiente = "¿Qué debe quedar hecho cuando llega el aviso de una venta?"
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion(retirar=RETIRO_DE_RESULTADOS)),
+        completar_respuesta(pregunta(siguiente)),
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        rechazo_del_resumen(registro_de_la_caja(), RECHAZO_DE_RESULTADOS), contexto_recuperado()
+    )
+    assert dialogo.registro.pendientes == ["datos_salida", "confirmacion"]
+    assert dialogo.siguiente_pregunta == siguiente
+    assert len(cliente.llamadas) == 2
 
 
 def test_n3_cierra_sin_pregunta_al_confirmar(cliente_falso, completar_respuesta):

@@ -5,14 +5,16 @@ cliente con lo que sabe del dominio:
 
 1. La extracción ve solo el registro, la pregunta anterior y la respuesta nueva, sin contexto
    de dominio. Devuelve solo los atributos que la respuesta aporta o corrige, cada uno con su
-   valor completo y vigente, y `null` en los demás.
+   valor completo y vigente, y `null` en los demás. Aparte, devuelve lo que la respuesta
+   rechaza sin decir con qué reemplazarlo.
 2. La pregunta ve el contexto recuperado en N2 (RF-04), el registro y las observaciones del
    revisor. No se pide cuando el cliente acaba de completar todo: entonces el sistema muestra el
    resumen con la pregunta de cierre.
 
 El código, no el prompt, garantiza las reglas que deben cumplirse siempre:
 
-- lo ya capturado no se pierde por omisión del modelo;
+- lo ya capturado no se pierde por omisión del modelo: solo sale lo que el cliente rechaza y
+  menciona en su respuesta;
 - solo entra al registro lo que está respaldado por lo que dijo el cliente
   (`multiagente.agentes.elicitador.fidelidad`), y solo hay preguntas abiertas si el cliente dijo
   no saber algo;
@@ -25,6 +27,7 @@ El código, no el prompt, garantiza las reglas que deben cumplirse siempre:
 
 import json
 import re
+from enum import StrEnum
 from typing import TypeVar
 
 from openai.types.chat import ChatCompletionMessageParam
@@ -66,11 +69,30 @@ class DatoSalidaModelo(BaseModel):
     formato: str | None
 
 
+class ListaDelRegistro(StrEnum):
+    """Listas del registro de las que la respuesta del cliente puede retirar entradas."""
+
+    REGLAS_NEGOCIO = "reglas_negocio"
+    DATOS_ENTRADA = "datos_entrada"
+    DATOS_SALIDA = "datos_salida"
+    EXCEPCIONES = "excepciones"
+
+
+class RetiroModelo(BaseModel):
+    """Entrada que la respuesta rechaza, como figura en el registro; de un dato, su nombre."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lista: ListaDelRegistro
+    entrada: str
+
+
 class SalidaExtraccion(BaseModel):
     """Salida de la extracción de N3: cambios al registro que aporta la respuesta nueva.
 
     En los atributos capturados, `null` significa «sin cambios». Los supuestos y las preguntas
     abiertas se devuelven siempre completos, porque el modelo los resuelve turno a turno.
+    `retirar` trae lo que la respuesta rechaza sin decir el reemplazo (`retirar_rechazados`).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -82,6 +104,7 @@ class SalidaExtraccion(BaseModel):
     datos_entrada: list[DatoEntradaModelo] | None
     datos_salida: list[DatoSalidaModelo] | None
     excepciones: list[str] | None
+    retirar: list[RetiroModelo]
     supuestos: list[str]
     preguntas_abiertas: list[str]
     confirma_resumen: bool
@@ -284,6 +307,54 @@ def registro_desde_salida(
     )
 
 
+def _clave(texto: str) -> str:
+    """Palabras de un texto sin tildes, mayúsculas ni puntuación, para comparar entradas."""
+    return " ".join(re.findall(r"\w+", normalizar(texto)))
+
+
+def _menciona(respuesta: str, entrada: str) -> bool:
+    """Indica si la respuesta habla de la entrada: comparte con ella al menos una raíz.
+
+    Un nombre corto sin raíces, como «NIT», cuenta si la respuesta lo dice como palabra.
+    """
+    if propias := raices(entrada):
+        return bool(propias & raices(respuesta))
+    clave = _clave(entrada)
+    return bool(clave) and re.search(rf"\b{re.escape(clave)}\b", _clave(respuesta)) is not None
+
+
+def retirar_rechazados(
+    registro: RegistroCaptura, retiros: list[RetiroModelo], respuesta: str
+) -> RegistroCaptura:
+    """Quita del registro lo que el cliente rechaza en su respuesta sin decir el reemplazo.
+
+    Una entrada sale solo si figura en la lista indicada, tal como está en el registro, y la
+    respuesta la menciona: lo que el modelo omite o retira sin que el cliente hable de ello se
+    conserva. Si una lista queda vacía, el atributo vuelve a estar pendiente y N3 pregunta por él.
+
+    Args:
+        registro: Registro ya actualizado con la extracción del turno.
+        retiros: Entradas que la extracción marcó para retirar.
+        respuesta: Respuesta nueva del cliente.
+
+    Returns:
+        Registro sin las entradas retiradas.
+    """
+    quitar: dict[str, set[str]] = {}
+    for retiro in retiros:
+        if _menciona(respuesta, retiro.entrada):
+            quitar.setdefault(retiro.lista.value, set()).add(_clave(retiro.entrada))
+    cambios = {
+        lista: tuple(
+            entrada
+            for entrada in getattr(registro, lista)
+            if _clave(entrada if isinstance(entrada, str) else entrada.nombre) not in claves
+        )
+        for lista, claves in quitar.items()
+    }
+    return registro.model_copy(update=cambios)
+
+
 def resumen_para_confirmar(registro: RegistroCaptura) -> str:
     """Arma el resumen del registro que el cliente confirma antes de cerrar (RNF-08, eli-006).
 
@@ -352,6 +423,9 @@ def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> 
         registro = registro_desde_salida(salida, previo, raices(nueva), solo_agregar=True)
     else:
         registro = registro_desde_salida(salida, previo, raices_del_cliente(conversacion))
+        if nueva is not None:
+            # Lo que rechaza sin reemplazo no se puede corregir diciendo el valor nuevo.
+            registro = retirar_rechazados(registro, salida.retirar, nueva)
     if registro.preguntas_abiertas and not desconoce_algo(conversacion):
         registro = registro.model_copy(update={"preguntas_abiertas": ()})
     confirmado = (

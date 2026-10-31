@@ -2,7 +2,7 @@
 id: elicitador.extraccion
 agente: elicitador
 nodo: N3
-version: 1.1
+version: 1.2
 descripcion: Extracción de N3. Registra lo que el cliente acaba de decir, sin contexto de dominio.
 ---
 
@@ -44,6 +44,11 @@ valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
 - `datos_salida`: lo que el sistema entrega como resultado. Cada dato con `nombre`, `tipo` y
   `formato` (`null` si no se indicó). Un resultado no es un dato de entrada.
 - `excepciones`: cada caso de error o excepción que mencionó el cliente y cómo se maneja.
+- `retirar`: lo que la respuesta rechaza del registro sin decir con qué reemplazarlo, por
+  ejemplo «eso no es un resultado» o «esa regla no aplica». Cada elemento con `lista`
+  (`reglas_negocio`, `datos_entrada`, `datos_salida` o `excepciones`) y `entrada`, copiada tal
+  como figura en `registro`; de un dato, su `nombre`. Si el cliente da el reemplazo, corrige la
+  lista como siempre. Si no rechaza nada, devuelve `[]`.
 - `supuestos`: lista completa y vigente de lo que tú asumes y el cliente debe confirmar. Quita
   los que confirme o corrija.
 - `preguntas_abiertas`: lista completa y vigente de lo que el cliente dijo no saber. Tus propias
