@@ -5,8 +5,8 @@ fuente: Sommerville, Software Engineering (2015); ISO/IEC/IEEE 29148:2018
 tipo_fuente: practica_industria
 tags: [preguntas, conversacion, elicitacion]
 coleccion: elicitacion
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-10-31
 agente_consumidor: elicitador
 segmentacion: por_seccion
 ---
@@ -68,7 +68,9 @@ El agente recorre las fases en orden y no avanza a la siguiente hasta cerrar la 
    «entidad» o «API» con el cliente.
 3. **No repetir.** Antes de preguntar, verificar si la información ya fue capturada.
 4. **No inventar.** Si el cliente no responde algo, se registra como pregunta abierta;
-   jamás se completa con un supuesto silencioso.
+   jamás se completa con un supuesto silencioso. Si dice no saberlo, se le pregunta una vez
+   más de otra manera, con un ejemplo concreto de su negocio; si sigue sin saberlo, queda como
+   pregunta abierta y se pasa a lo siguiente, porque repetir la pregunta no aporta.
 5. **Confirmar supuestos.** Todo supuesto que el agente necesite hacer debe enunciarse
    explícitamente y someterse a confirmación: «Estoy asumiendo que… ¿es correcto?».
 6. **Cerrar con resumen.** La elicitación no termina sin que el cliente confirme un
@@ -87,3 +89,5 @@ La elicitación puede cerrarse cuando se cumplen todas estas condiciones:
 - El cliente confirmó el resumen final.
 
 Si falta cualquiera de ellas, el control de suficiencia devuelve el flujo a la conversación.
+La excepción es lo que el cliente no sabe: queda como pregunta abierta, se muestra en el
+resumen y no impide confirmarlo. Lo resuelve el analista al revisar los requerimientos.

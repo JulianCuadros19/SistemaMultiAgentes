@@ -170,6 +170,18 @@ Se buscan en el texto con tildes, porque sin ellas «no sé» se confunde con «
 """
 
 
+def dice_no_saber(texto: str) -> bool:
+    """Indica si una intervención del cliente expresa que no sabe algo.
+
+    Args:
+        texto: Lo que dijo el cliente.
+
+    Returns:
+        True si contiene alguna de las `MARCAS_DESCONOCIMIENTO`.
+    """
+    return MARCAS_DESCONOCIMIENTO.search(texto.casefold()) is not None
+
+
 def desconoce_algo(conversacion: Conversacion) -> bool:
     """Indica si el cliente dijo no saber algo en alguna de sus intervenciones (eli-006, regla 4).
 
@@ -180,7 +192,7 @@ def desconoce_algo(conversacion: Conversacion) -> bool:
         True si alguna intervención del cliente expresa desconocimiento.
     """
     return any(
-        MARCAS_DESCONOCIMIENTO.search(turno.texto.casefold())
+        dice_no_saber(turno.texto)
         for turno in conversacion.turnos
         if turno.emisor is Emisor.CLIENTE
     )

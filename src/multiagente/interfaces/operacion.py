@@ -368,7 +368,7 @@ class Operador:
             confirma_resumen=(
                 pausa is not None
                 and pausa.punto == "dialogo"
-                and conversacion.registro.pendientes == ["confirmacion"]
+                and conversacion.registro.por_preguntar == ["confirmacion"]
             ),
         )
 

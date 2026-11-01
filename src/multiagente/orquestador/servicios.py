@@ -33,8 +33,8 @@ from multiagente.orquestador.estado import (
 class Dialogo(ModeloEstricto):
     """Resultado de un paso del diálogo (N3): registro actualizado y siguiente pregunta.
 
-    Hay pregunta si y solo si queda algún atributo pendiente: así el ciclo N3–N4 siempre se
-    detiene a esperar al cliente o avanza a la síntesis.
+    Hay pregunta si y solo si queda algo por preguntar: así el ciclo N3–N4 siempre se detiene a
+    esperar al cliente o avanza a la síntesis.
     """
 
     registro: RegistroCaptura
@@ -42,10 +42,10 @@ class Dialogo(ModeloEstricto):
 
     @model_validator(mode="after")
     def _pregunta_si_hay_pendientes(self) -> Self:
-        if (self.siguiente_pregunta is None) != (not self.registro.pendientes):
+        if (self.siguiente_pregunta is None) != (not self.registro.por_preguntar):
             raise ValueError(
-                "Debe haber una siguiente pregunta si y solo si quedan atributos pendientes: "
-                f"{self.registro.pendientes}"
+                "Debe haber una siguiente pregunta si y solo si queda algo por preguntar: "
+                f"{self.registro.por_preguntar}"
             )
         return self
 

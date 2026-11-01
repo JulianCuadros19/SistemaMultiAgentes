@@ -1,10 +1,10 @@
 """Síntesis de la historia de usuario y de los requerimientos formales (N5, Anexo A).
 
 El modelo redacta el contenido. El código asigna los campos deterministas: identificadores,
-versión, proyecto, autor, título, prioridad heredada de la historia y nombres de los datos como
-identificadores (`numero_predial`). Descarta las oraciones de
-la precondición y de la regla, y los datos, que no están respaldados por lo que dijo el cliente
-(`fidelidad`). Después valida contra los esquemas del Anexo A y traduce las etiquetas de
+versión, proyecto, autor, título, prioridad (la del registro si el cliente la dijo, heredada por
+los requerimientos) y nombres de los datos como identificadores (`numero_predial`). Descarta las
+oraciones de la precondición y de la regla, y los datos, que no están respaldados por lo que dijo
+el cliente (`fidelidad`). Después valida contra los esquemas del Anexo A y traduce las etiquetas de
 contexto citadas a referencias estables (RF-04).
 """
 
@@ -212,7 +212,7 @@ def validar_sintesis(
             id="HU-01",
             enunciado=Enunciado(**salida.historia.enunciado.model_dump()),
             epica=_texto(salida.historia.epica),
-            prioridad=salida.historia.prioridad,
+            prioridad=conversacion.registro.prioridad or salida.historia.prioridad,
             supuestos=_textos(salida.historia.supuestos),
             preguntas_abiertas=_textos(salida.historia.preguntas_abiertas),
         )

@@ -20,7 +20,10 @@ El código, no el prompt, garantiza las reglas que deben cumplirse siempre:
   no saber algo;
 - el resumen solo queda confirmado con una respuesta nueva del cliente, con el registro completo
   y sin cambios respecto del resumen que se le presentó;
-- hay pregunta si y solo si falta algo, y es una sola, en lenguaje de negocio (RNF-08);
+- lo que el cliente no sabe no se pregunta sin fin: tras `INTENTOS_SIN_RESPUESTA` respuestas en
+  que dice no saber el atributo que se le preguntaba, queda sin respuesta (RF-02);
+- hay pregunta si y solo si queda algo por preguntar, y es una sola, en lenguaje de negocio
+  (RNF-08);
 - el resumen que el cliente confirma se arma con el registro, de modo que confirma exactamente
   lo que se va a sintetizar.
 """
@@ -38,10 +41,12 @@ from multiagente.agentes.elicitador.calidad import normalizar
 from multiagente.agentes.elicitador.contexto import mensaje_contexto
 from multiagente.agentes.elicitador.fidelidad import (
     desconoce_algo,
+    dice_no_saber,
     raices,
     raices_del_cliente,
     respaldado,
 )
+from multiagente.core.esquemas.comunes import Prioridad
 from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida
 from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo
 from multiagente.orquestador.estado import Contexto, Conversacion, Emisor, RegistroCaptura
@@ -76,6 +81,7 @@ class ListaDelRegistro(StrEnum):
     DATOS_ENTRADA = "datos_entrada"
     DATOS_SALIDA = "datos_salida"
     EXCEPCIONES = "excepciones"
+    CONDICIONES = "condiciones"
 
 
 class RetiroModelo(BaseModel):
@@ -104,6 +110,8 @@ class SalidaExtraccion(BaseModel):
     datos_entrada: list[DatoEntradaModelo] | None
     datos_salida: list[DatoSalidaModelo] | None
     excepciones: list[str] | None
+    condiciones: list[str] | None
+    prioridad: Prioridad | None
     retirar: list[RetiroModelo]
     supuestos: list[str]
     preguntas_abiertas: list[str]
@@ -158,7 +166,7 @@ def mensajes_extraccion(conversacion: Conversacion) -> list[ChatCompletionMessag
         if turno.emisor is Emisor.ELICITADOR
     ]
     datos = {
-        "registro": conversacion.registro.model_dump(mode="json"),
+        "registro": conversacion.registro.model_dump(mode="json", exclude={"no_sabe"}),
         "transcripcion": _transcripcion(conversacion),
         "pregunta_anterior": anteriores[-1] if anteriores else None,
         "respuesta_nueva": conversacion.respuesta_nueva,
@@ -180,8 +188,9 @@ def mensajes_pregunta(
         Dos mensajes de datos que acompañan al prompt de la pregunta.
     """
     estado = {
-        "pendientes": registro.pendientes,
-        "registro": registro.model_dump(mode="json"),
+        "pendientes": registro.por_preguntar,
+        "sin_respuesta": registro.sin_respuesta,
+        "registro": registro.model_dump(mode="json", exclude={"no_sabe"}),
         "transcripcion": _transcripcion(conversacion),
         "observaciones_revisor": list(conversacion.observaciones_revisor),
     }
@@ -218,8 +227,9 @@ def registro_desde_salida(
 
     Un atributo en `null` o vacío conserva el valor previo: el cliente corrige un dato diciendo
     el nuevo, no callándolo. Un valor nuevo que no está respaldado por lo que dijo el cliente se
-    descarta, y un dato sin respaldo pierde su restricción o su formato. Los supuestos y las
-    preguntas abiertas se toman tal cual, porque son notas del elicitador para el cliente.
+    descarta, y un dato sin respaldo pierde su restricción o su formato; la prioridad también
+    debe decirla el cliente. Los supuestos y las preguntas abiertas se toman tal cual, porque son
+    notas del elicitador para el cliente. Lo que el cliente no supo responder se conserva.
 
     Args:
         salida: Salida del modelo.
@@ -240,6 +250,7 @@ def registro_desde_salida(
             previo.beneficio,
             *previo.reglas_negocio,
             *previo.excepciones,
+            *previo.condiciones,
             *(dato.nombre for dato in previo.datos_entrada),
             *(dato.nombre for dato in previo.datos_salida),
             *(dato.restriccion for dato in previo.datos_entrada),
@@ -294,6 +305,9 @@ def registro_desde_salida(
         for dato in salida.datos_salida or ()
         if dato.nombre.strip() and dato.tipo.strip() and filtro.acepta(dato.nombre)
     )
+    prioridad = (
+        salida.prioridad if salida.prioridad and respaldado(salida.prioridad, fuente) else None
+    )
     return RegistroCaptura(
         rol=escalar(salida.rol) or previo.rol,
         funcionalidad=escalar(salida.funcionalidad) or previo.funcionalidad,
@@ -302,8 +316,11 @@ def registro_desde_salida(
         datos_entrada=datos(datos_entrada, previo.datos_entrada),
         datos_salida=datos(datos_salida, previo.datos_salida),
         excepciones=lista(salida.excepciones, previo.excepciones),
+        condiciones=lista(salida.condiciones, previo.condiciones),
+        prioridad=prioridad or previo.prioridad,
         supuestos=_textos(salida.supuestos),
         preguntas_abiertas=_textos(salida.preguntas_abiertas),
+        no_sabe=previo.no_sabe,
     )
 
 
@@ -355,38 +372,76 @@ def retirar_rechazados(
     return registro.model_copy(update=cambios)
 
 
+def anotar_desconocimiento(
+    previo: RegistroCaptura, registro: RegistroCaptura, respuesta: str
+) -> RegistroCaptura:
+    """Anota que el cliente no supo responder el atributo que se le preguntaba.
+
+    La pregunta apunta al primer atributo que quedaba por preguntar. Si la respuesta dice no
+    saber y ese atributo sigue faltando, se anota en `no_sabe`; tras `INTENTOS_SIN_RESPUESTA`
+    veces queda sin respuesta y N3 deja de preguntarlo, porque ya está respondido (RF-02).
+
+    Args:
+        previo: Registro antes de este turno.
+        registro: Registro ya actualizado con la extracción del turno.
+        respuesta: Respuesta nueva del cliente.
+
+    Returns:
+        Registro con el atributo anotado, o el mismo registro si no hay nada que anotar.
+    """
+    preguntado = previo.por_preguntar[0] if previo.por_preguntar else "confirmacion"
+    if preguntado == "confirmacion" or preguntado not in registro.pendientes:
+        return registro
+    if not dice_no_saber(respuesta):
+        return registro
+    return registro.model_copy(update={"no_sabe": (*registro.no_sabe, preguntado)})
+
+
+SIN_RESPUESTA = "sin respuesta del cliente"
+"""Lo que muestra el resumen en un atributo que el cliente no supo responder."""
+
+
 def resumen_para_confirmar(registro: RegistroCaptura) -> str:
     """Arma el resumen del registro que el cliente confirma antes de cerrar (RNF-08, eli-006).
 
+    Los datos se nombran como quedaron en el registro, que es como los nombró el cliente: si dio
+    nombres exactos, como `numero_predial`, debe poder reconocerlos para confirmar.
+
     Args:
-        registro: Registro completo, pendiente solo de confirmación.
+        registro: Registro completo, pendiente solo de confirmación; lo que el cliente no supo
+            responder se muestra como tal.
 
     Returns:
         Resumen en varias líneas, sin pregunta; el modelo aporta la pregunta de cierre.
     """
 
-    def nombre(texto: str) -> str:
-        return texto.replace("_", " ")
+    def valor(texto: str | None) -> str:
+        return texto or SIN_RESPUESTA
 
     entradas = "; ".join(
-        f"{nombre(dato.nombre)} ({'obligatorio' if dato.obligatorio else 'opcional'}"
+        f"{dato.nombre} ({'obligatorio' if dato.obligatorio else 'opcional'}"
         f"{f', {dato.restriccion}' if dato.restriccion else ''})"
         for dato in registro.datos_entrada
     )
     salidas = "; ".join(
-        f"{nombre(dato.nombre)}{f' ({dato.formato})' if dato.formato else ''}"
+        f"{dato.nombre}{f' ({dato.formato})' if dato.formato else ''}"
         for dato in registro.datos_salida
     )
     lineas = [
         ENCABEZADO_RESUMEN,
-        f"- Quién lo usa: {registro.rol}",
-        f"- Qué necesita: {registro.funcionalidad}",
-        f"- Para qué: {registro.beneficio}",
-        f"- Reglas: {'; '.join(registro.reglas_negocio)}",
-        f"- Datos que se reciben: {entradas}",
-        f"- Resultados que se entregan: {salidas}",
-        f"- Casos de error: {'; '.join(registro.excepciones)}",
+        # El rol es quién obtiene el valor (eli-001); los sistemas que lo usan son condiciones.
+        f"- A quién le sirve: {valor(registro.rol)}",
+        f"- Qué necesita: {valor(registro.funcionalidad)}",
+        f"- Para qué: {valor(registro.beneficio)}",
+        f"- Reglas: {valor('; '.join(registro.reglas_negocio))}",
+        f"- Datos que se reciben: {valor(entradas)}",
+        f"- Resultados que se entregan: {valor(salidas)}",
+        f"- Casos de error: {valor('; '.join(registro.excepciones))}",
     ]
+    if registro.condiciones:
+        lineas.append(f"- Condiciones ya definidas: {'; '.join(registro.condiciones)}")
+    if registro.prioridad:
+        lineas.append(f"- Prioridad: {registro.prioridad}")
     if registro.supuestos:
         lineas.append(f"- Supuestos por confirmar: {'; '.join(registro.supuestos)}")
     if registro.preguntas_abiertas:
@@ -426,12 +481,13 @@ def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> 
         if nueva is not None:
             # Lo que rechaza sin reemplazo no se puede corregir diciendo el valor nuevo.
             registro = retirar_rechazados(registro, salida.retirar, nueva)
+            registro = anotar_desconocimiento(previo, registro, nueva)
     if registro.preguntas_abiertas and not desconoce_algo(conversacion):
         registro = registro.model_copy(update={"preguntas_abiertas": ()})
     confirmado = (
         salida.confirma_resumen
         and nueva is not None
-        and registro.pendientes == ["confirmacion"]
+        and registro.por_preguntar == ["confirmacion"]
         and _huella(registro) == _huella(previo)
     )
     if confirmado:
@@ -466,14 +522,14 @@ def validar_pregunta(salida: SalidaPregunta, registro: RegistroCaptura) -> str:
             )
         if tecnicos := sorted(set(TERMINOS_TECNICOS.findall(normalizar(pregunta)))):
             problemas.append(f"La pregunta usa términos técnicos con el cliente: {tecnicos}.")
-        faltantes = [p for p in registro.pendientes if p != "confirmacion"]
+        faltantes = [p for p in registro.por_preguntar if p != "confirmacion"]
         if faltantes and PIDE_CONFIRMAR.search(normalizar(pregunta)):
             problemas.append(
                 f"Aún faltan {faltantes}: pregunta por el primero y no pidas confirmar el resumen."
             )
     if problemas:
         raise ErrorValidacionSalida(problemas)
-    if registro.pendientes == ["confirmacion"]:
+    if registro.por_preguntar == ["confirmacion"]:
         return f"{resumen_para_confirmar(registro)}\n{pregunta}"
     return pregunta
 
@@ -503,9 +559,9 @@ def dialogar(
             SalidaExtraccion,
             lambda salida: aplicar_extraccion(salida, conversacion),
         )
-    if not registro.pendientes:
+    if not registro.por_preguntar:
         return Dialogo(registro=registro, siguiente_pregunta=None)
-    if registro.pendientes == ["confirmacion"] and nueva is not None:
+    if registro.por_preguntar == ["confirmacion"] and nueva is not None:
         preguntas = [t.texto for t in conversacion.turnos if t.emisor is Emisor.ELICITADOR]
         anterior = preguntas[-1] if preguntas else ""
         if anterior.startswith(ENCABEZADO_RESUMEN) and _huella(registro) == _huella(

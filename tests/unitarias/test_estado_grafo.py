@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno, TipoInterfaz
 from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida, RequerimientoFormal
 from multiagente.orquestador.estado import (
+    INTENTOS_SIN_RESPUESTA,
     PARTICIONES,
     AprobacionHumana,
     Arquitectura,
@@ -43,6 +44,8 @@ from multiagente.orquestador.estado import (
     VeredictoCaso,
     VersionCodigo,
 )
+from multiagente.orquestador.grafo import Nodo, ruta_tras_suficiencia
+from multiagente.orquestador.servicios import Dialogo
 from multiagente.persistencia.puntos_control import serializador, tipos_permitidos
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -139,6 +142,40 @@ def test_registro_declara_pendientes_en_orden():
 def test_confirmacion_exige_registro_completo():
     with pytest.raises(ValidationError, match="confirmarse"):
         registro_completo(excepciones=(), resumen_confirmado=True)
+    # Un solo «no sé» no basta para confirmar sin el atributo.
+    with pytest.raises(ValidationError, match="confirmarse"):
+        registro_completo(excepciones=(), no_sabe=("excepciones",), resumen_confirmado=True)
+
+
+def test_lo_que_el_cliente_no_sabe_deja_de_preguntarse():
+    una_vez = registro_completo(datos_salida=(), no_sabe=("datos_salida",))
+    assert una_vez.sin_respuesta == []
+    assert una_vez.por_preguntar == ["datos_salida", "confirmacion"]
+    sin_salidas = registro_completo(
+        datos_salida=(), no_sabe=("datos_salida",) * INTENTOS_SIN_RESPUESTA
+    )
+    assert sin_salidas.sin_respuesta == ["datos_salida"]
+    # Sigue declarado como pendiente (RF-03), pero N3 ya no lo pregunta.
+    assert sin_salidas.pendientes == ["datos_salida", "confirmacion"]
+    assert sin_salidas.por_preguntar == ["confirmacion"]
+
+
+def test_confirmar_sin_lo_que_el_cliente_no_sabe_cierra_la_elicitacion():
+    confirmado = registro_completo(
+        datos_salida=(),
+        no_sabe=("datos_salida",) * INTENTOS_SIN_RESPUESTA,
+        resumen_confirmado=True,
+    )
+    assert confirmado.pendientes == ["datos_salida"]
+    assert confirmado.por_preguntar == []
+    control = Control(
+        limite_iteraciones=3, limite_turnos=15, limite_correcciones=2, limite_correcciones_diseno=2
+    )
+    estado = {"conversacion": Conversacion(registro=confirmado), "control": control}
+    assert ruta_tras_suficiencia(estado) is Nodo.N5
+    assert Dialogo(registro=confirmado, siguiente_pregunta=None).siguiente_pregunta is None
+    with pytest.raises(ValidationError, match="por preguntar"):
+        Dialogo(registro=confirmado, siguiente_pregunta="¿Algo más?")
 
 
 def test_respuesta_nueva_distingue_lo_ya_procesado():

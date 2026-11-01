@@ -24,6 +24,7 @@ from multiagente.core.esquemas.comunes import (
     IdEscenario,
     IdRequerimiento,
     ModeloEstricto,
+    Prioridad,
     TextoObligatorio,
     Version,
 )
@@ -163,12 +164,21 @@ class Turno(ModeloEstricto):
     fecha: datetime
 
 
+INTENTOS_SIN_RESPUESTA = 2
+"""Veces que el cliente dice no saber un atributo antes de que N3 deje de preguntarlo (RF-02)."""
+
+
 class RegistroCaptura(ModeloEstricto):
     """Información capturada durante la elicitación (RF-03).
 
     El criterio de suficiencia sigue la guía de preguntas estratégicas (eli-006): rol,
     funcionalidad, beneficio, reglas de negocio, datos de entrada y de salida, al menos un caso
     de error o excepción y la confirmación explícita del resumen por el cliente (RNF-08).
+
+    `no_sabe` anota el atributo que se preguntaba cada vez que el cliente dijo no saberlo. Tras
+    `INTENTOS_SIN_RESPUESTA` veces queda sin respuesta: sigue pendiente, pero N3 no lo vuelve a
+    preguntar y el cliente puede confirmar el resumen sin él. La prioridad y las condiciones que el
+    cliente ya definió (quién consume lo que pide, cómo se prueba, qué cambiará) son opcionales.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -180,14 +190,20 @@ class RegistroCaptura(ModeloEstricto):
     datos_entrada: tuple[DatoEntrada, ...] = ()
     datos_salida: tuple[DatoSalida, ...] = ()
     excepciones: tuple[TextoObligatorio, ...] = ()
+    condiciones: tuple[TextoObligatorio, ...] = ()
+    prioridad: Prioridad | None = None
     supuestos: tuple[TextoObligatorio, ...] = ()
     preguntas_abiertas: tuple[TextoObligatorio, ...] = ()
+    no_sabe: tuple[str, ...] = ()
     resumen_confirmado: bool = False
 
     @model_validator(mode="after")
     def _confirmacion_con_registro_completo(self) -> Self:
-        if self.resumen_confirmado and self._faltantes():
-            raise ValueError("El resumen solo puede confirmarse cuando no falta ningún atributo")
+        if self.resumen_confirmado and set(self._faltantes()) - set(self.sin_respuesta):
+            raise ValueError(
+                "El resumen solo puede confirmarse cuando no falta ningún atributo, salvo los que "
+                "el cliente no supo responder"
+            )
         return self
 
     def _faltantes(self) -> list[str]:
@@ -210,6 +226,21 @@ class RegistroCaptura(ModeloEstricto):
         if not self.resumen_confirmado:
             faltantes.append("confirmacion")
         return faltantes
+
+    @property
+    def sin_respuesta(self) -> list[str]:
+        """Atributos que faltan y que el cliente no supo responder las veces que se le preguntó."""
+        return [
+            nombre
+            for nombre in self._faltantes()
+            if self.no_sabe.count(nombre) >= INTENTOS_SIN_RESPUESTA
+        ]
+
+    @property
+    def por_preguntar(self) -> list[str]:
+        """Pendientes que N3 todavía pregunta: todos menos los que quedaron sin respuesta."""
+        sin_respuesta = set(self.sin_respuesta)
+        return [nombre for nombre in self.pendientes if nombre not in sin_respuesta]
 
 
 class Conversacion(Particion):

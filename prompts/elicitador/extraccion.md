@@ -2,7 +2,7 @@
 id: elicitador.extraccion
 agente: elicitador
 nodo: N3
-version: 1.2
+version: 1.4
 descripcion: Extracción de N3. Registra lo que el cliente acaba de decir, sin contexto de dominio.
 ---
 
@@ -29,28 +29,45 @@ todos. Devuelve en `null` cada atributo del que la respuesta no hable. Cuando la
 atributo, devuelve su valor completo y vigente: en las listas, las entradas previas que sigan
 valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
 
-- `rol`: el cargo de quien usará la funcionalidad, tal como lo dice el cliente (por ejemplo,
-  «analista de conservación catastral»). Nunca «usuario» ni «el sistema».
-- `funcionalidad`: la capacidad que necesita, empezando con un verbo en infinitivo.
+- `rol`: quién obtiene el valor de la funcionalidad: el cargo de una persona del negocio, tal
+  como lo dice el cliente (por ejemplo, «analista de conservación catastral»). Nunca «usuario»,
+  «el sistema» ni un sistema, equipo o proceso, como la caja, la pasarela de pagos, un portal o
+  un sensor: si el cliente solo nombra uno de esos, deja `rol` en `null`. Cuando el cliente diga
+  que un sistema o un proceso usa o ejecuta lo que pide (por ejemplo, «lo usan el portal web y la
+  app de los asesores» o «lo ejecuta una tarea programada cada noche»), regístralo en
+  `condiciones`, con sus palabras.
+- `funcionalidad`: la capacidad que el cliente pide construir, empezando con un verbo en
+  infinitivo. No es lo que ya ocurre: si el cliente cuenta que algo ya pasa (por ejemplo, que la
+  caja publica un aviso) y pide lo que debe pasar después, la funcionalidad es eso que debe pasar
+  después.
 - `beneficio`: para qué le sirve al rol, en una frase; no repitas la funcionalidad. Suele
   venir con «para…», «para que…», «así podemos…» o como el problema que se quiere evitar.
 - `reglas_negocio`: cada condición o regla del proceso que expresó el cliente, una por
   elemento, en una frase y con sus valores concretos. Los casos de error van en `excepciones`,
   no aquí.
-- `datos_entrada`: lo que la persona proporciona para hacer la tarea. Cada dato con `nombre`
-  (como lo nombra el cliente, por ejemplo «número predial»), `tipo` (texto, número entero,
-  número decimal, fecha, sí o no, lista…), `obligatorio` y `restriccion` (rango, formato o
-  valores permitidos; `null` si el cliente no la indicó).
-- `datos_salida`: lo que el sistema entrega como resultado. Cada dato con `nombre`, `tipo` y
-  `formato` (`null` si no se indicó). Un resultado no es un dato de entrada.
+- `datos_entrada`: lo que recibe la funcionalidad para hacer su trabajo, sea que lo dé una
+  persona o que llegue de otro sistema o en un aviso. Cada dato con `nombre` (como lo nombra el
+  cliente, por ejemplo «número predial»), `tipo` (texto, número entero, número decimal, fecha,
+  sí o no, lista…), `obligatorio` y `restriccion` (rango, formato o valores permitidos; `null`
+  si el cliente no la indicó). Si el cliente no sabe si un dato es obligatorio, regístralo como
+  obligatorio y agrega ese supuesto.
+- `datos_salida`: lo que la funcionalidad entrega o deja hecho como resultado: un valor
+  calculado, un registro actualizado, una alerta. Cada dato con `nombre`, `tipo` y `formato`
+  (`null` si no se indicó). Un resultado no es un dato de entrada, ni lo que ya produce otro
+  sistema.
 - `excepciones`: cada caso de error o excepción que mencionó el cliente y cómo se maneja.
+- `condiciones`: lo que el cliente da por definido sobre cómo se usa, se prueba o se guarda lo
+  que pide, una por elemento: quién lo consume y por qué medio, cómo se prueba, qué cambiará
+  después (por ejemplo, «para las pruebas, el canal puede funcionar en memoria»).
+- `prioridad`: `alta`, `media` o `baja`, solo si el cliente la dice; si no, `null`.
 - `retirar`: lo que la respuesta rechaza del registro sin decir con qué reemplazarlo, por
   ejemplo «eso no es un resultado» o «esa regla no aplica». Cada elemento con `lista`
-  (`reglas_negocio`, `datos_entrada`, `datos_salida` o `excepciones`) y `entrada`, copiada tal
-  como figura en `registro`; de un dato, su `nombre`. Si el cliente da el reemplazo, corrige la
-  lista como siempre. Si no rechaza nada, devuelve `[]`.
+  (`reglas_negocio`, `datos_entrada`, `datos_salida`, `excepciones` o `condiciones`) y
+  `entrada`, copiada tal como figura en `registro`; de un dato, su `nombre`. Si el cliente da el
+  reemplazo, corrige la lista como siempre. Si no rechaza nada, devuelve `[]`.
 - `supuestos`: lista completa y vigente de lo que tú asumes y el cliente debe confirmar. Quita
-  los que confirme o corrija.
+  los que confirme o corrija. Lo que el cliente da por definido nunca es un supuesto: va en el
+  atributo que le corresponde, por ejemplo `condiciones`.
 - `preguntas_abiertas`: lista completa y vigente de lo que el cliente dijo no saber. Tus propias
   preguntas no son preguntas abiertas.
 - `confirma_resumen`: `true` solo si `pregunta_anterior` era el resumen y `respuesta_nueva` lo

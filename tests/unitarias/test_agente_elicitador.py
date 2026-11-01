@@ -17,6 +17,7 @@ from multiagente.agentes.elicitador.contexto import (
 from multiagente.agentes.elicitador.dialogo import (
     PREGUNTA_CIERRE,
     PREGUNTA_QUE_FALTA,
+    SIN_RESPUESTA,
     SalidaExtraccion,
     SalidaPregunta,
     aplicar_extraccion,
@@ -36,6 +37,7 @@ from multiagente.agentes.elicitador.sintesis import (
     validar_sintesis,
 )
 from multiagente.core.configuracion import ConfiguracionOrquestador
+from multiagente.core.esquemas.comunes import Prioridad
 from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida
 from multiagente.llm.costos import Tarifa
 from multiagente.llm.invocador import (
@@ -48,6 +50,7 @@ from multiagente.llm.prompts import cargar_prompt
 from multiagente.llm.traza import RegistroEnMemoria
 from multiagente.orquestador.ejecucion import avanzar, configuracion_hilo, iniciar_sesion
 from multiagente.orquestador.estado import (
+    INTENTOS_SIN_RESPUESTA,
     Contexto,
     Conversacion,
     Emisor,
@@ -237,6 +240,8 @@ def salida_extraccion(**cambios) -> SalidaExtraccion:
         "datos_entrada": None,
         "datos_salida": None,
         "excepciones": None,
+        "condiciones": None,
+        "prioridad": None,
         "retirar": [],
         "supuestos": [],
         "preguntas_abiertas": [],
@@ -349,7 +354,7 @@ def registro_de_la_caja() -> RegistroCaptura:
     )
 
 
-def rechazo_del_resumen(registro: RegistroCaptura, respuesta: str) -> Conversacion:
+def respuesta_al_resumen(registro: RegistroCaptura, respuesta: str) -> Conversacion:
     return con_respuesta(
         registro, f"{resumen_para_confirmar(registro)}\n{PREGUNTA_CIERRE}", respuesta
     )
@@ -359,7 +364,7 @@ def test_retira_lo_que_el_cliente_rechaza_sin_reemplazo():
     previo = registro_de_la_caja()
     registro = aplicar_extraccion(
         salida_extraccion(retirar=RETIRO_DE_RESULTADOS),
-        rechazo_del_resumen(previo, RECHAZO_DE_RESULTADOS),
+        respuesta_al_resumen(previo, RECHAZO_DE_RESULTADOS),
     )
     assert registro.datos_salida == ()
     # Los mismos nombres siguen como entradas: el retiro es de la lista indicada.
@@ -383,7 +388,7 @@ def test_retira_lo_que_el_cliente_rechaza_sin_reemplazo():
 def test_no_retira_lo_que_la_respuesta_no_menciona_ni_lo_que_no_esta(retiro, respuesta):
     previo = registro_de_la_caja()
     registro = aplicar_extraccion(
-        salida_extraccion(retirar=[retiro]), rechazo_del_resumen(previo, respuesta)
+        salida_extraccion(retirar=[retiro]), respuesta_al_resumen(previo, respuesta)
     )
     assert registro == previo
 
@@ -392,7 +397,7 @@ def test_la_respuesta_que_confirma_no_retira_nada():
     previo = registro_de_la_caja()
     registro = aplicar_extraccion(
         salida_extraccion(retirar=RETIRO_DE_RESULTADOS, confirma_resumen=True),
-        rechazo_del_resumen(previo, "Sí, es correcto, con el número de la venta y la fecha"),
+        respuesta_al_resumen(previo, "Sí, es correcto, con el número de la venta y la fecha"),
     )
     assert registro.datos_salida == previo.datos_salida
     assert registro.resumen_confirmado
@@ -405,9 +410,96 @@ def test_retira_un_nombre_corto_si_la_respuesta_lo_dice():
     )
     registro = aplicar_extraccion(
         salida_extraccion(retirar=[{"lista": "datos_salida", "entrada": "NIT"}]),
-        rechazo_del_resumen(previo, "El NIT no se entrega como resultado"),
+        respuesta_al_resumen(previo, "El NIT no se entrega como resultado"),
     )
     assert [dato.nombre for dato in registro.datos_salida] == ["radicado"]
+
+
+# Lo que el cliente no sabe se pregunta dos veces, no sin fin (RF-02).
+NO_SE = "No lo sé; nadie me ha dicho qué debe entregar."
+CONDICION = "Para las pruebas, la consulta puede funcionar en memoria"
+
+
+def sin_salidas(no_sabe: int = 0) -> RegistroCaptura:
+    return registro_completo().model_copy(
+        update={"datos_salida": (), "no_sabe": ("datos_salida",) * no_sabe}
+    )
+
+
+def test_dos_no_se_dejan_el_atributo_sin_respuesta():
+    pregunta_salidas = "¿Qué debe entregar el registro de la solicitud?"
+    primera = aplicar_extraccion(
+        salida_extraccion(), con_respuesta(sin_salidas(), pregunta_salidas, NO_SE)
+    )
+    assert primera.no_sabe == ("datos_salida",)
+    assert primera.por_preguntar == ["datos_salida", "confirmacion"]
+    segunda = aplicar_extraccion(
+        salida_extraccion(), con_respuesta(primera, pregunta_salidas, "No lo sé, de verdad.")
+    )
+    assert segunda.sin_respuesta == ["datos_salida"]
+    assert segunda.por_preguntar == ["confirmacion"]
+
+
+@pytest.mark.parametrize(
+    ("previo", "salida", "respuesta"),
+    [
+        # Dice no saber un detalle, pero el atributo que se preguntaba se completa.
+        (
+            sin_salidas(),
+            salida_extraccion(datos_salida=DATOS_SALIDA),
+            "No sé el formato, pero se entrega el radicado",
+        ),
+        # En la respuesta al resumen no hay atributo preguntado que anotar.
+        (registro_completo(), salida_extraccion(), "No lo sé, pero el resumen está bien"),
+    ],
+)
+def test_no_anota_si_el_atributo_se_completa_ni_en_el_resumen(previo, salida, respuesta):
+    registro = aplicar_extraccion(salida, respuesta_al_resumen(previo, respuesta))
+    assert registro.no_sabe == ()
+
+
+def test_el_resumen_muestra_lo_que_no_supo_la_prioridad_y_las_condiciones():
+    registro = sin_salidas(INTENTOS_SIN_RESPUESTA).model_copy(
+        update={"prioridad": Prioridad.ALTA, "condiciones": (CONDICION,)}
+    )
+    resumen = resumen_para_confirmar(registro)
+    assert f"- Resultados que se entregan: {SIN_RESPUESTA}" in resumen
+    assert f"- Condiciones ya definidas: {CONDICION}" in resumen
+    assert "- Prioridad: alta" in resumen
+
+
+@pytest.mark.parametrize(
+    ("respuesta", "esperada"),
+    [("Es de prioridad alta, porque hay plazos", Prioridad.ALTA), (NECESIDAD, None)],
+)
+def test_la_prioridad_solo_entra_si_el_cliente_la_dice(respuesta, esperada):
+    registro = aplicar_extraccion(
+        salida_extraccion(prioridad="alta"),
+        con_respuesta(registro_completo(), "¿Algo más?", respuesta),
+    )
+    assert registro.prioridad == esperada
+
+
+def test_la_prioridad_dicha_se_conserva():
+    previo = registro_completo().model_copy(update={"prioridad": Prioridad.MEDIA})
+    registro = aplicar_extraccion(
+        salida_extraccion(), con_respuesta(previo, "¿Algo más?", "El radicado incluye el año")
+    )
+    assert registro.prioridad is Prioridad.MEDIA
+
+
+def test_las_condiciones_del_cliente_se_registran_y_se_retiran():
+    registro = aplicar_extraccion(
+        salida_extraccion(condiciones=[CONDICION]),
+        con_respuesta(registro_completo(), "¿Algo más?", f"{CONDICION}; eso ya está definido"),
+    )
+    assert registro.condiciones == (CONDICION,)
+    assert registro.supuestos == ()
+    sin_condicion = aplicar_extraccion(
+        salida_extraccion(retirar=[{"lista": "condiciones", "entrada": CONDICION}]),
+        con_respuesta(registro, "¿Algo más?", "Lo de las pruebas en memoria ya no aplica"),
+    )
+    assert sin_condicion.condiciones == ()
 
 
 def test_confirmacion_valida():
@@ -556,12 +648,13 @@ def test_resumen_para_confirmar_sale_del_registro():
     resumen = resumen_para_confirmar(registro)
     assert resumen.splitlines() == [
         "Le resumo lo que entendí:",
-        "- Quién lo usa: analista de conservación catastral",
+        "- A quién le sirve: analista de conservación catastral",
         "- Qué necesita: registrar solicitudes de mutación de propietario con su documento soporte",
         "- Para qué: tramitar el cambio en la información del predio y hacerle seguimiento",
         "- Reglas: La solicitud se acepta solo si el número predial existe y el documento "
         "soporte no tiene fecha posterior a la radicación",
-        "- Datos que se reciben: numero predial (obligatorio, 30 dígitos); fecha documento "
+        # Los nombres van como quedaron en el registro (caso 08 de la corrida ampliada).
+        "- Datos que se reciben: numero_predial (obligatorio, 30 dígitos); fecha_documento "
         "(obligatorio, no posterior a la fecha de radicación)",
         "- Resultados que se entregan: radicado (RAD-AAAA-NNNNNN)",
         "- Casos de error: Si el número predial no existe, la solicitud se rechaza",
@@ -691,6 +784,22 @@ def test_sintesis_asigna_los_campos_deterministas():
         "dom-002 v1.0 · Mutaciones catastrales",
         "eli-006 v1.0 · Guía de preguntas",
     )
+
+
+def test_sintesis_toma_la_prioridad_del_registro():
+    # El modelo propone «alta»; el cliente dijo «media» y quedó en el registro.
+    conversacion = conversacion_completa()
+    registro = conversacion.registro.model_copy(update={"prioridad": Prioridad.MEDIA})
+    sintesis = validar_sintesis(
+        salida_sintesis(),
+        conversacion.model_copy(update={"registro": registro}),
+        contexto_recuperado(),
+        Requerimientos(),
+        "Gestión catastral",
+    )
+    [historia] = sintesis.historias
+    assert historia.prioridad is Prioridad.MEDIA
+    assert sintesis.requerimientos[0].prioridad is Prioridad.MEDIA
 
 
 def conversacion_con(texto: str) -> Conversacion:
@@ -974,11 +1083,38 @@ def test_n3_pregunta_por_lo_retirado_en_lugar_de_que_falta(cliente_falso, comple
         completar_respuesta(pregunta(siguiente)),
     )
     dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
-        rechazo_del_resumen(registro_de_la_caja(), RECHAZO_DE_RESULTADOS), contexto_recuperado()
+        respuesta_al_resumen(registro_de_la_caja(), RECHAZO_DE_RESULTADOS), contexto_recuperado()
     )
     assert dialogo.registro.pendientes == ["datos_salida", "confirmacion"]
     assert dialogo.siguiente_pregunta == siguiente
     assert len(cliente.llamadas) == 2
+
+
+def test_n3_tras_dos_no_se_pregunta_por_el_siguiente_atributo(cliente_falso, completar_respuesta):
+    previo = sin_salidas(INTENTOS_SIN_RESPUESTA - 1).model_copy(update={"excepciones": ()})
+    siguiente = "¿Qué pasa si el número predial no existe?"
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion()), completar_respuesta(pregunta(siguiente))
+    )
+    conversacion = con_respuesta(previo, "¿Qué debe entregar el registro?", NO_SE)
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
+    assert dialogo.registro.sin_respuesta == ["datos_salida"]
+    assert dialogo.siguiente_pregunta == siguiente
+    estado = json.loads(cliente.llamadas[1]["messages"][-1]["content"])
+    assert estado["pendientes"] == ["excepciones", "confirmacion"]
+    assert estado["sin_respuesta"] == ["datos_salida"]
+
+
+def test_n3_cierra_al_confirmar_sin_lo_que_el_cliente_no_supo(cliente_falso, completar_respuesta):
+    cliente = cliente_falso(completar_respuesta(salida_extraccion(confirma_resumen=True)))
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        respuesta_al_resumen(sin_salidas(INTENTOS_SIN_RESPUESTA), "Sí, es correcto"),
+        contexto_recuperado(),
+    )
+    assert dialogo.registro.resumen_confirmado
+    assert dialogo.registro.pendientes == ["datos_salida"]
+    assert dialogo.siguiente_pregunta is None
+    assert len(cliente.llamadas) == 1
 
 
 def test_n3_cierra_sin_pregunta_al_confirmar(cliente_falso, completar_respuesta):

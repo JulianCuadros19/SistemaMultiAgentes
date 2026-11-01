@@ -167,11 +167,12 @@ def ruta_tras_suficiencia(estado: EstadoGrafo) -> Nodo:
         estado: Estado tras N4.
 
     Returns:
-        N5 si no quedan atributos pendientes o se alcanzó el límite de turnos; si no, N3.
+        N5 si no queda nada por preguntar, incluida la confirmación del resumen, o se alcanzó el
+        límite de turnos; si no, N3. Lo que el cliente no supo responder no retiene el diálogo.
     """
     conversacion = estado["conversacion"]
     agotado = conversacion.turnos_cliente >= estado["control"].limite_turnos
-    return Nodo.N5 if not conversacion.registro.pendientes or agotado else Nodo.N3
+    return Nodo.N5 if not conversacion.registro.por_preguntar or agotado else Nodo.N3
 
 
 def ruta_tras_requerimientos(estado: EstadoGrafo) -> Nodo | list[Nodo]:

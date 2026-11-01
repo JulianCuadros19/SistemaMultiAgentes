@@ -2,7 +2,7 @@
 id: elicitador.sintesis
 agente: elicitador
 nodo: N5
-version: 1.3
+version: 1.4
 descripcion: Síntesis de la historia de usuario y de los requerimientos formales del Anexo A.
 ---
 
@@ -36,7 +36,8 @@ avalúos, no los incluyas si el cliente no los mencionó. Lo que falte va a
   la redacción. `como` es el rol concreto del registro (nunca «usuario» ni «el sistema»);
   `quiero` empieza con un verbo en infinitivo y enuncia una sola capacidad; `para` es el
   beneficio, sin repetir la funcionalidad.
-- `prioridad`: la que indicó el cliente. Si no la indicó, propón una y agrégala a `supuestos`.
+- `prioridad`: la del registro. Si no está, la que indicó el cliente; si no la indicó, propón
+  una y agrégala a `supuestos`.
 - `supuestos` y `preguntas_abiertas`: copia los del registro y agrega los que surjan al
   redactar. Cada clasificación que propongas sin que el cliente la haya dicho (prioridad,
   impacto, módulo, área funcional o riesgo) debe quedar como supuesto.
@@ -52,7 +53,9 @@ asigna sus identificadores.
 - `precondicion`: el estado que debe cumplirse antes de ejecutar la funcionalidad, según lo que
   dijo el cliente.
 - `regla_negocio`: las reglas del registro, sin ambigüedad y con los valores concretos que dio
-  el cliente, en texto corrido, sin saltos de línea ni viñetas.
+  el cliente, en texto corrido, sin saltos de línea ni viñetas. Incluye las `condiciones` del
+  registro que apliquen a ese requerimiento: el cliente ya las definió, así que nunca van en
+  `supuestos`.
 - `datos_entrada` y `datos_salida`: los del registro, con nombres únicos, en minúsculas y sin
   espacios (por ejemplo, `numero_predial`).
 - `escenarios`: criterios de aceptación en Gherkin. Al menos tres: el camino feliz, un camino
