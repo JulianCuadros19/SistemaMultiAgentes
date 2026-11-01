@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo y cierre), ADR-0008 (N3 ante una falla, respuesta al resumen y retiro de lo rechazado), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo, cierre y confirmación con lo que el cliente no sabe), ADR-0008 (N3 ante una falla, respuesta al resumen, retiro de lo rechazado, rol, lo que el cliente no sabe, prioridad y condiciones), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -424,6 +424,132 @@ El segundo, en el caso 18, sesión `b271c343`:
         resultados, así que no pasaron por el retiro (ver «Caso 18» en «Verificación»).
       - La prueba `nube` del paso 7, sobre el caso de mutación, pasa (0,04 USD).
 
+### Convergencia de la elicitación
+
+Tras la decisión 28, las tres corridas del caso 18 agotaron los 15 turnos, y la corrida ampliada
+mostró que el problema es general. Medida en la primera pausa de N6, la línea base tiene 9 de 20
+sesiones en el límite de turnos y 7 de 20 sin el resumen confirmado, contra la regla 6 de eli-006.
+Los puntos de control muestran cuatro causas:
+- **Rol y funcionalidad desde quien opera:**
+  - en el caso 18, desde el primer turno, el rol era «la caja» y la funcionalidad «publicar un
+    aviso», cuando el cliente pedía las reacciones al aviso;
+  - en los casos 10, 11, 14 y 15 el rol también era un sistema;
+  - el prompt de extracción definía el rol como «quien usará» la funcionalidad, y eli-001 dice
+    «quién obtiene el valor».
+- **«No lo sé» repetido:** un atributo que el cliente no sabía seguía pendiente y N3 lo volvía a
+  preguntar hasta el límite. El caso 12 preguntó por el cargo en 15 de sus 16 preguntas, contra el
+  RF-02: «no repite preguntas ya respondidas».
+- **Prioridad sin lugar en el registro:** el cliente pedía registrarla y el resumen no la
+  mostraba, así que se alternaba «¿Qué falta…?» con el resumen (casos 02, 13, 18 y 20).
+- **Condiciones del cliente sin lugar:** «probar sin base de datos» o «el canal puede funcionar en
+  memoria» quedaban como supuestos o como reglas, y el cliente rechazaba ambas cosas (casos 04,
+  13, 18 y 20). Son justo las señales de arq-003 para el arquitecto.
+
+Decisión del equipo (2026-10-31): atender las cuatro causas. La pérdida de entradas por listas
+parciales queda para otro plan.
+
+29. **El rol es quien obtiene el valor, y la funcionalidad, lo que se pide construir**
+    (modifica el ADR-0008).
+    - **Extracción (prompt 1.4):**
+      - el rol es el cargo de una persona del negocio, como dice eli-001, nunca un sistema,
+        equipo o proceso;
+      - si el cliente dice que un sistema o una tarea programada usa lo que pide, eso va a las
+        condiciones (decisión 31);
+      - la funcionalidad es lo que el cliente pide construir, no lo que ya ocurre;
+      - las entradas incluyen lo que llega de otro sistema o en un aviso. Si el cliente no sabe
+        si un dato es obligatorio, se registra como obligatorio, con su supuesto;
+      - las salidas son lo que la funcionalidad entrega o deja hecho, no lo que ya produce otro
+        sistema.
+    - **Pregunta (prompt 1.6):** para el rol, pregunta a quién le sirve el resultado; para los
+      resultados, qué debe entregar o dejar hecho lo que se pide.
+    - **Resumen:**
+      - dice «A quién le sirve» en lugar de «Quién lo usa»;
+      - muestra los datos con el nombre que quedó en el registro. El caso 08 se atascó porque
+        mostraba `numero_predial` como «numero predial» y el cliente pedía los nombres exactos.
+30. **Lo que el cliente no sabe se pregunta dos veces, no sin fin** (modifica el ADR-0008 y la
+    invariante del registro del ADR-0006).
+    - **Registro:** `no_sabe` anota el atributo que se preguntaba cada vez que el cliente dice no
+      saberlo (`fidelidad.dice_no_saber`). A la segunda vez (`INTENTOS_SIN_RESPUESTA`) queda en
+      `sin_respuesta`.
+    - **Pendientes:**
+      - `pendientes` sigue declarando todo lo que falta (RF-03);
+      - `por_preguntar` excluye lo que quedó sin respuesta;
+      - `por_preguntar` gobierna la pregunta de N3, el enrutamiento de N4 y el validador de
+        `Dialogo`.
+    - **Confirmación:** el cliente puede confirmar el resumen con atributos sin respuesta, que el
+      resumen muestra como «sin respuesta del cliente». N5 los declara «Por confirmar» y N6 escala
+      las preguntas abiertas al analista (decisión 10 del ADR-0008).
+    - **Pregunta (prompt 1.6):** tras un «no lo sé», N3 reformula una vez con un ejemplo concreto.
+    - **eli-006, versión 1.1:** recoge la regla en su regla 4 y en el criterio de suficiencia. El
+      corpus se reingirió: 36 documentos y 186 fragmentos.
+31. **La prioridad y las condiciones del cliente entran al registro** (modifica el ADR-0008).
+    - **Prioridad:**
+      - es opcional y solo entra si el cliente la dice, con la misma fidelidad que un escalar;
+      - aparece en el resumen;
+      - en N5 manda sobre la que proponga el modelo.
+    - **Condiciones:**
+      - son opcionales: quién consume lo que se pide y por qué medio, cómo se prueba, qué
+        cambiará;
+      - se fusionan y se retiran como las reglas;
+      - aparecen en el resumen como «Condiciones ya definidas»;
+      - lo que el cliente da por definido nunca es un supuesto.
+    - **Síntesis (prompt 1.4):** las condiciones van en la regla de negocio del requerimiento al
+      que aplican, como hace el RF-27 del Anexo A («El número máximo de iteraciones es
+      configurable…»). Así llegan a N8.
+
+**Verificación de las decisiones 29 a 31.**
+- **Sin costo:** 565 pruebas unitarias, 30 de integración y 19 de embeddings. Las 13 nuevas
+  cubren:
+  - el registro y la anotación del «no lo sé»;
+  - el cierre con lo que el cliente no supo;
+  - el resumen;
+  - la prioridad, también en N5;
+  - las condiciones.
+- **Dos mediciones con el modelo real:**
+  - **Método:** las 20 elicitaciones de la corrida ampliada hasta N6, con
+    `scripts/conversar_elicitador.py --simulado`, una por caso y de una a la vez, más dos
+    corridas extra del caso 18.
+  - **Trazas:** `docs/mediciones/paso-12-elicitacion.jsonl` (2,26 USD) y
+    `paso-12-elicitacion-2.jsonl` (2,07 USD).
+  - **Comparación:** contra la línea base, en la primera pausa de N6.
+
+| Indicador | Línea base | Medición 1 | Medición 2 |
+|---|---|---|---|
+| Sesiones en el límite de 15 turnos | 9 de 20 | 9 de 20 | 3 de 20 |
+| Resumen confirmado | 13 de 20 | 13 de 20 | 17 de 20 |
+| Sistemas como rol | 4 | 0 | 0 |
+| Sin requerimientos en N6 | 2 | 0 | 0 |
+| Turnos en total | 249 | 241 | 211 |
+| Costo del diálogo, con el cliente simulado (USD) | 2,10 | 2,01 | 1,85 |
+
+- **Medición 1:** no mejoró la convergencia y destapó dos causas nuevas:
+  - rechazar los sistemas como rol creaba un bucle cuando el cliente decía que lo usa un sistema
+    (casos 11, 12 y 15);
+  - el resumen alteraba los nombres de los datos (caso 08).
+
+  Ambas se corrigieron antes de la medición 2 (decisión 29).
+- **Medición 2, caso 18:**
+  - confirma el resumen en las tres corridas, con rol de persona y requerimientos; en la corrida
+    ampliada no llegaba a ninguno;
+  - pero en dos plantea la funcionalidad como «publicar un aviso».
+- **Medición 2, rol:** en los casos 10, 11 y 12 queda sin respuesta, porque el cliente solo conoce
+  los sistemas que usan el módulo. Llega al analista como pregunta abierta.
+- **Diagnóstico:** se guardó en local la salida de cada extracción. De 108 respuestas que no
+  confirmaban un resumen, 7 no cambiaron el registro. Casi todas señalan lo que falta sin darlo
+  («faltan los formatos de cada banco»), y la pregunta fija «¿Qué falta…?» no ayuda a dárselo.
+- **Prueba `nube` del paso 7:** pasa con los prompts finales (10 turnos, 0,04 USD).
+- **Límites:** es una corrida por caso, así que parte de la diferencia es variación del modelo.
+  Del caso 16, en la medición 2, se perdió el texto del registro de la corrida; su sesión
+  `58d0cec0` y su traza están completas.
+
+**Pendientes.**
+- El planteamiento de las necesidades de eventos: el caso 18 todavía sale como «publicar un aviso»
+  en 2 de 3.
+- Las listas parciales que borran lo capturado: en el caso 04, las reglas pasaron de 15 a 2 en un
+  turno, y también pasa en los casos 08, 09, 13 y 15.
+- Una pregunta específica, en lugar de la fija «¿Qué falta…?», cuando el cliente señala lo que
+  falta sin darlo.
+
 ### Verificación
 
 - **Pruebas:** 507 unitarias, 30 de integración, 19 de embeddings y 26 del entorno aislado.
@@ -595,7 +721,8 @@ El segundo, en el caso 18, sesión `b271c343`:
     - otra, qué resultado deja publicar el aviso;
     - la tercera repitió «¿Qué falta…?», porque el cliente pedía la prioridad y el registro no la
       recoge;
-  - _pendiente: decisión del equipo sobre ese problema._
+  - lo atienden las decisiones 29 a 31 («Convergencia de la elicitación»). El caso 18 confirma
+    ahora el resumen en 3 de 3, aunque 2 de 3 todavía plantean «publicar un aviso».
 - **Sesiones para la verificación con el equipo:** `5f5d2739`, escalada en N17, y `b271c343`, en
   pausa en N6.
 
