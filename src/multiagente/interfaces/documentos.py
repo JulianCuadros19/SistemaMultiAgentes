@@ -8,6 +8,8 @@ import json
 from collections import Counter
 from collections.abc import Mapping, Sequence
 
+from multiagente.agentes.desarrollador.uso import PYTHON, componer_uso
+from multiagente.core.conformidad import RUTA_USO
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.esquemas.requerimiento import HistoriaUsuario, RequerimientoFormal
 from multiagente.orquestador.estado import (
@@ -345,6 +347,10 @@ def paquete_del_modulo(
         return json.dumps(datos, ensure_ascii=False, indent=2) + "\n"
 
     archivos = {f"codigo/{ruta}": contenido for ruta, contenido in version.archivos.items()}
+    if (uso := version.archivos.get(RUTA_USO)) is not None:
+        # Las versiones de antes de componer el documento traen las secciones que redactó el modelo.
+        paquetes = [dependencia.paquete for dependencia in especificacion.dependencias_externas]
+        archivos[f"codigo/{RUTA_USO}"] = componer_uso(uso, paquetes)
     archivos["codigo/requirements.txt"] = requirements_del_modulo(especificacion, requisitos or {})
     leeme = "\n".join(
         [
@@ -362,9 +368,11 @@ def paquete_del_modulo(
             "",
             "## Cómo ponerlo en marcha",
             "",
-            "Desde la carpeta `codigo/`, con Python 3.11 o superior:",
+            f"Desde la carpeta `codigo/`, con Python {PYTHON} o superior (el módulo se probó con "
+            f"Python {PYTHON}):",
             "",
-            "1. Cree y active un entorno: `python3 -m venv .venv && source .venv/bin/activate`.",
+            "1. Cree y active un entorno: `python3 -m venv .venv && source .venv/bin/activate`",
+            "   (en Windows, `.venv\\Scripts\\activate`).",
             "2. Instale las dependencias: `pip install -r requirements.txt`.",
             "3. Prepare la configuración y ejecútelo como indican las secciones «Configuración» y",
             "   «Ejecución» de `USO.md`.",

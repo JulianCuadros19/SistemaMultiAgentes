@@ -122,6 +122,7 @@ def test_paquete_del_modulo_validado():
     assert paquete["codigo/requirements.txt"].splitlines()[-1].startswith("pytest==")
     assert "## Cómo ponerlo en marcha" in paquete["LEEME.md"]
     assert "pip install -r requirements.txt" in paquete["LEEME.md"]
+    assert "el módulo se probó con Python 3.11" in paquete["LEEME.md"]
     # Los artefactos estructurados se exportan validados contra su esquema.
     requerimientos = json.loads(paquete["requerimientos.json"])
     assert [
@@ -133,6 +134,26 @@ def test_paquete_del_modulo_validado():
         assert paquete[nombre].endswith("\n")
     assert paquete["decision_arquitectura.md"].startswith(estado["arquitectura"].registro_decision)
     assert paquete["validacion.md"].startswith("# Reporte simulado de la versión 3")
+
+
+def test_el_paquete_corrige_el_documento_de_uso_de_una_version_anterior():
+    estado, historial = sesion_validada()
+    codigo = estado["codigo"]
+    anterior = codigo.vigente.model_copy(
+        update={
+            "archivos": {
+                **codigo.vigente.archivos,
+                "USO.md": "# Uso\n\n## Requisitos\n\nPython 3.11.\n\n## Instalación\n\n"
+                "`python3.11 -m venv .venv` y `pip install pytest`.\n\n## Supuestos\n\nNinguno.\n",
+            }
+        }
+    )
+    estado = {**estado, "codigo": codigo.model_copy(update={"versiones": (anterior,)})}
+    uso = paquete_del_modulo(estado, historial, requisitos_del_entorno())["codigo/USO.md"]
+
+    assert "python3.11" not in uso and "pip install pytest" not in uso
+    assert "## Instalación\n\nDesde la carpeta del código" in uso
+    assert uso.endswith("## Supuestos\n\nNinguno.\n")
 
 
 def test_requirements_fija_las_versiones_del_entorno_aislado():

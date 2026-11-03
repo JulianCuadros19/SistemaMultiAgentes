@@ -17,6 +17,7 @@ from collections.abc import Mapping
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict
 
+from multiagente.agentes.desarrollador.uso import componer_uso
 from multiagente.agentes.desarrollador.verificacion import RUTA_USO, verificar_version
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.estilo import EstiloGenerado
@@ -192,7 +193,8 @@ def version_desde_salida(
         {archivo.ruta.strip(): _normalizar(archivo.contenido) for archivo in salida.archivos}
     )
     if documentacion := salida.documentacion_uso.strip():
-        archivos[RUTA_USO] = _normalizar(documentacion)
+        paquetes = [dependencia.paquete for dependencia in especificacion.dependencias_externas]
+        archivos[RUTA_USO] = componer_uso(_normalizar(documentacion), paquetes)
     if previa is not None and archivos == previa.archivos:
         raise IntentoRechazado(
             [

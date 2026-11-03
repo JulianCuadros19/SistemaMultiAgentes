@@ -19,9 +19,9 @@ estilo (RF-16), la ejecución y la severidad los dictamina el tester (N11 a N14)
 redactan para que el modelo los corrija en su reintento.
 """
 
-import unicodedata
 from collections.abc import Mapping
 
+from multiagente.agentes.desarrollador.uso import SECCIONES_USO, secciones_faltantes
 from multiagente.core.conformidad import (
     RUTA_USO,
     TipoProblema,
@@ -46,17 +46,6 @@ INTERFACES = "RF-15 · interfaces"
 DEPENDENCIAS = "RF-17 · dependencias"
 DOCUMENTACION = "RF-18 · documentación"
 PRUEBAS = "RF-18 · pruebas"
-
-SECCIONES_USO = (
-    "Requisitos",
-    "Instalación",
-    "Configuración",
-    "Ejecución",
-    "Pruebas",
-    "Interfaces",
-    "Supuestos",
-)
-"""Secciones de segundo nivel que debe tener el documento de uso, en ese orden."""
 
 CRITERIO_POR_TIPO: dict[TipoProblema, str] = {
     TipoProblema.RUTA_INSEGURA: ARCHIVOS,
@@ -105,25 +94,3 @@ def verificar_version(
         lista = ", ".join(f"«## {seccion}»" for seccion in faltan)
         problemas.append(f"{DOCUMENTACION}: a {RUTA_USO} le faltan las secciones {lista}")
     return problemas
-
-
-def _comparable(texto: str) -> str:
-    descompuesto = unicodedata.normalize("NFKD", texto)
-    return "".join(c for c in descompuesto if not unicodedata.combining(c)).strip().casefold()
-
-
-def secciones_faltantes(documento: str) -> list[str]:
-    """Secciones de `SECCIONES_USO` que no están como títulos de segundo nivel del documento.
-
-    Args:
-        documento: Contenido de `USO.md`.
-
-    Returns:
-        Las secciones que faltan, sin importar mayúsculas ni tildes.
-    """
-    titulos = {
-        _comparable(linea.removeprefix("## "))
-        for linea in documento.splitlines()
-        if linea.startswith("## ")
-    }
-    return [seccion for seccion in SECCIONES_USO if _comparable(seccion) not in titulos]

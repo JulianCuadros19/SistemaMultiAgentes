@@ -228,6 +228,8 @@ def test_genera_la_primera_version(cliente_falso, completar_respuesta):
     assert version.numero == 1
     assert set(version.archivos) == {RUTA_MODULO, "tests/test_modulo.py", "USO.md"}
     assert version.archivos["USO.md"].endswith("`ejecutar`.\n")
+    # La instalación la escribe el sistema, no el modelo (decisión 33 del ADR-0014).
+    assert "## Instalación\n\nDesde la carpeta del código" in version.archivos["USO.md"]
     assert version.defectos_atendidos == ()
     assert version.huella_estilo == ESTILO.huella
 
@@ -238,7 +240,7 @@ def test_genera_la_primera_version(cliente_falso, completar_respuesta):
     assert argumentos["response_format"]["json_schema"]["name"] == "SalidaGeneracion"
     assert cliente.opciones == {"timeout": 600}
     (llamada,) = registro.llamadas
-    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.5")
+    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.6")
     assert llamada.costo_usd == Decimal("0.091")
 
 
