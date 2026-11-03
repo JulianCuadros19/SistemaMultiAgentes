@@ -130,7 +130,11 @@ def test_una_persona_opera_el_flujo_completo_por_consola(tmp_path, capsys, entor
     salida = capsys.readouterr().out
     assert ACUSE_CONFIRMACION in salida
     assert "Observaciones sugeridas por sus pruebas:" in salida
-    assert "fallo   tests/test_radicado.py::test_radicado_falla" in salida
+    assert (
+        "fallo   tests/test_radicado.py::test_radicado_falla · "
+        "AssertionError: falta el año assert 2025 == 2026"
+    ) in salida
+    assert "test_radicado.py:3: AssertionError" not in salida
     assert "Módulo validado." in salida
     [vista] = op.sesiones()
     assert vista.fase is Fase.VALIDADO

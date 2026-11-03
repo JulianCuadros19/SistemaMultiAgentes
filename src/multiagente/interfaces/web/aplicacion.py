@@ -34,6 +34,8 @@ from multiagente.interfaces.operacion import (
     ErrorOperacion,
     Operador,
     VistaSesion,
+    detalle_de_prueba,
+    detalle_de_recoleccion,
     observaciones_de_pruebas,
 )
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
@@ -100,6 +102,8 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     plantillas = Jinja2Templates(directory=CARPETA / "plantillas")
     plantillas.env.globals["NOMBRES_DE_NODO"] = NOMBRES_DE_NODO
     plantillas.env.globals["resumen_pruebas_propias"] = resumen_pruebas_propias
+    plantillas.env.globals["detalle_de_prueba"] = detalle_de_prueba
+    plantillas.env.globals["detalle_de_recoleccion"] = detalle_de_recoleccion
 
     def pagina(
         request: Request, plantilla: str, estado: int = 200, **datos: object

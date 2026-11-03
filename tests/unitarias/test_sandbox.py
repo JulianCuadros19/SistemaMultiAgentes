@@ -14,11 +14,36 @@ from multiagente.sandbox.ejecutor import (
     MARCA_RESULTADO,
     EntornoAislado,
     ErrorEntornoAislado,
+    detalle_de_falla,
     empaquetar,
     es_ruta_segura,
 )
 
 CONFIGURACION = ConfiguracionSandbox(_env_file=None)
+
+
+def test_el_detalle_de_una_falla_sale_de_las_lineas_que_marca_pytest():
+    reporte = (
+        "    def test_total():\n"
+        "        E = 3\n"
+        ">       assert total == 10\n"
+        "E       assert 9 == 10\n"
+        "E        +  where 9 = total\n"
+        "\n"
+        "tests/test_total.py:4: AssertionError"
+    )
+    assert detalle_de_falla(reporte) == "assert 9 == 10 + where 9 = total"
+    assert detalle_de_falla(reporte, limite=14) == "assert 9 == 10"
+
+
+def test_sin_lineas_marcadas_el_detalle_es_la_ultima_linea():
+    traza = (
+        "Traceback (most recent call last):\n"
+        '  File "/tmp/codigo/src/radicados.py", line 1, in <module>\n'
+        "ModuleNotFoundError: No module named 'catastro'\n"
+    )
+    assert detalle_de_falla(traza) == "ModuleNotFoundError: No module named 'catastro'"
+    assert detalle_de_falla("  \n") == "sin detalle"
 
 
 def test_la_invocacion_aisla_red_archivos_y_privilegios():

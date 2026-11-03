@@ -53,6 +53,9 @@ print("{MARCA_RESULTADO}" + json.dumps(errores))
 MARCA_PRUEBAS = "@@resultado-pruebas@@"
 """Prefijo de la línea con el resultado de las pruebas."""
 
+MARCA_FALLA = "E   "
+"""Prefijo con que pytest marca, en su reporte largo, las líneas que explican el error."""
+
 SCRIPT_PRUEBAS = f"""
 import contextlib, io, json
 import pytest
@@ -245,6 +248,31 @@ def leer_resultado_pruebas(ejecucion: ResultadoEjecucion) -> ResultadoPruebas:
         salida_pytest=datos["salida"],
         ejecucion=ejecucion,
     )
+
+
+def detalle_de_falla(texto: str, limite: int | None = None) -> str:
+    """Resume en una línea por qué falló una prueba, a partir de su reporte o de una traza.
+
+    pytest explica el error en las líneas que marca con `E` y tres espacios, como
+    `E       assert 5 == 6`; la última línea del reporte, `archivo:línea: AssertionError`, no dice
+    nada del fallo. Sin esas marcas, como en una traza de importación, se usa la última línea.
+
+    Args:
+        texto: Reporte de pytest o traza de Python.
+        limite: Caracteres que se conservan; sin límite si se omite.
+
+    Returns:
+        Las líneas marcadas, sin la marca y unidas; si no hay, la última línea con texto, o «sin
+        detalle».
+    """
+    marcadas = [
+        " ".join(linea.removeprefix("E").split())
+        for linea in texto.splitlines()
+        if linea.startswith(MARCA_FALLA)
+    ]
+    lineas = [linea.strip() for linea in texto.splitlines() if linea.strip()]
+    detalle = " ".join(filter(None, marcadas)) or (lineas[-1] if lineas else "sin detalle")
+    return detalle if limite is None else detalle[:limite]
 
 
 def es_ruta_segura(ruta: str) -> bool:

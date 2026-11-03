@@ -51,7 +51,7 @@ from multiagente.persistencia.puntos_control import (
     abrir_checkpointer_compartido,
     identificadores_de_sesion,
 )
-from multiagente.sandbox.ejecutor import EntornoAislado
+from multiagente.sandbox.ejecutor import EntornoAislado, detalle_de_falla
 from multiagente.sandbox.requisitos import requisitos_del_entorno
 
 PUNTOS_DE_CONTROL = tuple(punto.value for punto in PuntoControl)
@@ -91,6 +91,9 @@ ESPERAS = {
     "especificacion": "Espera la aprobación de la especificación de diseño (N9)",
     "final": "Espera la aprobación final del módulo (N17)",
 }
+
+LONGITUD_DETALLE_PRUEBA = 500
+"""Caracteres del motivo de una prueba propia que no pasa, al mostrarla o sugerir observaciones."""
 
 
 class ErrorOperacion(ValueError):
@@ -460,15 +463,42 @@ def observaciones_de_pruebas(pruebas: PruebasPropias) -> str:
     """
     lineas = [
         f"La prueba propia {prueba.identificador} no pasa ({prueba.resultado}): "
-        f"{prueba.mensaje.strip().splitlines()[-1] if prueba.mensaje.strip() else 'sin detalle'}"
+        f"{detalle_de_prueba(prueba.mensaje)}"
         for prueba in pruebas.ejecucion.pruebas
         if prueba.resultado is not ResultadoPrueba.PASO
     ]
     lineas += [
-        f"Archivo de pruebas propias sin recolectar: {error.splitlines()[0]}"
+        f"Archivo de pruebas propias sin recolectar: {detalle_de_recoleccion(error)}"
         for error in pruebas.ejecucion.errores_recoleccion
     ]
     return "\n".join(lineas)
+
+
+def detalle_de_prueba(mensaje: str) -> str:
+    """Motivo, en una línea, de que una prueba no pase.
+
+    Args:
+        mensaje: Reporte de pytest de la prueba.
+
+    Returns:
+        Las líneas con que pytest explica el error, recortadas.
+    """
+    return detalle_de_falla(mensaje, LONGITUD_DETALLE_PRUEBA)
+
+
+def detalle_de_recoleccion(error: str) -> str:
+    """Archivo y motivo de un error de recolección de pytest, en una línea.
+
+    Args:
+        error: Error de recolección, `ruta: reporte`, o el motivo de que no haya resultado.
+
+    Returns:
+        `ruta · motivo` si el error es de un archivo de pruebas; si no, solo el motivo.
+    """
+    ruta, _, reporte = error.partition(": ")
+    if not ruta.startswith("tests/"):
+        return detalle_de_prueba(error)
+    return f"{ruta} · {detalle_de_prueba(reporte)}"
 
 
 @contextmanager

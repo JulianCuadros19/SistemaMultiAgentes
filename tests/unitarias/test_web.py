@@ -78,6 +78,7 @@ def test_el_equipo_y_el_cliente_operan_el_flujo_completo_por_la_web(entorno_fals
     assert "Resultado: 0 de 1 pasan" in pagina
     sugeridas = "La prueba propia tests/test_radicado.py::test_radicado_falla no pasa (fallo)"
     assert sugeridas in pagina
+    assert "AssertionError: falta el año assert 2025 == 2026" in pagina
     decidir(cliente, id_sesion, "rechazado", observaciones=sugeridas, registrar_pruebas="si")
 
     # Versión 2: sube su archivo, pasa y aprueba registrando sus pruebas.

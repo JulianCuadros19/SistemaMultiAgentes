@@ -43,6 +43,8 @@ from multiagente.interfaces.operacion import (
     Operador,
     VistaSesion,
     abrir_operador,
+    detalle_de_prueba,
+    detalle_de_recoleccion,
     observaciones_de_pruebas,
 )
 from multiagente.orquestador.ejecucion import Avance
@@ -145,10 +147,10 @@ def mostrar_pruebas_propias(pruebas: PruebasPropias) -> None:
     ejecucion = pruebas.ejecucion
     print(f"\nPruebas propias en el entorno aislado ({ejecucion.duracion_ms} ms):")
     for prueba in ejecucion.pruebas:
-        detalle = prueba.mensaje.strip().splitlines()[-1] if prueba.mensaje.strip() else ""
+        detalle = detalle_de_prueba(prueba.mensaje) if prueba.mensaje.strip() else ""
         print(f"  {prueba.resultado:7} {prueba.identificador}{f' · {detalle}' if detalle else ''}")
     for error in ejecucion.errores_recoleccion:
-        print(f"  sin recolectar: {error.splitlines()[0]}")
+        print(f"  sin recolectar: {detalle_de_recoleccion(error)}")
     if not ejecucion.pruebas and not ejecucion.errores_recoleccion:
         print("  No se encontró ninguna prueba: las funciones deben llamarse test_*.")
 

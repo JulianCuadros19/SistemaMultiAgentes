@@ -49,6 +49,7 @@ from multiagente.orquestador.estado import (
     VersionCodigo,
 )
 from multiagente.orquestador.servicios import Dictamen
+from multiagente.sandbox.ejecutor import detalle_de_falla
 
 ORDEN_SEVERIDAD = {Severidad.ALTA: 0, Severidad.MEDIA: 1, Severidad.BAJA: 2}
 FALLIDAS = (ResultadoPrueba.FALLO, ResultadoPrueba.ERROR)
@@ -119,10 +120,7 @@ def pruebas_fuente(archivos: Mapping[str, str]) -> list[PruebaFuente]:
 
 def _detalle(mensaje: str) -> str:
     """Líneas `E …` de pytest, o la última línea, recortadas para la evidencia."""
-    lineas = [linea.strip() for linea in mensaje.splitlines() if linea.strip()]
-    errores = [linea.removeprefix("E").strip() for linea in lineas if linea.startswith("E ")]
-    texto = " ".join(errores) if errores else (lineas[-1] if lineas else "sin detalle")
-    return texto[:LONGITUD_DETALLE]
+    return detalle_de_falla(mensaje, LONGITUD_DETALLE)
 
 
 def _funcion_base(nombre: str) -> str:

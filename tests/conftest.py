@@ -137,11 +137,22 @@ def cliente_falso() -> Callable[..., ClienteModeloFalso]:
     return ClienteModeloFalso
 
 
+MENSAJE_FALLA = (
+    "    def test_radicado_falla():\n"
+    ">       assert radicado.anio == 2026, 'falta el año'\n"
+    "E       AssertionError: falta el año\n"
+    "E       assert 2025 == 2026\n"
+    "\n"
+    "tests/test_radicado.py:3: AssertionError"
+)
+"""Reporte largo de pytest de una prueba que falla: la última línea no explica el error."""
+
+
 class EntornoAisladoFalso:
     """Entorno aislado falso para las pruebas propias de N17, sin Docker.
 
-    Cada función `test_*` de los archivos `tests/` pasa, salvo las que terminan en `_falla`.
-    Guarda los archivos de cada corrida.
+    Cada función `test_*` de los archivos `tests/` pasa, salvo las que terminan en `_falla`, que
+    fallan con `MENSAJE_FALLA`. Guarda los archivos de cada corrida.
     """
 
     def __init__(self) -> None:
@@ -155,7 +166,7 @@ class EntornoAisladoFalso:
                 nombre=linea.removeprefix("def ").split("(")[0],
                 resultado="fallo" if "_falla(" in linea else "paso",
                 duracion_ms=3,
-                mensaje="AssertionError: falta el año" if "_falla(" in linea else "",
+                mensaje=MENSAJE_FALLA if "_falla(" in linea else "",
             )
             for ruta, contenido in archivos.items()
             if ruta.startswith("tests/")

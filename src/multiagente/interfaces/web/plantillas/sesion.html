@@ -303,11 +303,13 @@
     <tbody>
       {% for p in pruebas.ejecucion.pruebas %}
       <tr><td><code>{{ p.identificador }}</code></td><td>{{ p.resultado.value }}</td>
-        <td><pre class="texto">{{ p.mensaje[-600:] }}</pre></td></tr>
+        <td>{% if p.mensaje.strip() %}<pre class="texto">{{ detalle_de_prueba(p.mensaje) }}</pre>
+          <details><summary>Reporte completo</summary><pre class="texto">{{ p.mensaje }}</pre></details>{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
-  {% for e in pruebas.ejecucion.errores_recoleccion %}<pre class="texto aviso error">{{ e }}</pre>{% endfor %}
+  {% for e in pruebas.ejecucion.errores_recoleccion %}<pre class="texto aviso error">{{ detalle_de_recoleccion(e) }}</pre>
+  <details><summary>Reporte completo</summary><pre class="texto">{{ e }}</pre></details>{% endfor %}
   {% endif %}
 </section>
 {% endif %}

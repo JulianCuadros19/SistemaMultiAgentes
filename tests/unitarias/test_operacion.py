@@ -7,7 +7,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.documentos import ErrorExportacion
-from multiagente.interfaces.operacion import ErrorOperacion, Operador, observaciones_de_pruebas
+from multiagente.interfaces.operacion import (
+    ErrorOperacion,
+    Operador,
+    detalle_de_recoleccion,
+    observaciones_de_pruebas,
+)
 from multiagente.llm.costos import ConsumoTokens
 from multiagente.llm.traza import SESION_ACTUAL, RegistroLlamada, RegistroPorSesion
 from multiagente.orquestador.estado import Decision, Fase, PuntoControl
@@ -59,7 +64,11 @@ def test_flujo_completo_con_pruebas_propias_en_la_aprobacion_final(tmp_path, ent
     assert set(entorno.corridas[0]) > {"tests/test_mio.py"}
     assert [p.nombre for p in fallidas.ejecucion.pruebas] == ["test_radicado_falla"]
     observaciones = observaciones_de_pruebas(fallidas)
-    assert "tests/test_mio.py::test_radicado_falla no pasa (fallo): AssertionError" in observaciones
+    assert (
+        "tests/test_mio.py::test_radicado_falla no pasa (fallo): "
+        "AssertionError: falta el año assert 2025 == 2026"
+    ) in observaciones
+    assert "test_radicado.py:3" not in observaciones
     op.decidir(id_sesion, Decision.RECHAZADO, "Laura", observaciones, fallidas)
 
     # El desarrollador corrige, el tester aprueba y la persona aprueba con su prueba pasando.
@@ -76,6 +85,19 @@ def test_flujo_completo_con_pruebas_propias_en_la_aprobacion_final(tmp_path, ent
     assert "| final | aprobado | Laura |" in op.trazabilidad(id_sesion)
     assert "1 de 1 pasan" in op.trazabilidad(id_sesion)
     assert set(op.exportar(id_sesion)) >= {"LEEME.md", "requerimientos.json", "validacion.md"}
+
+
+def test_el_error_de_recoleccion_indica_el_archivo_y_el_motivo():
+    error = (
+        "tests/test_mio.py: ImportError while importing test module "
+        "'/tmp/codigo/tests/test_mio.py'.\n"
+        "E   ModuleNotFoundError: No module named 'radicados'"
+    )
+    assert detalle_de_recoleccion(error) == (
+        "tests/test_mio.py · ModuleNotFoundError: No module named 'radicados'"
+    )
+    sin_resultado = "Sin resultado de las pruebas: tiempo vencido"
+    assert detalle_de_recoleccion(sin_resultado) == sin_resultado
 
 
 def test_acusa_cuando_la_respuesta_confirma_el_resumen(tmp_path, entorno_falso):

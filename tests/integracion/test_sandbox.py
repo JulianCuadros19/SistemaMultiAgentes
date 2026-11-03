@@ -8,6 +8,8 @@ import subprocess
 
 import pytest
 
+from multiagente.sandbox.ejecutor import detalle_de_falla
+
 pytestmark = pytest.mark.sandbox
 
 
@@ -104,3 +106,11 @@ def test_corre_las_pruebas_y_reporta_cada_resultado(entorno_aislado):
     assert len(resultado.errores_recoleccion) == 1
     assert resultado.errores_recoleccion[0].startswith("tests/test_roto.py")
     assert not resultado.exito
+
+    # El detalle explica la falla con el reporte real de pytest, no con su última línea.
+    mensajes = {prueba.nombre: prueba.mensaje for prueba in resultado.pruebas}
+    assert detalle_de_falla(mensajes["test_falla"]).startswith("assert 4 == 5")
+    assert "RuntimeError: preparación" in detalle_de_falla(mensajes["test_error"])
+    assert "No module named 'modulo_inexistente'" in detalle_de_falla(
+        resultado.errores_recoleccion[0]
+    )
