@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-10-09
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo, cierre y confirmación con lo que el cliente no sabe), ADR-0008 (N3 ante una falla, respuesta al resumen, retiro de lo rechazado, rol, lo que el cliente no sabe, prioridad y condiciones), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, prompt 1.5 y reintento sobre el intento rechazado), ADR-0012 (juez sin respuesta, sugerencia de instalación y detección de secretos) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
+modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ciclo nuevo, cierre y confirmación con lo que el cliente no sabe), ADR-0008 (N3 ante una falla, respuesta al resumen, retiro de lo rechazado, rol, lo que el cliente no sabe, prioridad y condiciones), ADR-0010 (capacidades no cubiertas y prompt 1.2), ADR-0011 (secciones de USO.md, en parte escritas por el sistema, prompt 1.6, reintento sobre el intento rechazado e imagen con versiones transitivas fijas), ADR-0012 (juez sin respuesta, sugerencia de instalación, detección de secretos y detalle de la falla) y ADR-0013 (producir_modulo.py sobre el bucle de la consola e historial de versiones)
 ---
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
@@ -550,6 +550,93 @@ parciales queda para otro plan.
 - Una pregunta específica, en lugar de la fija «¿Qué falta…?», cuando el cliente señala lo que
   falta sin darlo.
 
+### Correcciones tras la verificación con el equipo por consola
+
+El 3 de noviembre el equipo operó tres sesiones (sección «Verificación con el equipo»). Los
+hallazgos de los agentes los atiende el ADR-0015. Además aparecieron cuatro defectos de las
+interfaces:
+- **Observaciones sugeridas sin detalle:** en las tres devoluciones con pruebas propias que
+  fallaban, la observación sugerida decía solo «archivo:línea: AssertionError», así que la persona
+  la escribió a mano.
+- **Una sesión en curso se veía detenida:** mientras la consola corría N10, `multiagente sesiones`
+  la mostraba «Detenida antes de N10: hay que reanudarla» y la web ofrecía reanudarla. Hacerlo
+  desde otro proceso habría corrido N10 dos veces.
+- **`USO.md` con instrucciones que fallan:**
+  - fijaba `python3.11`, que no existe en Ubuntu 26.04;
+  - decía que `requirements.txt` no se entrega, una nota del prompt que copiaron 29 de los 33
+    documentos generados;
+  - repetía `pip install pytest`;
+  - citaba «D1», una etiqueta interna.
+- **`requirements.txt` sin las dependencias transitivas:** fijaba solo pytest. pip instaló
+  pluggy 1.7.0, y el tester había probado con 1.6.0.
+
+32. **El detalle de una falla sale de las líneas que marca pytest** (modifica las decisiones 6 y
+    11, y el ADR-0012).
+    - `sandbox.ejecutor.detalle_de_falla` une las líneas que pytest marca con `E` y tres
+      espacios, el mismo criterio que usa pytest. Sin ellas toma la última línea, como en una
+      traza de importación.
+    - La usan el tester, sin cambiar su límite de 300 caracteres, las observaciones sugeridas, la
+      consola y la web. La web muestra además el reporte completo en un desplegable.
+33. **El sistema escribe Requisitos, Instalación y Pruebas de `USO.md`** (modifica la decisión 19 y
+    el ADR-0011).
+    - El modelo redacta el título, el propósito, Configuración, Ejecución, Interfaces y Supuestos
+      (prompt `desarrollador.generacion` 1.6), sin mencionar el entorno aislado ni las etiquetas
+      D1…Dn.
+    - `agentes/desarrollador/uso.py` compone las otras tres secciones, en el orden de RF-18:
+      - la versión de Python con que se probó, 3.11, o superior;
+      - las dependencias declaradas;
+      - la instalación con `pip install -r requirements.txt`, también en Windows;
+      - las pruebas.
+    - Se compone al generar cada versión y otra vez al exportar, así que las versiones anteriores
+      también salen corregidas.
+    - Lo que el modelo escribió en sus secciones se conserva: la v3 de `61e1e121` todavía dice
+      «Conforme a D1» en Supuestos.
+34. **`requirements.txt` fija también las dependencias transitivas** (completa la decisión 22 y
+    modifica el ADR-0011).
+    - En `docker/sandbox/` quedan versionados:
+      - el freeze de la imagen (`versiones.txt`, 33 paquetes);
+      - el cierre de dependencias de cada librería del catálogo (`cierres.json`), que calcula
+        `cierres.py` dentro de la imagen.
+    - La imagen se construye con `versiones.txt` como restricciones y con `pip check`, así que se
+      reconstruye igual. Si cambia `requisitos.txt`, `scripts/congelar_entorno_aislado.py` copia
+      lo que quedó instalado.
+    - El paquete lista las dependencias declaradas, sus transitivas y pytest con las suyas, todas
+      con versión fija. También se corrige el extra: `psycopg[binary]` declarado quedaba sin
+      versión.
+    - **Límite:** las versiones valen para Linux con Python 3.11. En Windows, pip agrega sin
+      fijar las dependencias exclusivas de esa plataforma.
+35. **Una sesión en curso no se reanuda ni se cierra a la vez** (modifica la decisión 4).
+    - Cada operación que avanza una sesión (`iniciar`, `responder`, `decidir`, `reanudar` y
+      `cerrar`) toma antes un bloqueo consultivo de PostgreSQL por sesión, en una conexión
+      dedicada (`persistencia/bloqueos.py`), y valida dentro de él.
+    - Si el proceso muere, PostgreSQL suelta el bloqueo junto con la conexión, y la sesión vuelve
+      a verse detenida.
+    - Las vistas leen en `pg_locks` qué sesiones están ocupadas:
+      - la sesión se ve «En curso: N10 · …»;
+      - la consola avisa sin ofrecer nada;
+      - la web la sondea sin ofrecer reanudar ni cerrar.
+    - Actuar sobre ella lanza `SesionEnCurso`, que la web responde con 409.
+    - Sin PostgreSQL, como en las pruebas, los bloqueos son del proceso.
+    - **Límite:** si PostgreSQL se reinicia a mitad de una corrida, el bloqueo se pierde con su
+      conexión, y otra corrida podría reanudar la sesión.
+
+**Decisión del equipo sobre las reglas de conformidad.** Se mantienen dos reglas de
+`core/conformidad.py`: la de las excepciones declaradas y la de `self` sin anotar. En la corrida
+ampliada explicaban 4 de los 7 primeros intentos rechazados de N10. El ADR-0015 las ataca en el
+prompt del desarrollador, sin relajarlas.
+
+**Verificación de las decisiones 32 a 35.**
+- **Sin costo:** 585 pruebas unitarias, 31 de integración, 27 del entorno aislado y 19 de
+  embeddings. Las 20 nuevas cubren:
+  - el detalle con el reporte real de pytest, en el entorno aislado;
+  - el documento de uso compuesto, también al exportar una versión anterior;
+  - la coherencia de los archivos de versiones, y que la imagen tenga las versionadas;
+  - la sesión en curso por consola, por web y entre dos procesos con PostgreSQL, incluida la
+    muerte del proceso que la tiene.
+- **Reexportación de `61e1e121`:**
+  - `requirements.txt` fija pytest y sus cuatro dependencias, con pluggy en 1.6.0;
+  - `USO.md` ya no tiene `python3.11`, `pip install pytest` ni la nota interna.
+
 ### Verificación
 
 - **Pruebas:** 507 unitarias, 30 de integración, 19 de embeddings y 26 del entorno aislado.
@@ -727,10 +814,22 @@ parciales queda para otro plan.
   pausa en N6.
 
 **Verificación con el equipo.**
-- **Hecho:** la sesión tipo NotionSync por la web, `9da543db`, quedó validada y dio lugar a la
-  decisión 26.
-- _Pendiente: una sesión por consola que rechace en N17; si alguna escala, el equipo ejercita
-  reabrir y cerrar, y exporta el paquete para revisar `USO.md` y `requirements.txt`._
+- **NotionSync por la web,** `9da543db`: quedó validada y dio lugar a la decisión 26.
+- **Una sesión nueva por consola,** `61e1e121` (pago del predial en ventanilla, ARQ-01), el
+  2026-11-03:
+  - N6 y N9 se aprobaron a la primera;
+  - hubo dos rechazos en N17, el segundo con pruebas propias (3 de 4);
+  - se validó en la v3 con 4 de 4 pruebas propias: 0,31 USD, 23 min y 30 llamadas;
+  - el paquete exportado se instaló con Python 3.14.4 y sus 36 pruebas pasaron. Destapó las
+    decisiones 33 y 34.
+- **La sesión escalada,** `5f5d2739` (pagos de pensiones, ARQ-06):
+  - dos devoluciones al arquitecto, un rechazo en N9 y una devolución al desarrollador: tres
+    rediseños y cuatro versiones;
+  - se validó en la v6 con 4 de 4 pruebas propias, tras 0,97 USD y 33 min;
+  - sus hallazgos de los agentes los atiende el ADR-0015.
+- **El cierre,** `b271c343`: se cerró en N6 con motivo, y quedó registrado quién, cuándo y desde
+  qué punto.
+- Entre las cuatro destaparon los defectos que corrigen las decisiones 32 a 35.
 
 ### Consecuencias
 
