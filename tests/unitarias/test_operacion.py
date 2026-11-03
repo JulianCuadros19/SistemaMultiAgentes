@@ -134,6 +134,32 @@ def test_reanuda_una_sesion_detenida_por_una_falla(tmp_path, entorno_falso):
         op.reanudar(id_sesion)
 
 
+def test_una_sesion_en_curso_no_se_reanuda_ni_se_cierra(tmp_path, entorno_falso):
+    op = operador(
+        ServiciosSimulados(fallos_veredicto=0, fallos_ejecucion=1), tmp_path, entorno_falso
+    )
+    guion = guion_completo()
+    id_sesion = op.iniciar("Oficina", guion.proyecto, guion.necesidad)
+    hasta(op, id_sesion, "especificacion", guion.respuestas_cliente)
+    with pytest.raises(ErrorSimulado):
+        op.decidir(id_sesion, Decision.APROBADO, "Arquitecto")
+
+    # Otra corrida la toma, como un proceso que la está reanudando: se ve igual que una caída,
+    # pero no se ofrece reanudarla ni cerrarla.
+    with op.bloqueos.exclusivo(id_sesion):
+        vista = op.vista(id_sesion)
+        assert vista.en_curso and not vista.detenida
+        assert vista.describir() == "En curso: N11 · ejecución en el entorno aislado"
+        assert [v.en_curso for v in op.sesiones()] == [True]
+        with pytest.raises(ErrorOperacion, match="en curso"):
+            op.reanudar(id_sesion)
+        with pytest.raises(ErrorOperacion, match="en curso"):
+            op.cerrar(id_sesion, "Analista", "Prueba")
+
+    assert op.vista(id_sesion).detenida
+    assert op.reanudar(id_sesion).pausa.punto == "final"
+
+
 def test_rechaza_operaciones_que_no_corresponden(tmp_path, entorno_falso):
     simulacion = ServiciosSimulados(fallos_veredicto=0)
     version = {"src/simulado/modulo.py": "x = 1\n", "tests/test_modulo.py": "def test_x(): ...\n"}

@@ -149,6 +149,33 @@ def test_una_sesion_detenida_por_una_falla_se_reanuda_desde_la_pagina(entorno_fa
     assert operador.vista(id_sesion).fase is Fase.APROBACION_FINAL
 
 
+def test_una_sesion_en_curso_en_otro_proceso_no_se_reanuda_desde_la_pagina(entorno_falso):
+    cliente, operador = web(
+        ServiciosSimulados(fallos_veredicto=0, fallos_ejecucion=1), entorno_falso
+    )
+    guion = guion_completo()
+    id_sesion = abrir(cliente, guion.necesidad)
+    for respuesta in guion.respuestas_cliente[:7]:
+        cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": respuesta})
+    decidir(cliente, id_sesion, "aprobado")
+    decidir(cliente, id_sesion, "aprobado")
+
+    with operador.bloqueos.exclusivo(id_sesion):
+        pagina = cliente.get(f"/sesiones/{id_sesion}").text
+        assert "En curso: N11 · ejecución en el entorno aislado" in pagina
+        assert "Otro proceso la está avanzando" in pagina
+        assert f'data-sesion="{id_sesion}"' in pagina
+        assert 'action="/sesiones/' + id_sesion + '/reanudar"' not in pagina
+        assert 'action="/sesiones/' + id_sesion + '/cerrar"' not in pagina
+        assert cliente.get(f"/sesiones/{id_sesion}/estado.json").json()["procesando"]
+        respuesta = cliente.post(f"/sesiones/{id_sesion}/reanudar")
+        assert respuesta.status_code == 409
+        assert "está en curso: espere a que termine" in respuesta.text
+
+    assert not cliente.get(f"/sesiones/{id_sesion}/estado.json").json()["procesando"]
+    assert operador.vista(id_sesion).detenida
+
+
 def hasta_la_aprobacion_final(cliente: TestClient) -> str:
     guion = guion_completo()
     id_sesion = abrir(cliente, guion.necesidad)

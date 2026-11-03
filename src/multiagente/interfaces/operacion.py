@@ -46,6 +46,13 @@ from multiagente.orquestador.estado import (
     VersionCodigo,
 )
 from multiagente.orquestador.grafo import Nodo, construir_grafo
+from multiagente.persistencia.bloqueos import (
+    Bloqueos,
+    BloqueosEnMemoria,
+    BloqueosPostgres,
+    SesionOcupada,
+    clave,
+)
 from multiagente.persistencia.conexiones import ConexionDePool, abrir_pool
 from multiagente.persistencia.puntos_control import (
     abrir_checkpointer_compartido,
@@ -100,6 +107,10 @@ class ErrorOperacion(ValueError):
     """La operación no corresponde al estado de la sesión."""
 
 
+class SesionEnCurso(ErrorOperacion):
+    """Otra corrida está avanzando la sesión: no se puede actuar sobre ella hasta que termine."""
+
+
 class VistaSesion(BaseModel):
     """Lo que una interfaz muestra de una sesión.
 
@@ -110,6 +121,8 @@ class VistaSesion(BaseModel):
         error: Error del último nodo que falló, si lo hay.
         confirma_resumen: La pregunta pendiente es el resumen que confirma el cliente; responderla
             cierra la elicitación y lanza la síntesis, que tarda varios segundos.
+        en_curso: Una corrida, de este proceso o de otro, la está avanzando ahora: no hay que
+            reanudarla ni cerrarla, aunque tenga nodos pendientes.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -125,11 +138,12 @@ class VistaSesion(BaseModel):
     iteracion: int
     limite_iteraciones: int
     confirma_resumen: bool
+    en_curso: bool = False
 
     @property
     def detenida(self) -> bool:
         """Indica si la sesión espera que alguien la reanude, sin pausa humana pendiente."""
-        return self.pausa is None and bool(self.pendientes)
+        return not self.en_curso and self.pausa is None and bool(self.pendientes)
 
     @property
     def terminada(self) -> bool:
@@ -138,6 +152,9 @@ class VistaSesion(BaseModel):
 
     def describir(self) -> str:
         """Estado de la sesión en lenguaje de negocio, para listas y encabezados."""
+        if self.en_curso:
+            nodos = ", ".join(NOMBRES_DE_NODO.get(n, n) for n in self.pendientes)
+            return f"En curso: {nodos}" if nodos else "En curso"
         if self.pausa is not None:
             if self.pausa.punto == "final" and self.pausa.datos.get("escalado"):
                 return "Escalada: el tester no aprobó el módulo; espera la decisión de una persona"
@@ -163,6 +180,7 @@ class Operador:
         entorno: EntornoAislado | None = None,
         registro: RegistroPorSesion | None = None,
         tester: ConfiguracionTester | None = None,
+        bloqueos: Bloqueos | None = None,
     ) -> None:
         """Prepara el operador.
 
@@ -171,14 +189,28 @@ class Operador:
             entorno: Entorno aislado de las pruebas propias en N17; si se omite, el configurado.
             registro: Traza de llamadas; si se indica, cada llamada queda con su sesión.
             tester: Tiempo límite de las pruebas; si se omite, el configurado.
+            bloqueos: Una corrida a la vez por sesión; si se omiten, los de este proceso. Con
+                PostgreSQL, `BloqueosPostgres` los comparte con los demás procesos.
         """
         self.app = app
         self.entorno = entorno or EntornoAislado()
         self.registro = registro
         self.tester = tester or ConfiguracionTester()
+        self.bloqueos = bloqueos or BloqueosEnMemoria()
 
     def _en_sesion(self, id_sesion: str) -> AbstractContextManager[None]:
         return self.registro.en_sesion(id_sesion) if self.registro else nullcontext()
+
+    @contextmanager
+    def _exclusivo(self, id_sesion: str) -> Iterator[None]:
+        """Toma la sesión mientras se valida y se avanza, para que nadie la avance a la vez."""
+        try:
+            with self.bloqueos.exclusivo(id_sesion):
+                yield
+        except SesionOcupada as error:
+            raise SesionEnCurso(
+                f"{error} Espere a que termine o retómela después con `multiagente continuar`."
+            ) from error
 
     def _avanzar(self, id_sesion: str, respuesta: str | dict[str, Any] | None) -> Avance:
         with self._en_sesion(id_sesion):
@@ -217,7 +249,7 @@ class Operador:
         if not all(texto.strip() for texto in (cliente, proyecto, necesidad)):
             raise ErrorOperacion("El cliente, el proyecto y la necesidad son obligatorios.")
         id_sesion = id_sesion or str(uuid.uuid4())
-        with self._en_sesion(id_sesion):
+        with self._exclusivo(id_sesion), self._en_sesion(id_sesion):
             iniciar_sesion(self.app, cliente.strip(), proyecto.strip(), necesidad, id_sesion)
         return id_sesion
 
@@ -232,10 +264,11 @@ class Operador:
             El avance hasta la siguiente pausa.
 
         Raises:
-            ErrorOperacion: Si la sesión no espera una respuesta del cliente.
+            ErrorOperacion: Si la sesión no espera una respuesta del cliente o está en curso.
         """
-        self._pausa(id_sesion, ("dialogo",))
-        return self._avanzar(id_sesion, texto)
+        with self._exclusivo(id_sesion):
+            self._pausa(id_sesion, ("dialogo",))
+            return self._avanzar(id_sesion, texto)
 
     def decidir(
         self,
@@ -263,9 +296,8 @@ class Operador:
             El avance hasta la siguiente pausa o el final.
 
         Raises:
-            ErrorOperacion: Si la sesión no espera una decisión.
+            ErrorOperacion: Si la sesión no espera una decisión o está en curso.
         """
-        self._pausa(id_sesion, PUNTOS_DE_CONTROL)
         respuesta: dict[str, Any] = {"decision": decision.value, "revisor": revisor.strip()}
         if observaciones and observaciones.strip():
             respuesta["observaciones"] = observaciones.strip()
@@ -273,7 +305,9 @@ class Operador:
             respuesta["pruebas_propias"] = pruebas_propias.model_dump(mode="json")
         if destino is not None:
             respuesta["destino"] = destino.value
-        return self._avanzar(id_sesion, respuesta)
+        with self._exclusivo(id_sesion):
+            self._pausa(id_sesion, PUNTOS_DE_CONTROL)
+            return self._avanzar(id_sesion, respuesta)
 
     def cerrar(self, id_sesion: str, revisor: str, motivo: str) -> None:
         """Cierra una sesión sin módulo validado, desde una pausa o detenida por una falla.
@@ -288,28 +322,35 @@ class Operador:
             motivo: Por qué.
 
         Raises:
-            ErrorOperacion: Si la sesión ya terminó, o si falta el revisor o el motivo.
+            ErrorOperacion: Si la sesión ya terminó o está en curso, o si falta el revisor o el
+                motivo.
         """
-        vista = self.vista(id_sesion)
-        if vista.terminada:
-            raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
         if not revisor.strip() or not motivo.strip():
             raise ErrorOperacion("Para cerrar la sesión se necesitan el revisor y el motivo.")
-        desde = (
-            ESPERAS[vista.pausa.punto]
-            if vista.pausa
-            else "Detenida antes de "
-            + ", ".join(NOMBRES_DE_NODO.get(n, n) for n in vista.pendientes)
-        )
-        sesion = self.estado(id_sesion)["sesion"]
-        cierre = CierreSesion(
-            revisor=revisor.strip(), motivo=motivo.strip(), desde=desde, fecha=datetime.now(UTC)
-        )
-        cerrada = sesion.model_copy(update={"fase": Fase.CERRADA, "cierre": cierre})
-        with self._en_sesion(id_sesion):
-            self.app.update_state(
-                configuracion_hilo(id_sesion), {"sesion": cerrada}, as_node=Nodo.N17
+        with self._exclusivo(id_sesion):
+            vista = self._vista(id_sesion, ocupadas=set())
+            if vista.terminada:
+                raise ErrorOperacion(
+                    f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}."
+                )
+            desde = (
+                ESPERAS[vista.pausa.punto]
+                if vista.pausa
+                else "Detenida antes de "
+                + ", ".join(NOMBRES_DE_NODO.get(n, n) for n in vista.pendientes)
             )
+            sesion = self.estado(id_sesion)["sesion"]
+            cierre = CierreSesion(
+                revisor=revisor.strip(),
+                motivo=motivo.strip(),
+                desde=desde,
+                fecha=datetime.now(UTC),
+            )
+            cerrada = sesion.model_copy(update={"fase": Fase.CERRADA, "cierre": cierre})
+            with self._en_sesion(id_sesion):
+                self.app.update_state(
+                    configuracion_hilo(id_sesion), {"sesion": cerrada}, as_node=Nodo.N17
+                )
 
     def reanudar(self, id_sesion: str) -> Avance:
         """Reanuda una sesión detenida por una falla o por la interrupción del proceso (RF-28).
@@ -321,11 +362,12 @@ class Operador:
             El avance hasta la siguiente pausa o el final.
 
         Raises:
-            ErrorOperacion: Si la sesión no está detenida.
+            ErrorOperacion: Si la sesión no está detenida, por ejemplo porque está en curso.
         """
-        if not self.vista(id_sesion).detenida:
-            raise ErrorOperacion(f"La sesión {id_sesion} no está detenida.")
-        return self._avanzar(id_sesion, None)
+        with self._exclusivo(id_sesion):
+            if not self._vista(id_sesion, ocupadas=set()).detenida:
+                raise ErrorOperacion(f"La sesión {id_sesion} no está detenida.")
+            return self._avanzar(id_sesion, None)
 
     # Consulta -------------------------------------------------------------------------------
 
@@ -345,6 +387,14 @@ class Operador:
 
         Raises:
             ErrorOperacion: Si la sesión no existe.
+        """
+        return self._vista(id_sesion, self.bloqueos.ocupadas())
+
+    def _vista(self, id_sesion: str, ocupadas: set[int]) -> VistaSesion:
+        """Vista de la sesión; `ocupadas` son las claves de las sesiones en curso.
+
+        Dentro de su propio bloqueo, una operación pasa `ocupadas` vacío: la sesión que avanza
+        ella misma no cuenta como en curso.
         """
         instantanea = self.app.get_state(configuracion_hilo(id_sesion))
         valores = instantanea.values
@@ -373,6 +423,7 @@ class Operador:
                 and pausa.punto == "dialogo"
                 and conversacion.registro.por_preguntar == ["confirmacion"]
             ),
+            en_curso=clave(id_sesion) in ocupadas,
         )
 
     def sesiones(self) -> list[VistaSesion]:
@@ -380,10 +431,11 @@ class Operador:
 
         Omite los hilos sin estado de sesión, como uno que se cayó antes de abrirse.
         """
+        ocupadas = self.bloqueos.ocupadas()
         vistas = []
         for id_sesion in identificadores_de_sesion(self.app.checkpointer):
             try:
-                vistas.append(self.vista(id_sesion))
+                vistas.append(self._vista(id_sesion, ocupadas))
             except ErrorOperacion:
                 continue
         return vistas
@@ -525,4 +577,4 @@ def abrir_operador(configuracion: ConfiguracionInterfaces | None = None) -> Iter
     ):
         servicios = crear_servicios(ConexionDePool(pool), registro, entorno=entorno)
         app = construir_grafo(servicios).compile(checkpointer=puntos)
-        yield Operador(app, entorno, registro)
+        yield Operador(app, entorno, registro, bloqueos=BloqueosPostgres(pool))

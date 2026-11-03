@@ -188,6 +188,29 @@ def test_ofrece_reanudar_una_sesion_detenida_por_una_falla(tmp_path, capsys, ent
     assert op.vista(vista.id_sesion).fase is Fase.VALIDADO
 
 
+def test_no_ofrece_reanudar_ni_cerrar_una_sesion_en_curso(tmp_path, capsys, entorno_falso):
+    guion = guion_completo()
+    op = operador(ServiciosSimulados(fallos_veredicto=0, fallos_ejecucion=1), entorno_falso)
+    teclado = Teclado(
+        "Oficina", guion.proyecto, guion.necesidad, *guion.respuestas_cliente[:7], *["a", ""] * 2
+    )
+    teclado.entradas.append("s")  # Tras la falla de N11, no reanuda todavía.
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+    [vista] = op.sesiones()
+    capsys.readouterr()
+
+    # Otro proceso la está reanudando: la consola avisa sin pedir nada.
+    with op.bloqueos.exclusivo(vista.id_sesion):
+        continuar = comando(f"continuar {vista.id_sesion}")
+        assert ejecutar(op, continuar, configuracion(tmp_path), Teclado()) == 0
+        cerrar = comando(f"cerrar {vista.id_sesion}")
+        assert ejecutar(op, cerrar, configuracion(tmp_path), Teclado()) == 1
+    salida = capsys.readouterr().out
+    assert "En curso: N11 · ejecución en el entorno aislado. Otro proceso" in salida
+    assert "está en curso en otro proceso; ciérrela cuando termine" in salida
+    assert op.vista(vista.id_sesion).detenida
+
+
 def test_salir_deja_la_sesion_en_pausa_y_continuar_la_retoma(tmp_path, capsys, entorno_falso):
     guion = guion_completo()
     op = operador(ServiciosSimulados(), entorno_falso)

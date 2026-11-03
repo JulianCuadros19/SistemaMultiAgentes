@@ -33,6 +33,7 @@ from multiagente.interfaces.operacion import (
     NOMBRES_DE_NODO,
     ErrorOperacion,
     Operador,
+    SesionEnCurso,
     VistaSesion,
     detalle_de_prueba,
     detalle_de_recoleccion,
@@ -113,6 +114,10 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     @aplicacion.exception_handler(ErrorOperacion)
     def operacion_invalida(request: Request, error: ErrorOperacion) -> HTMLResponse:
         return pagina(request, "mensaje.html", 404, titulo="No se pudo", mensaje=str(error))
+
+    @aplicacion.exception_handler(SesionEnCurso)
+    def sesion_en_curso(request: Request, error: SesionEnCurso) -> HTMLResponse:
+        return pagina(request, "mensaje.html", 409, titulo="Sesión en curso", mensaje=str(error))
 
     @aplicacion.exception_handler(ErrorExportacion)
     def exportacion_invalida(request: Request, error: ErrorExportacion) -> HTMLResponse:
@@ -248,12 +253,22 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             return respuesta | {"fase": None, "estado": None, "nodo": None}
         nodo = vista.pendientes[0] if vista.pendientes else None
         return respuesta | {
+            "procesando": respuesta["procesando"] or vista.en_curso,
             "fase": vista.fase.value,
             "estado": vista.describir(),
             "nodo": NOMBRES_DE_NODO.get(nodo, nodo) if nodo else None,
         }
 
     # Acciones -------------------------------------------------------------------------------
+
+    def vista_libre(id_sesion: str) -> VistaSesion:
+        """Vista de la sesión para actuar sobre ella; rechaza la acción si está en curso."""
+        vista = operador.vista(id_sesion)
+        if vista.en_curso:
+            raise SesionEnCurso(
+                f"La sesión {id_sesion} está en curso: espere a que termine para actuar sobre ella."
+            )
+        return vista
 
     def volver(id_sesion: str, origen: str) -> RedirectResponse:
         if origen == "cliente":
@@ -267,7 +282,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
         origen: Annotated[str, Form()] = "operacion",
     ) -> RedirectResponse:
         """Entrega la respuesta del cliente; si confirma el resumen, lo acusa (RNF-08)."""
-        vista = operador.vista(id_sesion)
+        vista = vista_libre(id_sesion)
         if texto.strip():
             descripcion = (
                 ACUSE_CONFIRMACION
@@ -290,7 +305,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
 
         En N17, devolver el módulo a un agente es rechazarlo con ese destino.
         """
-        vista = operador.vista(id_sesion)
+        vista = vista_libre(id_sesion)
         punto = vista.pausa.punto if vista.pausa else ""
         if destino is not None:
             decision = Decision.RECHAZADO
@@ -326,7 +341,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
         confirmo: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         """Cierra sin módulo validado una sesión en pausa o detenida; queda en la trazabilidad."""
-        vista = operador.vista(id_sesion)
+        vista = vista_libre(id_sesion)
         if vista.terminada:
             raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
         if not motivo.strip() or not confirmo:
@@ -362,6 +377,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     @aplicacion.post("/sesiones/{id_sesion}/reanudar")
     def reanudar(id_sesion: str) -> RedirectResponse:
         """Reanuda una sesión detenida desde su último punto de control (RF-28)."""
+        vista_libre(id_sesion)
         tareas.lanzar(
             id_sesion,
             "Reanudando desde el último punto de control",

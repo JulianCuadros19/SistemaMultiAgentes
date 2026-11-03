@@ -79,6 +79,18 @@
 {% if tarea %}
   {{ comunes.procesando(id_sesion, tarea) }}
 
+{% elif vista and vista.en_curso %}
+<section class="aviso procesando" data-sesion="{{ id_sesion }}" aria-live="polite">
+  <div class="girador" aria-hidden="true"></div>
+  <div>
+    <strong>{{ vista.describir() }}</strong>
+    <div class="detalle">
+      Otro proceso la está avanzando; esta página se actualiza sola cuando termine.
+      <span data-nodo></span>
+    </div>
+  </div>
+</section>
+
 {% elif vista and vista.detenida %}
 <section class="aviso error">
   <strong>{{ vista.describir() }}.</strong>

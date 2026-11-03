@@ -41,6 +41,7 @@ from multiagente.interfaces.operacion import (
     ACUSE_CONFIRMACION,
     ErrorOperacion,
     Operador,
+    SesionEnCurso,
     VistaSesion,
     abrir_operador,
     detalle_de_prueba,
@@ -356,6 +357,12 @@ def operar(
         except ErrorOperacion as error:
             print(error)
             return None
+        if vista.en_curso:
+            print(
+                f"\n{vista.describir()}. Otro proceso la está avanzando: no la reanude ni la "
+                f"cierre a la vez. Cuando termine, retómela con: {continuar}"
+            )
+            return vista
         if vista.detenida:
             print(f"\n{vista.describir()}.")
             if vista.error:
@@ -622,6 +629,10 @@ def _cerrar_sesion(operador: Operador, id_sesion: str, leer: Callable[[str], str
     vista = operador.vista(id_sesion)
     if vista.terminada:
         raise ErrorOperacion(f"La sesión {id_sesion} ya terminó: {vista.describir().lower()}.")
+    if vista.en_curso:
+        raise SesionEnCurso(
+            f"La sesión {id_sesion} está en curso en otro proceso; ciérrela cuando termine."
+        )
     print(f"Sesión {id_sesion} · {vista.cliente} · {vista.proyecto}\n{vista.describir()}.")
     revisor = REVISORES.get(vista.pausa.punto, "Analista") if vista.pausa else "Analista"
     if cierre := pedir_cierre(leer, revisor):
