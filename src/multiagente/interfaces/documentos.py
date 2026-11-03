@@ -22,6 +22,7 @@ from multiagente.orquestador.estado import (
     Validacion,
     VersionCodigo,
 )
+from multiagente.sandbox.requisitos import VersionesProbadas, nombre_canonico
 
 
 class ErrorExportacion(ValueError):
@@ -294,37 +295,58 @@ def _registro_con_preguntas(registro: str, capacidades: Sequence[str]) -> str:
 
 
 def requirements_del_modulo(
-    especificacion: EspecificacionDiseno, requisitos: Mapping[str, str]
+    especificacion: EspecificacionDiseno, probadas: VersionesProbadas
 ) -> str:
-    """`requirements.txt` del módulo: sus dependencias declaradas y pytest, con versión fija.
+    """`requirements.txt` del módulo: sus dependencias declaradas, las de ellas y pytest.
+
+    Todas llevan la versión con que el tester probó el módulo en el entorno aislado, también las
+    transitivas, para que `pip install -r requirements.txt` reproduzca ese entorno.
 
     Args:
         especificacion: Especificación aprobada, con las dependencias externas.
-        requisitos: Línea de requisito de cada librería del entorno aislado, por nombre.
+        probadas: Versiones del entorno aislado (`sandbox.versiones_probadas`).
 
     Returns:
-        El contenido del archivo. Una librería sin versión conocida queda sin fijar.
+        El contenido del archivo. Una librería fuera del entorno aislado queda sin fijar.
     """
-    nombres = [d.paquete.lower().replace("_", "-") for d in especificacion.dependencias_externas]
-    lineas = [requisitos.get(nombre, nombre) for nombre in dict.fromkeys([*nombres, "pytest"])]
-    encabezado = (
-        "# Dependencias del módulo, con las versiones con que el tester lo probó en el entorno\n"
-        "# aislado. Se instalan con: pip install -r requirements.txt\n"
+    declaradas = list(
+        dict.fromkeys(nombre_canonico(d.paquete) for d in especificacion.dependencias_externas)
     )
-    return encabezado + "\n".join(lineas) + "\n"
+    transitivas = sorted(
+        {dependencia for nombre in declaradas for dependencia in probadas.cierres.get(nombre, ())}
+        - set(declaradas)
+    )
+    de_pytest = [
+        dependencia
+        for dependencia in probadas.cierres.get("pytest", ())
+        if dependencia not in {*declaradas, *transitivas}
+    ]
+
+    def fijada(nombre: str) -> str:
+        return probadas.requisitos.get(nombre) or probadas.versiones.get(nombre, nombre)
+
+    lineas = [
+        "# Dependencias del módulo y las de ellas, con las versiones con que el tester lo probó",
+        f"# en el entorno aislado (Python {PYTHON} en Linux). Se instalan con:",
+        "# pip install -r requirements.txt",
+        *(fijada(nombre) for nombre in [*declaradas, *transitivas]),
+    ]
+    if "pytest" not in declaradas:
+        lineas += ["# Para las pruebas.", fijada("pytest"), *(fijada(n) for n in de_pytest)]
+    return "\n".join(lineas) + "\n"
 
 
 def paquete_del_modulo(
     estado: EstadoGrafo,
     historial: Sequence[tuple[VersionCodigo, Validacion]],
-    requisitos: Mapping[str, str] | None = None,
+    probadas: VersionesProbadas | None = None,
 ) -> dict[str, str]:
     """Entregables de un módulo validado, por ruta relativa (RF-35).
 
     Args:
         estado: Estado de una sesión en fase `validado`.
         historial: Cada versión del módulo con su validación.
-        requisitos: Versiones del entorno aislado (`sandbox.requisitos_del_entorno`), para el
+        probadas: Versiones del entorno aislado (`sandbox.versiones_probadas`), para el
             `requirements.txt`; sin ellas, las dependencias quedan sin versión fija.
 
     Returns:
@@ -351,7 +373,9 @@ def paquete_del_modulo(
         # Las versiones de antes de componer el documento traen las secciones que redactó el modelo.
         paquetes = [dependencia.paquete for dependencia in especificacion.dependencias_externas]
         archivos[f"codigo/{RUTA_USO}"] = componer_uso(uso, paquetes)
-    archivos["codigo/requirements.txt"] = requirements_del_modulo(especificacion, requisitos or {})
+    archivos["codigo/requirements.txt"] = requirements_del_modulo(
+        especificacion, probadas or VersionesProbadas()
+    )
     leeme = "\n".join(
         [
             f"# {sesion.proyecto} · módulo validado",

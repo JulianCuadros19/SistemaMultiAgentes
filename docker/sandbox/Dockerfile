@@ -12,11 +12,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-COPY requisitos.txt /opt/sandbox/requisitos.txt
+COPY requisitos.txt versiones.txt cierres.py /opt/sandbox/
 
-# Las versiones resueltas, también las transitivas, quedan en la imagen para la traza.
-RUN pip install --no-cache-dir -r /opt/sandbox/requisitos.txt \
-    && pip freeze > /opt/sandbox/versiones.txt \
+# Las dependencias transitivas se restringen a las versiones de versiones.txt, con que se probaron
+# los módulos, así la imagen se reconstruye igual (ADR-0014). La imagen guarda lo que quedó
+# instalado y el cierre de dependencias de cada requisito: una prueba con Docker los compara con
+# los versionados, y scripts/congelar_entorno_aislado.py los copia cuando cambia requisitos.txt.
+RUN pip install --no-cache-dir -r /opt/sandbox/requisitos.txt -c /opt/sandbox/versiones.txt \
+    && pip check \
+    && pip freeze > /opt/sandbox/instaladas.txt \
+    && python /opt/sandbox/cierres.py /opt/sandbox/requisitos.txt > /opt/sandbox/cierres.json \
     && useradd --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin sandbox
 
 USER 10001:10001

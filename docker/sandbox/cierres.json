@@ -1,0 +1,54 @@
+{
+  "fastapi": [
+    "annotated-doc",
+    "annotated-types",
+    "anyio",
+    "idna",
+    "pydantic",
+    "pydantic-core",
+    "starlette",
+    "typing-extensions",
+    "typing-inspection"
+  ],
+  "numpy": [],
+  "openpyxl": [
+    "et-xmlfile"
+  ],
+  "pandas": [
+    "numpy",
+    "python-dateutil",
+    "six"
+  ],
+  "psycopg": [
+    "psycopg-binary",
+    "typing-extensions"
+  ],
+  "pydantic": [
+    "annotated-types",
+    "pydantic-core",
+    "typing-extensions",
+    "typing-inspection"
+  ],
+  "pytest": [
+    "iniconfig",
+    "packaging",
+    "pluggy",
+    "pygments"
+  ],
+  "sqlalchemy": [
+    "greenlet",
+    "typing-extensions"
+  ],
+  "typer": [
+    "annotated-doc",
+    "markdown-it-py",
+    "mdurl",
+    "pygments",
+    "rich",
+    "shellingham"
+  ],
+  "uvicorn": [
+    "click",
+    "h11"
+  ]
+}

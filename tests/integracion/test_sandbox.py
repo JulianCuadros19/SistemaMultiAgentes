@@ -4,13 +4,32 @@ Requiere Docker y la imagen: `docker compose --profile sandbox build sandbox`, y
 `pytest -m sandbox`.
 """
 
+import json
 import subprocess
 
 import pytest
 
 from multiagente.sandbox.ejecutor import detalle_de_falla
+from multiagente.sandbox.requisitos import nombre_canonico, versiones_probadas
 
 pytestmark = pytest.mark.sandbox
+
+
+def test_la_imagen_tiene_las_versiones_y_los_cierres_versionados(entorno_aislado):
+    # Si falla tras cambiar requisitos.txt: python scripts/congelar_entorno_aislado.py
+    probadas = versiones_probadas()
+    instaladas = entorno_aislado.ejecutar({}, ["cat", "/opt/sandbox/instaladas.txt"])
+    assert instaladas.exito, instaladas.errores
+    en_la_imagen = {
+        nombre_canonico(linea.split("==", 1)[0]): linea
+        for linea in instaladas.salida.splitlines()
+        if linea.strip()
+    }
+    assert en_la_imagen == dict(probadas.versiones)
+    cierres = entorno_aislado.ejecutar({}, ["cat", "/opt/sandbox/cierres.json"])
+    assert cierres.exito, cierres.errores
+    cierres_imagen = {nombre: tuple(d) for nombre, d in json.loads(cierres.salida).items()}
+    assert cierres_imagen == dict(probadas.cierres)
 
 
 def test_imagen_con_python_311_y_el_catalogo(entorno_aislado):

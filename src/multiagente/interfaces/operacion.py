@@ -52,7 +52,7 @@ from multiagente.persistencia.puntos_control import (
     identificadores_de_sesion,
 )
 from multiagente.sandbox.ejecutor import EntornoAislado, detalle_de_falla
-from multiagente.sandbox.requisitos import requisitos_del_entorno
+from multiagente.sandbox.requisitos import versiones_probadas
 
 PUNTOS_DE_CONTROL = tuple(punto.value for punto in PuntoControl)
 """Pausas en que decide una persona del equipo: N6, N9 y N17."""
@@ -403,7 +403,7 @@ class Operador:
             ErrorExportacion: Si la sesión no terminó con un módulo validado.
         """
         return paquete_del_modulo(
-            self.estado(id_sesion), self.historial(id_sesion), requisitos_del_entorno()
+            self.estado(id_sesion), self.historial(id_sesion), versiones_probadas()
         )
 
     # Pruebas propias en N17 -----------------------------------------------------------------
