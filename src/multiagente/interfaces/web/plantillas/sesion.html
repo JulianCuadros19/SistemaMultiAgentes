@@ -22,6 +22,7 @@
     {% if final %}
     <button name="destino" value="desarrollador" class="secundario">Devolver al desarrollador</button>
     <button name="destino" value="arquitecto" class="secundario">Devolver al arquitecto</button>
+    <button name="destino" value="requerimientos" class="secundario">Enmendar los requerimientos</button>
     {% else %}
     <button name="decision" value="rechazado" class="secundario">Rechazar con observaciones</button>
     {% endif %}
@@ -31,6 +32,12 @@
     El desarrollador corrige el código; el arquitecto rehace el diseño, que se revisa de nuevo en
     N9. Devolverlo abre un ciclo de corrección nuevo, con sus observaciones y los hallazgos del
     tester.
+  </p>
+  <p class="detalle">
+    Si encontró una regla que los requerimientos no tienen, escríbala en las observaciones, con un
+    ejemplo con cifras si lo tiene, y pida una enmienda: el elicitador la incorpora a los
+    requerimientos, el analista la aprueba en N6 y el desarrollador corrige el módulo con ella,
+    sin cambiar el diseño.
   </p>
   {% endif %}
 </form>
@@ -129,6 +136,22 @@
 {% elif pausa.punto == 'requerimientos' %}
 <section class="tarjeta">
   <h2>N6 · Requerimientos para aprobar</h2>
+  {% if enmienda %}
+  <div class="aviso">
+    <strong>Enmienda pedida en la aprobación final</strong> por {{ enmienda.revisor }} el
+    {{ enmienda.fecha.strftime('%Y-%m-%d %H:%M') }} UTC:
+    <pre class="texto">{{ enmienda.texto }}</pre>
+    <p>Requerimientos enmendados:
+      {% for rf, version in enmienda.requerimientos.items() %}{{ rf }} v{{ version }}{% if not loop.last %}, {% endif %}{% else %}ninguno todavía{% endfor %}.</p>
+    {% for observacion in enmienda.observaciones_analista %}
+    <p class="detalle">Observación anterior del analista: {{ observacion }}</p>
+    {% endfor %}
+    <p class="detalle">
+      Si la aprueba, el desarrollador corrige el módulo con la enmienda, sin cambiar el diseño; si
+      la rechaza, el elicitador la rehace con sus observaciones.
+    </p>
+  </div>
+  {% endif %}
   <h3>Historias de usuario</h3>
   <ul>
     {% for historia in historias %}
@@ -142,7 +165,7 @@
     {% endfor %}
   </ul>
   {% for rf in requerimientos %}
-  <h3>{{ rf.id_requerimiento }} · versión {{ rf.version }}</h3>
+  <h3>{{ rf.id_requerimiento }} · versión {{ rf.version }}{% if enmienda and rf.id_requerimiento in enmienda.requerimientos %} · enmendado desde N17{% endif %}</h3>
   <table class="tabla ficha">
     <tr><th>Título</th><td>Como {{ rf.titulo.como }}, quiero {{ rf.titulo.quiero }}, para {{ rf.titulo.para }}</td></tr>
     <tr><th>Proyecto · módulo</th><td>{{ rf.proyecto }} · {{ rf.modulo }}</td></tr>
@@ -265,8 +288,9 @@
   {% if escalado %}
   <p class="aviso error">
     La sesión escaló: tras {{ vista.iteracion }} iteraciones del ciclo de corrección, el tester no
-    aprobó el módulo. No puede aprobarse: devuélvalo al desarrollador o al arquitecto con
-    observaciones, lo que abre un ciclo nuevo, o cierre la sesión.
+    aprobó el módulo. No puede aprobarse: devuélvalo con observaciones al desarrollador o al
+    arquitecto, o pida una enmienda de los requerimientos, lo que abre un ciclo nuevo; o cierre la
+    sesión.
   </p>
   {% else %}
   <p class="aviso">

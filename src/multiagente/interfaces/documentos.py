@@ -14,6 +14,7 @@ from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.esquemas.requerimiento import HistoriaUsuario, RequerimientoFormal
 from multiagente.orquestador.estado import (
     Emisor,
+    Enmienda,
     EstadoGrafo,
     Fase,
     PruebasPropias,
@@ -38,10 +39,31 @@ def _enunciado(como: str, quiero: str, para: str) -> str:
     return f"Como {como}, quiero {quiero}, para {para}."
 
 
+def _linea(texto: str) -> str:
+    return " ".join(texto.split())
+
+
+def origen_de_enmienda(enmienda: Enmienda, id_requerimiento: str) -> str:
+    """Origen de un requerimiento enmendado desde N17, en una línea (ADR-0015).
+
+    Args:
+        enmienda: Enmienda que cambió el requerimiento.
+        id_requerimiento: Requerimiento enmendado.
+
+    Returns:
+        `v0.2 · enmendado desde N17 por … el … UTC: texto de la enmienda`.
+    """
+    return (
+        f"v{enmienda.requerimientos[id_requerimiento]} · enmendado desde N17 por "
+        f"{enmienda.revisor} el {enmienda.fecha:%Y-%m-%d %H:%M} UTC: {_linea(enmienda.texto)}"
+    )
+
+
 def requerimientos_md(
     historias: Sequence[HistoriaUsuario],
     requerimientos: Sequence[RequerimientoFormal],
     referencias: Mapping[str, Sequence[str]] | None = None,
+    enmiendas: Sequence[Enmienda] = (),
 ) -> str:
     """Documento de las historias y los requerimientos formales en el formato del Anexo A.
 
@@ -49,6 +71,7 @@ def requerimientos_md(
         historias: Backlog de historias de usuario (Tabla 27).
         requerimientos: Requerimientos formales (Tabla 28).
         referencias: Fragmentos de contexto que sustentan cada requerimiento (RF-04).
+        enmiendas: Enmiendas desde N17; cada requerimiento que cambiaron lleva su origen.
 
     Returns:
         El documento en Markdown.
@@ -90,9 +113,15 @@ def requerimientos_md(
             f"{dato.nombre} ({dato.tipo}{f', {dato.formato}' if dato.formato else ''})"
             for dato in descripcion.datos_salida
         )
+        lineas += ["", f"## {requerimiento.id_requerimiento} · versión {requerimiento.version}"]
+        origenes = [
+            origen_de_enmienda(enmienda, requerimiento.id_requerimiento)
+            for enmienda in enmiendas
+            if requerimiento.id_requerimiento in enmienda.requerimientos
+        ]
+        if origenes:
+            lineas += ["", *(f"- {origen}" for origen in origenes)]
         lineas += [
-            "",
-            f"## {requerimiento.id_requerimiento} · versión {requerimiento.version}",
             "",
             "| Campo | Contenido |",
             "|---|---|",
@@ -295,6 +324,25 @@ def trazabilidad_md(
         f"{_enunciado(r.titulo.como, r.titulo.quiero, r.titulo.para)}"
         for r in requerimientos.requerimientos
     ] or ["Aún no hay requerimientos."]
+    lineas += ["", "## Enmiendas", ""]
+    enmiendas = [(enmienda, "aprobada") for enmienda in requerimientos.enmiendas]
+    if requerimientos.enmienda is not None:
+        enmiendas.append((requerimientos.enmienda, "en curso"))
+    for enmienda, situacion in enmiendas:
+        enmendados = ", ".join(
+            f"{id_requerimiento} v{version}"
+            for id_requerimiento, version in enmienda.requerimientos.items()
+        )
+        lineas.append(
+            f"- {enmienda.fecha:%Y-%m-%d %H:%M} UTC · {_linea(enmienda.revisor)} · {situacion} · "
+            f"enmienda {enmendados or 'ningún requerimiento'}: {_linea(enmienda.texto)}"
+        )
+        lineas += [
+            f"  - Observación del analista: {_linea(observacion)}"
+            for observacion in enmienda.observaciones_analista
+        ]
+    if not enmiendas:
+        lineas.append("Ninguna: los requerimientos no se enmendaron desde la aprobación final.")
     especificacion = estado["arquitectura"].especificacion
     lineas += ["", "## Arquitectura", ""]
     lineas.append(
@@ -418,7 +466,7 @@ def paquete_del_modulo(
             "- `especificacion.md` y `especificacion.json`: especificación de diseño (Anexo B).",
             "- `codigo/`: módulos, pruebas, `USO.md` y `requirements.txt`.",
             "- `validacion.md`: reporte de validación del tester.",
-            "- `trazabilidad.md`: conversación, decisiones humanas y versiones.",
+            "- `trazabilidad.md`: conversación, decisiones humanas, enmiendas y versiones.",
             "",
             "## Cómo ponerlo en marcha",
             "",
@@ -444,7 +492,10 @@ def paquete_del_modulo(
             }
         ),
         "requerimientos.md": requerimientos_md(
-            requerimientos.historias, requerimientos.requerimientos, requerimientos.referencias
+            requerimientos.historias,
+            requerimientos.requerimientos,
+            requerimientos.referencias,
+            requerimientos.enmiendas,
         ),
         "decision_arquitectura.md": _registro_con_preguntas(
             arquitectura.registro_decision, arquitectura.capacidades_no_cubiertas

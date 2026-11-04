@@ -15,7 +15,7 @@ from multiagente.interfaces.operacion import (
 )
 from multiagente.llm.costos import ConsumoTokens
 from multiagente.llm.traza import SESION_ACTUAL, RegistroLlamada, RegistroPorSesion
-from multiagente.orquestador.estado import Decision, Fase, PuntoControl
+from multiagente.orquestador.estado import Decision, Destino, Fase, PuntoControl
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.servicios import Servicios
 from multiagente.orquestador.simulacion import (
@@ -85,6 +85,43 @@ def test_flujo_completo_con_pruebas_propias_en_la_aprobacion_final(tmp_path, ent
     assert "| final | aprobado | Laura |" in op.trazabilidad(id_sesion)
     assert "1 de 1 pasan" in op.trazabilidad(id_sesion)
     assert set(op.exportar(id_sesion)) >= {"LEEME.md", "requerimientos.json", "validacion.md"}
+
+
+def test_una_regla_descubierta_en_n17_entra_a_los_requerimientos_exportados(
+    tmp_path, entorno_falso
+):
+    # Como en el predial (ADR-0015): la prueba propia de la persona destapa una regla nueva.
+    op = operador(ServiciosSimulados(fallos_veredicto=0), tmp_path, entorno_falso)
+    guion = guion_completo()
+    id_sesion = op.iniciar("Oficina de catastro", guion.proyecto, guion.necesidad)
+    hasta(op, id_sesion, "final", guion.respuestas_cliente)
+    fallidas = op.probar_propias(id_sesion, {"tests/test_mio.py": PRUEBA_QUE_FALLA})
+    regla = "El radicado debe incluir el año de la solicitud"
+    op.decidir(id_sesion, Decision.RECHAZADO, "Laura", regla, fallidas, Destino.REQUERIMIENTOS)
+
+    vista = op.vista(id_sesion)
+    assert vista.fase is Fase.ELICITACION
+    assert vista.describir() == "Espera la aprobación de los requerimientos (N6)"
+    assert vista.pausa.datos["enmienda"]["texto"] == regla
+    assert f"· Laura · en curso · enmienda RF-01 v0.2: {regla}" in op.trazabilidad(id_sesion)
+
+    op.decidir(id_sesion, Decision.APROBADO, "Analista")
+    assert op.vista(id_sesion).pausa.datos["version"] == 2
+    pasan = op.probar_propias(id_sesion, {"tests/test_mio.py": PRUEBA_QUE_PASA})
+    op.decidir(id_sesion, Decision.APROBADO, "Laura", pruebas_propias=pasan)
+
+    paquete = op.exportar(id_sesion)
+    rf_01 = json.loads(paquete["requerimientos.json"])["requerimientos"][0]
+    assert rf_01["version"] == "0.2"
+    assert regla in rf_01["descripcion"]["regla_negocio"]
+    assert rf_01["criterios_aceptacion"][-1]["id"] == "ESC-03"
+    assert (
+        "## RF-01 · versión 0.2\n\n- v0.2 · enmendado desde N17 por Laura el "
+        in (paquete["requerimientos.md"])
+    )
+    trazabilidad = paquete["trazabilidad.md"]
+    assert f"· Laura · aprobada · enmienda RF-01 v0.2: {regla}" in trazabilidad
+    assert "| final | rechazado | Laura |" in trazabilidad
 
 
 def test_el_error_de_recoleccion_indica_el_archivo_y_el_motivo():

@@ -1,8 +1,9 @@
 """Interfaz de consola: el comando `multiagente` y el bucle con que una persona opera una sesión.
 
 La persona responde como cliente y decide en los tres puntos de control; en N17 puede revisar el
-código y ejecutar pruebas propias en el entorno aislado (RF-38), y devolver el módulo al
-desarrollador o al arquitecto. Una sesión que no debe seguir se cierra sin módulo validado desde
+código y ejecutar pruebas propias en el entorno aislado (RF-38), devolver el módulo al
+desarrollador o al arquitecto, o pedir que el elicitador enmiende los requerimientos con una regla
+nueva (ADR-0015). Una sesión que no debe seguir se cierra sin módulo validado desde
 cualquier pausa o tras una falla. Todo pasa por el `Operador`, igual que en la web, de modo que
 ambas interfaces aplican las mismas reglas.
 
@@ -53,6 +54,7 @@ from multiagente.orquestador.ejecucion import Avance
 from multiagente.orquestador.estado import (
     Decision,
     Destino,
+    Enmienda,
     PruebasPropias,
     RecorridoEscenario,
     VersionCodigo,
@@ -74,14 +76,37 @@ REPORTE = "REPORTE_VALIDACION.md"
 # Presentación de los puntos de control ------------------------------------------------------
 
 
+def mostrar_enmienda(enmienda: Enmienda) -> None:
+    """Imprime la enmienda en curso desde N17: quién la pidió, qué dice y qué cambió (ADR-0015)."""
+    print(
+        f"Enmienda pedida en la aprobación final por {enmienda.revisor} el "
+        f"{enmienda.fecha:%Y-%m-%d %H:%M} UTC:\n  {enmienda.texto}"
+    )
+    enmendados = ", ".join(f"{rf} v{version}" for rf, version in enmienda.requerimientos.items())
+    print(f"Requerimientos enmendados: {enmendados or 'ninguno todavía'}.")
+    for observacion in enmienda.observaciones_analista:
+        print(f"Observación anterior del analista: {observacion}")
+    print(
+        "Si la aprueba, el desarrollador corrige el módulo con la enmienda, sin cambiar el diseño; "
+        "si la rechaza, el elicitador la rehace con sus observaciones.\n"
+    )
+
+
 def mostrar_requerimientos(datos: dict[str, Any]) -> None:
-    """Imprime los artefactos que la persona revisa en N6, en el formato del Anexo A."""
+    """Imprime los artefactos que la persona revisa en N6, en el formato del Anexo A.
+
+    Durante una enmienda desde N17, muestra antes la enmienda en curso.
+    """
     print("\n=== Punto de control N6: requerimientos ===\n")
+    enmienda = Enmienda.model_validate(datos["enmienda"]) if datos.get("enmienda") else None
+    if enmienda is not None:
+        mostrar_enmienda(enmienda)
     print(
         requerimientos_md(
             [HistoriaUsuario.model_validate(historia) for historia in datos["historias"]],
             [RequerimientoFormal.model_validate(r) for r in datos["requerimientos"]],
             datos["referencias"],
+            [enmienda] if enmienda else (),
         )
     )
     if datos["defectos"]:
@@ -134,14 +159,17 @@ def mostrar_validacion(datos: dict[str, Any]) -> None:
     if datos.get("escalado"):
         print(
             f"La sesión escaló: tras {datos['iteracion']} iteraciones del ciclo de corrección, el "
-            "tester no aprobó el módulo. No puede aprobarse: devuélvalo al desarrollador o al "
-            "arquitecto con observaciones, lo que abre un ciclo nuevo, o cierre la sesión."
+            "tester no aprobó el módulo. No puede aprobarse: devuélvalo con observaciones al "
+            "desarrollador o al arquitecto, o pida una enmienda de los requerimientos, lo que abre "
+            "un ciclo nuevo; o cierre la sesión."
         )
     else:
         print(
             f"El tester lo aprobó en la iteración {datos['iteracion']} de "
             f"{datos['limite_iteraciones']} del ciclo de corrección. Si lo devuelve, el agente "
-            "corrige con sus observaciones y los hallazgos del tester, en un ciclo nuevo."
+            "corrige con sus observaciones y los hallazgos del tester, en un ciclo nuevo. Si "
+            "encontró una regla que los requerimientos no tienen, pida una enmienda: el elicitador "
+            "la incorpora y el analista la aprueba antes de que el desarrollador corrija."
         )
 
 
@@ -506,9 +534,10 @@ class RevisorPorTeclado:
     ) -> DecisionHumana | CierreHumano | None:
         """Ofrece las opciones del punto de control hasta que la persona decide o sale.
 
-        En N17, rechazar devuelve el módulo al desarrollador y [d]iseño, al arquitecto. Si la
-        aprobación está bloqueada (requerimientos vacíos, especificación con errores o sesión
-        escalada), no se ofrece.
+        En N17, rechazar devuelve el módulo al desarrollador, [d]iseño al arquitecto y
+        [e]nmendar pide al elicitador una enmienda de los requerimientos. Si la aprobación está
+        bloqueada (requerimientos vacíos, especificación con errores o sesión escalada), no se
+        ofrece.
         """
         punto, datos = vista.pausa.punto, vista.pausa.datos
         revisor = REVISORES[punto]
@@ -520,7 +549,11 @@ class RevisorPorTeclado:
         pruebas: PruebasPropias | None = None
         opciones = [] if bloqueo else ["[a]probar"]
         if final:
-            opciones += ["[r]echazar: corrige el desarrollador", "[d]iseño: rediseña el arquitecto"]
+            opciones += [
+                "[r]echazar: corrige el desarrollador",
+                "[d]iseño: rediseña el arquitecto",
+                "[e]nmendar los requerimientos",
+            ]
         else:
             opciones.append("[r]echazar")
         if con_version:
@@ -532,11 +565,17 @@ class RevisorPorTeclado:
             if eleccion == "a" and not bloqueo:
                 return DecisionHumana(Decision.APROBADO, self._nombre(revisor), None, pruebas)
             if eleccion == "r" and not final:
-                return self._rechazo(revisor, AGENTES_DEL_RECHAZO[punto], pruebas, None)
+                pedido = f"Observaciones para el {AGENTES_DEL_RECHAZO[punto]} (qué debe cambiar)"
+                return self._rechazo(revisor, pedido, pruebas, None)
             if eleccion == "r" and final:
-                return self._rechazo(revisor, "desarrollador", pruebas, Destino.DESARROLLADOR)
+                pedido = "Observaciones para el desarrollador (qué debe cambiar)"
+                return self._rechazo(revisor, pedido, pruebas, Destino.DESARROLLADOR)
             if eleccion == "d" and final:
-                return self._rechazo(revisor, "arquitecto", pruebas, Destino.ARQUITECTO)
+                pedido = "Observaciones para el arquitecto (qué debe cambiar)"
+                return self._rechazo(revisor, pedido, pruebas, Destino.ARQUITECTO)
+            if eleccion == "e" and final:
+                pedido = "Regla nueva para los requerimientos (y un ejemplo con cifras, si lo hay)"
+                return self._rechazo(revisor, pedido, pruebas, Destino.REQUERIMIENTOS)
             if eleccion == "p" and con_version:
                 pruebas = self._probar(operador, vista) or pruebas
             elif eleccion == "c" and con_version:
@@ -552,7 +591,7 @@ class RevisorPorTeclado:
     def _rechazo(
         self,
         revisor: str,
-        agente: str,
+        pedido: str,
         pruebas: PruebasPropias | None,
         destino: Destino | None,
     ) -> DecisionHumana:
@@ -560,10 +599,7 @@ class RevisorPorTeclado:
         if sugeridas:
             print(f"Observaciones sugeridas por sus pruebas:\n{sugeridas}")
         indicacion = " (Enter: usar las sugeridas)" if sugeridas else ""
-        observaciones = (
-            self.leer(f"Observaciones para el {agente} (qué debe cambiar){indicacion}: ").strip()
-            or sugeridas
-        )
+        observaciones = self.leer(f"{pedido}{indicacion}: ").strip() or sugeridas
         return DecisionHumana(
             Decision.RECHAZADO, self._nombre(revisor), observaciones or None, pruebas, destino
         )

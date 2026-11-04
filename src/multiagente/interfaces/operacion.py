@@ -290,7 +290,8 @@ class Operador:
             revisor: Nombre de quien decide.
             observaciones: Qué debe cambiar el agente anterior; obligatorias al rechazar.
             pruebas_propias: Pruebas que la persona ejecutó en N17 (RF-38).
-            destino: Solo al rechazar en N17: el desarrollador (por defecto) o el arquitecto.
+            destino: Solo al rechazar en N17: el desarrollador (por defecto), el arquitecto o
+                los requerimientos, que el elicitador enmienda con las observaciones.
 
         Returns:
             El avance hasta la siguiente pausa o el final.

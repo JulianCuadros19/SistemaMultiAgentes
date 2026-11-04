@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -32,7 +33,7 @@ from multiagente.orquestador.ejecucion import (
     iniciar_sesion,
     validaciones,
 )
-from multiagente.orquestador.estado import RecorridoEscenario
+from multiagente.orquestador.estado import Enmienda, RecorridoEscenario
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -73,6 +74,32 @@ def test_requerimientos_en_el_formato_del_anexo_a():
     assert "| ESC-03 · Escalamiento por límite de iteraciones | DADO QUE" in documento
     assert "| Requerimiento relacionado | RF-19, RF-21, RF-24, RF-26 |" in documento
     assert "- eli-003 v1.1 · Plantilla" in documento
+
+
+def test_cada_requerimiento_enmendado_lleva_su_origen():
+    fecha = datetime(2026, 11, 4, 9, 30, tzinfo=UTC)
+    enmiendas = [
+        Enmienda(
+            texto="Los abonos se reversan\ndel último al primero",
+            revisor="Laura",
+            fecha=fecha,
+            requerimientos={"RF-27": "1.1"},
+        ),
+        Enmienda(
+            texto="Otra regla", revisor="Julián", fecha=fecha, requerimientos={"RF-01": "0.2"}
+        ),
+        Enmienda(texto="Tercera", revisor="Ana", fecha=fecha, requerimientos={"RF-27": "1.2"}),
+    ]
+    documento = requerimientos_md(backlog(), [rf27()], enmiendas=enmiendas)
+    assert (
+        "## RF-27 · versión 1.0\n\n"
+        "- v1.1 · enmendado desde N17 por Laura el 2026-11-04 09:30 UTC: Los abonos se "
+        "reversan del último al primero\n"
+        "- v1.2 · enmendado desde N17 por Ana el 2026-11-04 09:30 UTC: Tercera\n\n"
+        "| Campo | Contenido |"
+    ) in documento
+    assert "Julián" not in documento
+    assert "enmendado" not in requerimientos_md(backlog(), [rf27()])
 
 
 def test_especificacion_en_el_formato_del_anexo_b():
@@ -131,6 +158,7 @@ def test_trazabilidad_de_la_sesion():
     assert documento.count("| aprobado |") == 3
     assert "- Versión 1 · 1 archivos · rechazado" in documento
     assert "  - Atiende: El radicado debe incluir el año" in documento
+    assert "## Enmiendas\n\nNinguna: los requerimientos no se enmendaron" in documento
 
 
 def test_paquete_del_modulo_validado():

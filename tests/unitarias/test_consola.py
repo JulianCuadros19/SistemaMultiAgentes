@@ -312,6 +312,48 @@ def test_en_n17_escalado_no_se_aprueba_y_se_devuelve_al_arquitecto(tmp_path, cap
     ]
 
 
+def test_en_n17_se_enmiendan_los_requerimientos_y_el_analista_ve_la_enmienda(
+    tmp_path, capsys, entorno_falso
+):
+    guion = guion_completo()
+    regla = "El radicado debe incluir el año de la solicitud"
+    teclado = Teclado(
+        "Oficina",
+        guion.proyecto,
+        guion.necesidad,
+        *guion.respuestas_cliente[:7],
+        *["a", ""] * 2,
+        # N17: pide una enmienda con la regla nueva.
+        "e",
+        regla,
+        "Laura",
+        # N6 con la enmienda, sin pasar por N9, y N17 con la versión corregida.
+        *["a", ""] * 2,
+    )
+    op = operador(ServiciosSimulados(fallos_veredicto=0), entorno_falso)
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+
+    salida = capsys.readouterr().out
+    menu_final = next(i for i in teclado.indicaciones if "[d]iseño" in i)
+    assert "[e]nmendar los requerimientos" in menu_final
+    assert any(i.startswith("Regla nueva para los requerimientos") for i in teclado.indicaciones)
+    assert "Enmienda pedida en la aprobación final por Laura el " in salida
+    assert "Requerimientos enmendados: RF-01 v0.2." in salida
+    assert "## RF-01 · versión 0.2\n\n- v0.2 · enmendado desde N17 por Laura el " in salida
+    assert salida.count("=== Punto de control N9") == 1
+    [vista] = op.sesiones()
+    assert vista.fase is Fase.VALIDADO
+    finales = [
+        a
+        for a in op.estado(vista.id_sesion)["sesion"].aprobaciones
+        if a.punto is PuntoControl.FINAL
+    ]
+    assert [(a.decision, a.destino) for a in finales] == [
+        (Decision.RECHAZADO, Destino.REQUERIMIENTOS),
+        (Decision.APROBADO, None),
+    ]
+
+
 def test_se_cierra_desde_un_punto_de_control(tmp_path, capsys, entorno_falso):
     guion = guion_completo()
     teclado = Teclado(

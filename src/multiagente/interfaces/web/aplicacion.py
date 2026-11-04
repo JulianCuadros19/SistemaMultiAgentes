@@ -3,8 +3,9 @@
 Rutas:
 - `/`: sesiones guardadas y formulario de sesión nueva;
 - `/sesiones/{id}`: estado de la sesión y la pausa pendiente con su formulario: diálogo, N6, N9
-  o N17, con las pruebas propias de la persona (RF-38); en N17, el módulo se aprueba o se devuelve
-  al desarrollador o al arquitecto;
+  o N17, con las pruebas propias de la persona (RF-38); en N17, el módulo se aprueba, se devuelve
+  al desarrollador o al arquitecto, o se piden enmiendas de los requerimientos, que el analista
+  revisa en N6 (ADR-0015);
 - `/sesiones/{id}/cerrar`: cierra sin módulo validado una sesión en pausa o detenida;
 - `/conversacion/{id}`: la vista del cliente, solo el diálogo y un estado en lenguaje de negocio;
 - `/sesiones/{id}/trazabilidad` y `/sesiones/{id}/exportar.zip` (RF-33, RF-35);
@@ -43,6 +44,7 @@ from multiagente.interfaces.web.tareas import EjecutorDeTareas
 from multiagente.orquestador.estado import (
     Decision,
     Destino,
+    Enmienda,
     Fase,
     PruebasPropias,
     RecorridoEscenario,
@@ -64,8 +66,20 @@ PROCESOS = {
     ("final", Destino.ARQUITECTO): (
         "Rediseñando la arquitectura con sus observaciones (N8); después la revisa en N9"
     ),
+    ("final", Destino.REQUERIMIENTOS): (
+        "Enmendando los requerimientos con su regla (N5); después los revisa el analista en N6"
+    ),
 }
 """Lo que hace el sistema tras cada decisión, para mostrarlo mientras procesa."""
+
+PROCESOS_DE_LA_ENMIENDA = {
+    Decision.APROBADO: (
+        "Corrigiendo el módulo con la enmienda y validándolo (N16 y N10 a N14); puede tardar "
+        "varios minutos"
+    ),
+    Decision.RECHAZADO: "Rehaciendo la enmienda con sus observaciones (N5)",
+}
+"""Lo que hace el sistema tras la decisión del analista sobre una enmienda en N6."""
 
 PARA_EL_CLIENTE = {
     Fase.ELICITACION: "Gracias. El equipo está revisando los requerimientos que redactamos.",
@@ -180,6 +194,9 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
                 ],
                 "referencias": datos["referencias"],
                 "defectos": datos["defectos"],
+                "enmienda": (
+                    Enmienda.model_validate(datos["enmienda"]) if datos.get("enmienda") else None
+                ),
             }
         if pausa.punto == "especificacion":
             return {
@@ -312,7 +329,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     ) -> RedirectResponse:
         """Registra la decisión del punto de control pendiente, con las pruebas propias en N17.
 
-        En N17, devolver el módulo a un agente es rechazarlo con ese destino.
+        En N17, devolver el módulo a un agente o pedir una enmienda es rechazarlo con ese destino.
         """
         vista = vista_libre(id_sesion)
         punto = vista.pausa.punto if vista.pausa else ""
@@ -335,10 +352,11 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             )
             pruebas_por_sesion.pop(id_sesion, None)
 
-        proceso = PROCESOS.get(
-            (punto, destino if destino is Destino.ARQUITECTO else decision),
-            "Procesando la decisión",
-        )
+        if punto == "requerimientos" and vista.pausa.datos.get("enmienda"):
+            proceso = PROCESOS_DE_LA_ENMIENDA[decision]
+        else:
+            clave = destino if destino in (Destino.ARQUITECTO, Destino.REQUERIMIENTOS) else decision
+            proceso = PROCESOS.get((punto, clave), "Procesando la decisión")
         tareas.lanzar(id_sesion, proceso, accion)
         return volver(id_sesion, "operacion")
 

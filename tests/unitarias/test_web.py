@@ -222,6 +222,57 @@ def test_una_sesion_escalada_se_devuelve_al_arquitecto(entorno_falso):
     assert finales == [(Decision.RECHAZADO, Destino.ARQUITECTO), (Decision.APROBADO, None)]
 
 
+class TareasQueAnotan(EjecutorDeTareas):
+    """Ejecutor sincrónico que anota lo que muestra mientras procesa cada decisión."""
+
+    def __init__(self) -> None:
+        super().__init__(sincronico=True)
+        self.descripciones: list[str] = []
+
+    def lanzar(self, id_sesion, descripcion, accion):
+        self.descripciones.append(descripcion)
+        return super().lanzar(id_sesion, descripcion, accion)
+
+
+def test_en_n17_se_piden_enmiendas_que_el_analista_revisa_en_n6(entorno_falso):
+    tareas = TareasQueAnotan()
+    cliente, operador = web(ServiciosSimulados(fallos_veredicto=0), entorno_falso, tareas)
+    id_sesion = hasta_la_aprobacion_final(cliente)
+    pagina = cliente.get(f"/sesiones/{id_sesion}").text
+    assert 'name="destino" value="requerimientos"' in pagina
+    assert "Enmendar los requerimientos" in pagina
+    assert "pida una enmienda" in pagina
+
+    regla = "El radicado debe incluir el año <de la solicitud>"
+    pagina = cliente.post(
+        f"/sesiones/{id_sesion}/decision",
+        data={"destino": "requerimientos", "observaciones": regla, "revisor": "Laura"},
+    ).text
+    assert tareas.descripciones[-1].startswith("Enmendando los requerimientos con su regla (N5)")
+    assert "N6 · Requerimientos para aprobar" in pagina
+    assert "Enmienda pedida en la aprobación final</strong> por Laura" in pagina
+    assert "El radicado debe incluir el año &lt;de la solicitud&gt;" in pagina
+    assert "Requerimientos enmendados:\n      RF-01 v0.2." in pagina
+    assert "RF-01 · versión 0.2 · enmendado desde N17" in pagina
+
+    pagina = decidir(cliente, id_sesion, "rechazado", observaciones="Falta el año inválido")
+    assert tareas.descripciones[-1] == "Rehaciendo la enmienda con sus observaciones (N5)"
+    assert "Observación anterior del analista: Falta el año inválido" in pagina
+    pagina = decidir(cliente, id_sesion, "aprobado")
+    assert tareas.descripciones[-1].startswith("Corrigiendo el módulo con la enmienda")
+    assert "N17 · Aprobación final · versión 2 del módulo" in pagina
+
+    trazabilidad = cliente.get(f"/sesiones/{id_sesion}/trazabilidad").text
+    assert "Enmiendas" in trazabilidad and "aprobada · enmienda RF-01 v0.3" in trazabilidad
+    decidir(cliente, id_sesion, "aprobado")
+    exportado = zipfile.ZipFile(
+        io.BytesIO(cliente.get(f"/sesiones/{id_sesion}/exportar.zip").content)
+    )
+    carpeta = f"modulo-{id_sesion[:8]}"
+    requerimientos = exportado.read(f"{carpeta}/requerimientos.md").decode("utf-8")
+    assert "## RF-01 · versión 0.3\n\n- v0.3 · enmendado desde N17 por Laura el " in requerimientos
+
+
 def test_la_especificacion_con_errores_no_ofrece_aprobar(entorno_falso):
     cliente, _ = web(ServiciosSimulados(errores_validacion=99), entorno_falso)
     guion = guion_completo()
