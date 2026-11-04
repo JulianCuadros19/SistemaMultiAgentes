@@ -417,10 +417,12 @@ class NodosGrafo:
     def n6_aprobacion_requerimientos(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Verifica la calidad (RF-07) y somete los requerimientos a aprobación humana.
 
-        Con defectos que N5 puede corregir, los devuelve a N5 sin intervención humana hasta
-        agotar el límite de correcciones. Al agotarlo, o si algún defecto requiere información
-        del cliente, escala a la persona con los defectos a la vista. Un rechazo devuelve el
-        flujo al diálogo con las observaciones y exige confirmar un nuevo resumen.
+        Con defectos que N5 puede corregir, le devuelve solo esos, sin intervención humana, hasta
+        agotar el límite de correcciones. Los que requieren información del cliente no se le
+        devuelven, porque N5 no puede resolverlos sin inventar, pero tampoco impiden corregir los
+        demás (ADR-0015). Al agotar el límite, o sin nada que N5 pueda corregir, escala a la
+        persona con los defectos a la vista. Un rechazo devuelve el flujo al diálogo con las
+        observaciones y exige confirmar un nuevo resumen.
         """
         requerimientos = estado["requerimientos"]
         if requerimientos.requerimientos:
@@ -428,17 +430,18 @@ class NodosGrafo:
         else:
             verificacion = VerificacionCalidad(defectos=("No hay requerimientos sintetizados.",))
         defectos = verificacion.defectos
+        corregibles = verificacion.corregibles
         if requerimientos.fallo_sintesis:
-            defectos = (f"La síntesis falló: {requerimientos.fallo_sintesis}", *defectos)
-        corregible = not verificacion.requiere_cliente
-        if (
-            defectos
-            and corregible
-            and requerimientos.correcciones < estado["control"].limite_correcciones
-        ):
+            fallo = f"La síntesis falló: {requerimientos.fallo_sintesis}"
+            defectos = (fallo, *defectos)
+            corregibles = (fallo, *corregibles)
+        if corregibles and requerimientos.correcciones < estado["control"].limite_correcciones:
             return {
                 "requerimientos": requerimientos.model_copy(
-                    update={"defectos": defectos, "correcciones": requerimientos.correcciones + 1}
+                    update={
+                        "defectos": corregibles,
+                        "correcciones": requerimientos.correcciones + 1,
+                    }
                 )
             }
         aprobacion = _pedir_decision(

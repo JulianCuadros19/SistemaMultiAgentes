@@ -101,6 +101,15 @@ def _asignar(registro: RegistroCaptura, respuesta: str) -> RegistroCaptura:
     return registro.model_copy(update={atributo: respuesta})
 
 
+DEFECTO_SIMULADO = "Defecto simulado: la regla de negocio es ambigua"
+"""Defecto de calidad que N5 puede corregir sin el cliente."""
+
+PREGUNTA_ABIERTA_SIMULADA = (
+    "HU-01 · C4 Completo · preguntas_abiertas: quedan 1 preguntas sin resolver"
+)
+"""Defecto de calidad que solo resuelve el cliente."""
+
+
 class ErrorSimulado(RuntimeError):
     """Fallo provocado a propósito para probar la reanudación tras una caída."""
 
@@ -113,17 +122,22 @@ class ServiciosSimulados:
         fallos_veredicto: Cuántos dictámenes iniciales marcan todos los casos como no cumplidos.
         defectos_calidad: Cuántas verificaciones de calidad iniciales reportan un defecto.
         defectos_requieren_cliente: Si esos defectos solo se resuelven con el cliente.
+        pregunta_abierta: Si todas las verificaciones reportan además una pregunta abierta, que
+            solo resuelve el cliente.
         errores_validacion: Cuántas validaciones iniciales de la especificación fallan.
         fallos_ejecucion: Cuántas ejecuciones iniciales lanzan `ErrorSimulado`.
         llamadas: Conteo de llamadas por método, para las pruebas.
+        defectos_recibidos: Defectos que recibió cada síntesis para corregir, para las pruebas.
     """
 
     fallos_veredicto: int = 1
     defectos_calidad: int = 0
     defectos_requieren_cliente: bool = False
+    pregunta_abierta: bool = False
     errores_validacion: int = 0
     fallos_ejecucion: int = 0
     llamadas: Counter[str] = field(default_factory=Counter)
+    defectos_recibidos: list[tuple[str, ...]] = field(default_factory=list)
 
     def como_servicios(self) -> Servicios:
         """Entrega esta simulación como servicios de los cuatro agentes.
@@ -179,6 +193,7 @@ class ServiciosSimulados:
     ) -> Sintesis:
         """Construye una historia y un requerimiento formal válidos (N5)."""
         self._contar("sintetizar")
+        self.defectos_recibidos.append(previos.defectos)
         registro = conversacion.registro
         enunciado = Enunciado(
             como=registro.rol or SIN_DATO,
@@ -233,13 +248,19 @@ class ServiciosSimulados:
         )
 
     def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
-        """Reporta un defecto en las primeras verificaciones configuradas (N6)."""
+        """Reporta un defecto en las primeras verificaciones configuradas (N6).
+
+        Con `pregunta_abierta`, todas reportan además una pregunta abierta.
+        """
+        defectos: tuple[str, ...] = ()
+        del_cliente: tuple[str, ...] = ()
         if self._contar("verificar_calidad") <= self.defectos_calidad:
-            return VerificacionCalidad(
-                defectos=("Defecto simulado: la regla de negocio es ambigua",),
-                requiere_cliente=self.defectos_requieren_cliente,
-            )
-        return VerificacionCalidad()
+            defectos = (DEFECTO_SIMULADO,)
+            del_cliente = defectos if self.defectos_requieren_cliente else ()
+        if self.pregunta_abierta:
+            defectos = (*defectos, PREGUNTA_ABIERTA_SIMULADA)
+            del_cliente = (*del_cliente, PREGUNTA_ABIERTA_SIMULADA)
+        return VerificacionCalidad(defectos=defectos, del_cliente=del_cliente)
 
     # Arquitecto ---------------------------------------------------------------------------
 

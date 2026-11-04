@@ -71,13 +71,30 @@ class VerificacionCalidad(ModeloEstricto):
 
     Attributes:
         defectos: Defectos encontrados; vacía si los requerimientos cumplen.
-        requiere_cliente: Algún defecto solo se resuelve con información del cliente (preguntas
-            abiertas o marcadores de pendiente): N5 no puede corregirlo sin inventar, así que
-            se escala al analista sin intentar la corrección automática.
+        del_cliente: Los defectos que solo se resuelven con información del cliente (preguntas
+            abiertas o marcadores de pendiente). N5 no puede corregirlos sin inventar, así que
+            escalan al analista sin intentar la corrección automática; los demás sí se corrigen
+            (ADR-0015).
     """
 
     defectos: tuple[TextoObligatorio, ...] = ()
-    requiere_cliente: bool = False
+    del_cliente: tuple[TextoObligatorio, ...] = ()
+
+    @model_validator(mode="after")
+    def _del_cliente_entre_los_defectos(self) -> Self:
+        if faltan := set(self.del_cliente) - set(self.defectos):
+            raise ValueError(f"defectos del cliente que no están entre los defectos: {faltan}")
+        return self
+
+    @property
+    def requiere_cliente(self) -> bool:
+        """Si algún defecto solo se resuelve con información del cliente."""
+        return bool(self.del_cliente)
+
+    @property
+    def corregibles(self) -> tuple[str, ...]:
+        """Defectos que N5 puede corregir sin el cliente, en el orden en que se encontraron."""
+        return tuple(defecto for defecto in self.defectos if defecto not in self.del_cliente)
 
 
 class Diseno(ModeloEstricto):

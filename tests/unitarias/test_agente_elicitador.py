@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
+from pydantic import ValidationError
 
 from multiagente.agentes.elicitador.calidad import verificar_conjunto
 from multiagente.agentes.elicitador.contexto import (
@@ -64,7 +65,7 @@ from multiagente.orquestador.estado import (
     Turno,
 )
 from multiagente.orquestador.grafo import Nodo, construir_grafo
-from multiagente.orquestador.servicios import Servicios
+from multiagente.orquestador.servicios import Servicios, VerificacionCalidad
 from multiagente.orquestador.simulacion import ServiciosSimulados
 from multiagente.persistencia.puntos_control import serializador
 from multiagente.rag.colecciones import Agente, Coleccion
@@ -1012,6 +1013,15 @@ def test_preguntas_abiertas_requieren_al_cliente(cliente_falso):
     assert verificacion.defectos == (
         "HU-01 · C4 Completo · preguntas_abiertas: quedan 1 preguntas sin resolver con el cliente",
     )
+    assert verificacion.del_cliente == verificacion.defectos
+    assert verificacion.corregibles == ()
+
+
+def test_los_defectos_del_cliente_estan_entre_los_defectos():
+    with pytest.raises(ValidationError, match="defectos del cliente"):
+        VerificacionCalidad(defectos=("uno",), del_cliente=("otro",))
+    verificacion = VerificacionCalidad(defectos=("uno", "otro"), del_cliente=("otro",))
+    assert verificacion.corregibles == ("uno",)
 
 
 def test_sintesis_limpia_pasa_la_verificacion_de_calidad():

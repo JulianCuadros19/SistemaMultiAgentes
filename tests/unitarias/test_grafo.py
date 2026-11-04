@@ -28,6 +28,8 @@ from multiagente.orquestador.estado import (
 from multiagente.orquestador.grafo import Nodo, construir_grafo
 from multiagente.orquestador.servicios import AnalisisEstatico, Servicios
 from multiagente.orquestador.simulacion import (
+    DEFECTO_SIMULADO,
+    PREGUNTA_ABIERTA_SIMULADA,
     ElicitadorFijo,
     ErrorSimulado,
     Guion,
@@ -354,6 +356,20 @@ def test_defectos_que_requieren_al_cliente_escalan_sin_corregir():
     assert simulacion.llamadas["sintetizar"] == 1
     assert avance.pausa.punto == "requerimientos"
     assert avance.pausa.datos["defectos"] == ["Defecto simulado: la regla de negocio es ambigua"]
+
+
+def test_n6_corrige_lo_corregible_aunque_haya_una_pregunta_abierta():
+    # Corrida ampliada de la fase 5: con una pregunta abierta, N6 escalaba sin corregir los
+    # demás defectos (ADR-0015).
+    simulacion = ServiciosSimulados(defectos_calidad=1, pregunta_abierta=True)
+    app = compilar(simulacion)
+    id_sesion, avance = iniciar_sesion(app, "Realtix", "Catastro", NECESIDAD)
+    for respuesta in RESPUESTAS:
+        avance = avanzar(app, id_sesion, respuesta)
+    # N5 recibe solo lo que puede corregir; la pregunta abierta escala sin intentarlo.
+    assert simulacion.defectos_recibidos == [(), (DEFECTO_SIMULADO,)]
+    assert avance.pausa.punto == "requerimientos"
+    assert avance.pausa.datos["defectos"] == [PREGUNTA_ABIERTA_SIMULADA]
 
 
 def hasta_la_especificacion(app, id_sesion: str):

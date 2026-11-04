@@ -77,7 +77,7 @@ class AgenteElicitador:
         defectos = verificar_conjunto(requerimientos)
         return VerificacionCalidad(
             defectos=tuple(str(defecto) for defecto in defectos),
-            requiere_cliente=any(defecto.requiere_cliente for defecto in defectos),
+            del_cliente=tuple(str(defecto) for defecto in defectos if defecto.requiere_cliente),
         )
 
 
