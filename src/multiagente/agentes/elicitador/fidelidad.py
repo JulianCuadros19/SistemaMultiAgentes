@@ -165,7 +165,7 @@ MARCAS_DESCONOCIMIENTO = re.compile(
     r"|no (?:lo |la |los |las )?conozco|no me consta"
     r"|no me (?:lo |la |los |las )?(?:han )?(?:dicho|dijeron|indicado|indicaron|especificado"
     r"|especificaron|detallado|detallaron|definido|definieron)"
-    r"|no (?:está|están) definid[oa]s?|no (?:lo |la |los |las )?tengo definid[oa]s?"
+    r"|no (?:está|están) definid[oa]s?|no (?:lo |la |los |las )?tengo (?:definid|identificad)[oa]s?"
     r"|habr[ií]a que (?:consultar|verificar|confirmar))\b"
 )
 """Expresiones con que el cliente dice no saber algo: lo único que crea una pregunta abierta.
@@ -176,6 +176,15 @@ buscan en el texto con tildes, porque sin ellas «no sé» se confunde con «no 
 """
 
 
+RESPUESTA_QUE_NO_APLICA = re.compile(r"^\W*(?:eso |esto )?no aplica\b")
+"""«No aplica» al comienzo de la respuesta: el cliente no tiene qué responder a la pregunta.
+
+En la corrida de la fase 7 (caso 10), «No aplica; no tengo identificado un cargo…» no se
+reconocía, y N3 preguntaba el rol hasta agotar los turnos (ADR-0015). Más adentro de una respuesta
+suele ser una regla, como «el descuento no aplica a los predios rurales», así que no cuenta.
+"""
+
+
 def dice_no_saber(texto: str) -> bool:
     """Indica si una intervención del cliente expresa que no sabe algo.
 
@@ -183,9 +192,13 @@ def dice_no_saber(texto: str) -> bool:
         texto: Lo que dijo el cliente.
 
     Returns:
-        True si contiene alguna de las `MARCAS_DESCONOCIMIENTO`.
+        True si contiene alguna de las `MARCAS_DESCONOCIMIENTO` o si empieza con «no aplica».
     """
-    return MARCAS_DESCONOCIMIENTO.search(texto.casefold()) is not None
+    normal = texto.casefold()
+    return (
+        MARCAS_DESCONOCIMIENTO.search(normal) is not None
+        or RESPUESTA_QUE_NO_APLICA.match(normal) is not None
+    )
 
 
 def desconoce_algo(conversacion: Conversacion) -> bool:

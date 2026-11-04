@@ -750,6 +750,10 @@ def test_quien_lo_usa_queda_aparte_del_rol_y_junto_a_el_en_el_resumen():
         "No tengo una regla para cuando los ítems no coinciden.",
         "Eso no lo tengo definido.",
         "Los mensajes exactos de error no los conozco.",
+        # Corrida de la fase 7, caso 10: N3 preguntaba el rol hasta agotar los turnos.
+        "No aplica; no tengo identificado un cargo del negocio que deba quedar ahí.",
+        "No tengo identificado un cargo concreto para poner ahí.",
+        "Eso no aplica en nuestro proceso.",
     ],
 )
 def test_reconoce_las_formas_de_no_saber(respuesta):
@@ -759,7 +763,12 @@ def test_reconoce_las_formas_de_no_saber(respuesta):
 
 @pytest.mark.parametrize(
     "respuesta",
-    ["Si el predio no existe, no se acepta", "El documento no está vencido", "Ya me lo dijeron"],
+    [
+        "Si el predio no existe, no se acepta",
+        "El documento no está vencido",
+        "Ya me lo dijeron",
+        "El descuento no aplica a los predios rurales",
+    ],
 )
 def test_no_confunde_otras_negaciones_con_no_saber(respuesta):
     assert not dice_no_saber(respuesta)
