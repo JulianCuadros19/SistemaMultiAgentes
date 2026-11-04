@@ -14,12 +14,12 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |
 | Empresa        | Realidad 5.0 S.A.S. — marca comercial Realtix               |
-| Base normativa | Documento de Requerimientos (38 RF, 10 RNF)                 |
+| Base normativa | Documento de Requerimientos (39 RF, 10 RNF)                 |
 | Estado         | Para revisión y aprobación del equipo técnico               |
 
 **1. PROPÓSITO Y ALCANCE**
 
-Este documento define la arquitectura técnica del sistema multiagente y constituye el entregable del segundo objetivo específico. Traduce los 38 requerimientos funcionales y 10 no funcionales en una estructura implementable: topología del grafo, roles y prompts de los agentes, contratos de estado, bases de conocimiento, modelo de datos y vista de despliegue.
+Este documento define la arquitectura técnica del sistema multiagente y constituye el entregable del segundo objetivo específico. Traduce los 39 requerimientos funcionales y 10 no funcionales en una estructura implementable: topología del grafo, roles y prompts de los agentes, contratos de estado, bases de conocimiento, modelo de datos y vista de despliegue.
 
 **2. VISTA LÓGICA: TOPOLOGÍA DEL GRAFO**
 
@@ -37,8 +37,8 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 | **N2**   | Elicitador    | Recuperación de contexto de elicitación y de dominio de negocio.                                                 | Embeddings              |
 | **N3**   | Elicitador    | Diálogo: formula la siguiente pregunta estratégica y extrae la información de la respuesta. Antes del resumen, pregunta por los casos límite de las reglas capturadas y una vez por algo más. | LLM                     |
 | **N4**   | Elicitador    | Control de suficiencia: decide si cerrar la elicitación o devolver el flujo a N3.                                | Determinística          |
-| **N5**   | Elicitador    | Síntesis: produce historias de usuario y requerimientos formales.                                                | LLM                     |
-| **N6**   | Elicitador    | Verificación de atributos de calidad y aprobación humana. Lo que no requiere al cliente vuelve a N5 para corregirse antes, aunque haya preguntas abiertas. | Humano                  |
+| **N5**   | Elicitador    | Síntesis: produce historias de usuario y requerimientos formales. Con una enmienda desde N17, incorpora la regla nueva a los requerimientos vigentes, sin renumerarlos ni quitar escenarios, y sube de versión los que cambian. | LLM                     |
+| **N6**   | Elicitador    | Verificación de atributos de calidad y aprobación humana. Lo que no requiere al cliente vuelve a N5 para corregirse antes, aunque haya preguntas abiertas. Durante una enmienda, lo que el analista ya había aceptado no vuelve a N5, un rechazo vuelve a N5 y la aprobación lleva a N16. | Humano                  |
 | **N7**   | Arquitecto    | Recuperación del catálogo de arquitecturas de referencia aplicables.                                             | Embeddings              |
 | **N8**   | Arquitecto    | Selección, justificación y parametrización: registro de decisión, especificación de diseño y recorrido de cada escenario de aceptación con interfaces públicas. Si el revisor dejó observaciones, el registro gana una revisión con la respuesta y los cambios. | LLM                     |
 | **N9**   | Arquitecto    | Validación contra esquema, verificación de cobertura y de escenarios ejecutables, y aprobación humana.            | Determinística y humana |
@@ -48,8 +48,8 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 | **N13**  | Tester        | Recuperación de los criterios de calidad aplicables al módulo.                                                   | Embeddings              |
 | **N14**  | Tester        | Veredicto por criterio y retroalimentación estructurada. El juez ve las interfaces y el modelo de datos de la especificación, y cada caso que rechaza se confirma con una segunda opinión. | LLM                     |
 | **N15**  | Orquestador   | Decisión de enrutamiento: remite el módulo aprobado por el tester a la validación humana final (N17), reabre el ciclo de corrección o, agotados los intentos, escala la sesión a N17 para que decida una persona. | Determinística          |
-| **N16**  | Tester        | Plan de pruebas de aceptación: al aprobarse los requerimientos (N6), deriva un caso de prueba por cada escenario Gherkin aprobado. Corre en paralelo con N7 y es la base del veredicto de N14. | Determinística          |
-| **N17**  | Orquestador   | Validación y aprobación humana final: la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo devuelve con observaciones al desarrollador (N10) o al arquitecto (N8), o cierra la sesión. Una sesión escalada no puede aprobarse. | Humano                  |
+| **N16**  | Tester        | Plan de pruebas de aceptación: al aprobarse los requerimientos (N6), deriva un caso de prueba por cada escenario Gherkin aprobado. Corre en paralelo con N7 y es la base del veredicto de N14. Tras una enmienda aprobada, rehace el plan y pasa el control a N10. | Determinística          |
+| **N17**  | Orquestador   | Validación y aprobación humana final: la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo devuelve con observaciones al desarrollador (N10) o al arquitecto (N8), pide al elicitador (N5) una enmienda de los requerimientos con una regla nueva, o cierra la sesión. Una sesión escalada no puede aprobarse. | Humano                  |
 
 *Fuente: Elaboración propia.*
 
@@ -63,9 +63,11 @@ Aprobados los requerimientos, se entregan al arquitecto y al tester. El tester d
 
 Con la especificación aprobada, el desarrollador genera el módulo (N10). El tester lo ejecuta en sandbox (N11), aplica el análisis estático y la verificación de conformidad arquitectónica (N12), recupera los criterios de calidad aplicables (N13) y emite el veredicto con retroalimentación (N14), un dictamen por cada caso del plan de pruebas de aceptación. El nodo de decisión (N15) remite el módulo a la validación humana final (N17) si todos los criterios se cumplen, o devuelve el control a N10 con la retroalimentación. Si el desarrollador no logra producir una versión válida, la iteración cuenta como rechazada y el flujo pasa de N10 a N15 sin ejecutar nada. Agotado el límite de iteraciones (RF-27), N15 marca la sesión para intervención humana y la detiene de forma controlada en N17, donde no puede aprobarse. En N17, la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo que cierra el flujo; o lo devuelve con sus observaciones y los hallazgos del tester al desarrollador (N10), que lo corrige, o al arquitecto (N8), que rehace el diseño y lo somete de nuevo a N9.
 
+**Enmiendas desde la validación final.** Si la persona descubre en N17 una regla que los requerimientos no tienen, pide una enmienda: sus observaciones van al elicitador (N5), que incorpora la regla a los requerimientos vigentes sin agregar, quitar ni renumerar requerimientos ni escenarios, y sube de versión los que cambian. N6 los verifica y el analista los aprueba; si los rechaza, la enmienda vuelve a N5 con sus observaciones. Los defectos que el analista ya había aceptado no vuelven a N5, porque no los causó la enmienda. Aprobada la enmienda, N16 rehace el plan de pruebas y el desarrollador corrige el módulo (N10) con la misma especificación, en un ciclo de corrección nuevo que recibe las observaciones de N17 y los hallazgos del tester. El flujo no pasa por N7 a N9: si la regla exige otro diseño, la persona devuelve después el módulo al arquitecto desde N17.
+
 **Cierre de una sesión.** Toda sesión en pausa o detenida por una falla puede cerrarse sin módulo validado. El cierre se aplica como una decisión de N17: termina el flujo en la fase `cerrada` y registra quién cerró, desde dónde, cuándo y por qué (RF-33). Así, ninguna sesión queda sin salida: cada falla termina en un reintento que puede funcionar o en una decisión humana.
 
-**Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Además, cada uno de los tres puntos de control humano (N6, N9 y N17) puede devolver el flujo al agente anterior con observaciones; desde N17, al desarrollador o al arquitecto. Cada devolución desde N17 abre un ciclo de corrección nuevo, con el mismo límite de iteraciones. Ambos ciclos y estos retornos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
+**Lazos del grafo.** El sistema tiene dos ciclos: el conversacional entre N3 y N4, que cierra por suficiencia de información, y el de corrección entre N10 y N15, que cierra por aprobación de criterios o por agotamiento de intentos. Además, cada uno de los tres puntos de control humano (N6, N9 y N17) puede devolver el flujo al agente anterior con observaciones; desde N17, al desarrollador, al arquitecto o, con una enmienda, al elicitador, que la lleva por N5, N6 y N16 hasta N10. Cada devolución desde N17 abre un ciclo de corrección nuevo, con el mismo límite de iteraciones. Ambos ciclos y estos retornos exigen un orquestador con soporte nativo de ciclos, checkpointing y control humano.
 
 **3. BASES DE CONOCIMIENTO**
 
@@ -151,7 +153,7 @@ Se adopta el principio de asignación por complejidad cognitiva: a cada nodo se 
 | **Nodo** | **Tarea**                                   | **Naturaleza cognitiva**                          | **Perfil de modelo** |
 |----------|---------------------------------------------|---------------------------------------------------|----------------------|
 | N3       | Diálogo de elicitación                      | Conversación dirigida con extracción estructurada | Intermedio           |
-| N5       | Síntesis de historias y requerimientos      | Razonamiento y salida estructurada extensa        | Intermedio           |
+| N5       | Síntesis y enmienda de los requerimientos   | Razonamiento y salida estructurada extensa        | Intermedio           |
 | N8       | Selección y parametrización de arquitectura | Razonamiento comparativo y decisión justificada   | Alto                 |
 | N10      | Generación del módulo                       | Síntesis de código, máxima exigencia              | Alto                 |
 | N14      | Veredicto de validación                     | Clasificación con justificación                   | Económico            |
@@ -172,7 +174,7 @@ Los agentes no se comunican entre sí mediante mensajes conversacionales. Toda l
 |----------------|--------------------------------------------------------------------------------------------------|------------------------|
 | sesion         | Identificador, cliente, fase actual, marca de tiempo, bandera de espera de entrada del usuario, aprobaciones humanas y cierre. | N1, N4, N6, N9, N15, N17 |
 | conversacion   | Historial de turnos y registro estructurado de información capturada.                            | N3                     |
-| requerimientos | Historias de usuario y requerimientos formales con su estado de aprobación.                      | N5, N6                 |
+| requerimientos | Historias de usuario y requerimientos formales con su estado de aprobación, y las enmiendas desde N17. | N5, N6, N16, N17       |
 | arquitectura   | Registro de decisión con sus revisiones, especificación de diseño validada contra esquema y recorridos de los escenarios. | N8, N9, N17            |
 | codigo         | Versiones de los módulos, pruebas y documentación generadas.                                     | N10                    |
 | validacion     | Plan de pruebas de aceptación, resultados de ejecución, hallazgos estáticos, conformidad arquitectónica, veredicto y retroalimentación. | N10, N11, N12, N14, N16, N17 |
@@ -181,7 +183,7 @@ Los agentes no se comunican entre sí mediante mensajes conversacionales. Toda l
 
 *Fuente: Elaboración propia.*
 
-N10 escribe la validación solo cuando no logra una versión válida: la deja rechazada, con los problemas como retroalimentación. N17 escribe la retroalimentación de un rechazo y, si devuelve el diseño, las observaciones para el arquitecto.
+N10 escribe la validación solo cuando no logra una versión válida: la deja rechazada, con los problemas como retroalimentación. N17 escribe la retroalimentación de un rechazo y, si devuelve el diseño, las observaciones para el arquitecto; si pide una enmienda, la deja en curso en los requerimientos, con los defectos que el analista ya había aceptado. N16 la pasa a las enmiendas aplicadas, que conservan quién la pidió, su texto, las observaciones del analista y la versión de cada requerimiento enmendado.
 
 El estado se persiste mediante puntos de control tras cada transición, lo que permite reanudar una ejecución interrumpida, incluida una conversación de elicitación en curso, conforme al RF-28.
 
@@ -194,7 +196,7 @@ El estado se persiste mediante puntos de control tras cada transición, lo que p
 | sesiones                   | Sesión de elicitación con su cliente, fase y estado.                           |
 | turnos_conversacion        | Historial completo del diálogo entre el cliente y el elicitador.               |
 | historias_usuario          | Historias producidas por el elicitador con su trazabilidad a la sesión.        |
-| requerimientos             | Requerimientos formales conforme al Anexo A, con estado de aprobación.         |
+| requerimientos             | Requerimientos formales conforme al Anexo A, con estado de aprobación y las enmiendas desde N17. |
 | decisiones_arquitectonicas | Arquitectura elegida, alternativas descartadas y justificación.                |
 | especificaciones_diseno    | Especificación estructurada de módulos, interfaces, dependencias y modelo de datos. |
 | artefactos_codigo          | Versiones de los módulos, pruebas y documentación generadas.                   |
@@ -246,7 +248,8 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 | Ciclo conversacional N3–N4 con control de suficiencia     | RF-01, RF-02, RF-03, RNF-08        |
 | Nodos N5 y N6 con verificación y aprobación humana        | RF-05, RF-06, RF-07, RF-08, RNF-09 |
 | Plan de pruebas de aceptación del tester (N16)            | RF-08, RF-21                       |
-| Validación y aprobación humana final (N17)                | RF-38, RNF-09                      |
+| Validación y aprobación humana final (N17)                | RF-38, RF-39, RNF-09               |
+| Enmiendas de los requerimientos desde N17 (N5, N6, N16)   | RF-05, RF-07, RF-21, RF-39, RNF-09 |
 | Agente arquitecto con catálogo de referencia (N7, N8, N9) | RF-09 a RF-14, RNF-09              |
 | Especificación de diseño estructurada validable contra esquema | RF-11, RF-12, RF-22                |
 | Generación sin recuperación en el nodo N10                | RF-15, RF-29                       |
@@ -288,4 +291,4 @@ El presente documento se considera aprobado cuando el equipo técnico de Realtix
 | 1.0 | 14 de septiembre de 2026 | Versión aprobada por el equipo técnico. |
 | 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): especificación de diseño en lugar de contrato; nodo N16 (plan de pruebas de aceptación del tester) y nodo N17 (validación y aprobación humana final); retornos con observaciones desde los tres puntos de control; entidad `aprobaciones_humanas`. |
 | 1.2 | 9 de octubre de 2026 | Flujo sin bloqueos (ADR-0014): N10 pasa a N15 si no logra una versión válida; agotado el ciclo de corrección, N15 escala la sesión a N17, donde no puede aprobarse; N17 devuelve el módulo al desarrollador (N10) o al arquitecto (N8), y cada devolución abre un ciclo nuevo; toda sesión en pausa o detenida puede cerrarse en la fase `cerrada`, con su registro. |
-| 1.3 | 3 de noviembre de 2026 | Calidad de la primera salida (ADR-0015), en curso: N12 detecta las pruebas que simulan el efecto del módulo (CAL-FS-006), y el juez de N14 ve las interfaces y el modelo de datos de la especificación y confirma cada rechazo con una segunda opinión. N8 declara el recorrido de cada escenario con interfaces públicas, fuera del Anexo B, y N9 lo verifica; el registro de decisión gana una sección de revisiones. Los métodos se declaran como interfaces `Clase.metodo`, que N9, N10 y N12 verifican. Tras un rediseño, N10 recibe la versión anterior como referencia, con la retroalimentación de N17 y la revisión del diseño, y antes de entregar aplica el estilo que rechazaría el tester. N3 pregunta por casos límite antes del resumen y una vez por algo más, con un límite de 18 turnos; el registro guarda los casos especiales, los ejemplos con cifras y quién más usa lo pedido, aparte del rol, y con el resumen confirmado N5 toma las preguntas abiertas del registro. N6 corrige los defectos que N5 puede resolver aunque haya preguntas abiertas, y escala estas al analista. |
+| 1.3 | 3 de noviembre de 2026 | Calidad de la primera salida (ADR-0015), en curso: N12 detecta las pruebas que simulan el efecto del módulo (CAL-FS-006), y el juez de N14 ve las interfaces y el modelo de datos de la especificación y confirma cada rechazo con una segunda opinión. N8 declara el recorrido de cada escenario con interfaces públicas, fuera del Anexo B, y N9 lo verifica; el registro de decisión gana una sección de revisiones. Los métodos se declaran como interfaces `Clase.metodo`, que N9, N10 y N12 verifican. Tras un rediseño, N10 recibe la versión anterior como referencia, con la retroalimentación de N17 y la revisión del diseño, y antes de entregar aplica el estilo que rechazaría el tester. N3 pregunta por casos límite antes del resumen y una vez por algo más, con un límite de 18 turnos; el registro guarda los casos especiales, los ejemplos con cifras y quién más usa lo pedido, aparte del rol, y con el resumen confirmado N5 toma las preguntas abiertas del registro. N6 corrige los defectos que N5 puede resolver aunque haya preguntas abiertas, y escala estas al analista. N17 gana un tercer destino: una enmienda de los requerimientos por el elicitador, que recorre N5, N6 y N16 hasta N10 sin pasar por el diseño, con una arista nueva de N16 a N10. |

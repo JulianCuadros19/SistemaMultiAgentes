@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-11-03
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (enmiendas desde N17, límite de turnos y registro de información capturada), ADR-0008 (casos límite, síntesis, verificación y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos, versión previa tras un rediseño y estilo en N10), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos), ADR-0013 (rediseño desde N17) y ADR-0014 (convergencia del resumen)
+modifica: ADR-0006 (enmiendas desde N17, límite de turnos y registro de información capturada), ADR-0008 (casos límite, síntesis, verificación y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos, versión previa tras un rediseño y estilo en N10), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos), ADR-0013 (rediseño desde N17) y ADR-0014 (convergencia del resumen y enmiendas en las interfaces)
 ---
 
 # ADR-0015 · Calidad de la primera salida y enmiendas de los requerimientos desde N17
@@ -713,6 +713,100 @@ una corrida por caso):
     definir» aunque el cliente dio los mensajes de rechazo.
 - **Costo de la corrida:** 2,57 USD. La fase suma 13,92 USD.
 
+#### Fase 6 · Enmiendas desde N17 por el elicitador
+
+32. **Tercer destino en N17: la enmienda de los requerimientos** (decisión 4 del equipo; modifica
+    el ADR-0006, el ADR-0008 y el ADR-0013).
+    - **Flujo:** N17 → N5 → N6 → N16 → N10 → N11 a N15 → N17. No pasa por N7 a N9: el diseño no
+      cambia. Si la regla exige otro diseño, la persona devuelve después el módulo al arquitecto
+      desde N17, como antes.
+    - **Estado:**
+      - `Destino.REQUERIMIENTOS`;
+      - `Enmienda`: el texto de N17, quién la pidió y cuándo, las observaciones de cada rechazo del
+        analista, los requerimientos que N5 cambió con la versión a la que llegó cada uno y los
+        defectos ya aceptados (decisión 34);
+      - `Requerimientos.enmienda` es la que está en curso y `Requerimientos.enmiendas`, las
+        aplicadas. Con valores por defecto, las sesiones guardadas antes siguen leyéndose.
+    - **N17** guarda la enmienda y pasa la sesión a elicitación. Deja la retroalimentación como en
+      los otros retornos: primero las observaciones y después los hallazgos del tester.
+    - **N5** enmienda en lugar de sintetizar mientras haya una enmienda en curso, y las fallas del
+      modelo se tratan igual (`fallo_sintesis`).
+    - **N6** muestra la enmienda en la pausa. Un rechazo suma sus observaciones a la enmienda y
+      vuelve a N5, sin pasar por el diálogo. La aprobación pasa la sesión a desarrollo y solo a
+      N16.
+    - **N16** deriva el plan sobre la validación vigente, que conserva la retroalimentación de N17,
+      y pasa la enmienda a las aplicadas. Una arista condicional nueva lo lleva a N10 cuando la
+      sesión está en desarrollo; si no, su rama termina, como antes.
+    - **N15** no cambia: la devolución de N17 abre un ciclo de corrección nuevo, que empieza en la
+      iteración 1.
+33. **N5 en modo enmienda** (modifica el ADR-0008).
+    - **Prompt `elicitador.enmienda` 1.0,** sin contexto recuperado, porque el contexto ya está en
+      los requerimientos. Recibe los requerimientos vigentes, la enmienda, las observaciones del
+      analista y los defectos de N6. Su ejemplo es el préstamo de un libro (decisión 31).
+    - **Salida:** de cada requerimiento afectado, la regla de negocio completa y vigente, los
+      escenarios existentes que la regla obliga a precisar, con su identificador, y los nuevos.
+    - **Validación en código** (`agentes/elicitador/enmienda.py`):
+      - solo requerimientos vigentes, sin repetirlos: ninguno se agrega, se quita ni se renumera;
+      - los escenarios que el modelo no devuelve se conservan tal cual, así que ninguno se
+        elimina; un escenario precisado que no existe se rechaza, y los nuevos toman los
+        identificadores siguientes al mayor;
+      - cada oración de la regla debe apoyarse en la enmienda, en las observaciones del analista,
+        en lo que dijo el cliente o en el texto vigente del requerimiento. A diferencia de la
+        síntesis, una oración sin respaldo no se descarta en silencio: se devuelve al modelo como
+        problema. La enmienda es corta y explícita, y descartar su regla dejaría el requerimiento
+        sin ella;
+      - el requerimiento que cambia sube a la versión `0.<síntesis + 1>`; los demás, la historia,
+        los títulos y las referencias no cambian. Una enmienda que no cambia nada se rechaza.
+    - **Alcance:** cambia la regla y los escenarios. El título, la precondición y los datos no
+      cambian; si la regla necesita un dato que la ficha no declara, la nombra en la regla y el
+      analista decide.
+    - **N6 verifica igual,** con `verificar_conjunto`: RF-07 y tres escenarios por requerimiento.
+    - **Simulación:** `ServiciosSimulados` y `ElicitadorFijo` agregan al RF-01 la regla de la
+      enmienda y un escenario deterministas.
+34. **Los defectos que el analista ya aceptó no vuelven a N5 durante la enmienda** (decisión del
+    equipo del 2026-11-04, al implementar la fase 6).
+    - **Problema:** N6 verifica de nuevo todo el conjunto, y reaparecen los defectos corregibles
+      que el analista aceptó al aprobar. Pasa cuando las correcciones automáticas no los
+      resolvieron, como en 3 de las 20 sesiones de la corrida ampliada de la fase 5 (casos 08, 14
+      y 18). En modo enmienda, N5 solo cambia la regla y los escenarios, así que un defecto del
+      título, la precondición o los datos gastaba las dos correcciones y llegaba al analista con el
+      aviso «la síntesis falló».
+    - **Ahora:** N17 guarda en la enmienda los defectos escalados en la última aprobación de N6
+      (`defectos_aceptados`). Durante la enmienda, N6 los sigue mostrando, pero solo devuelve a N5
+      los que causó la enmienda.
+35. **Interfaces y exportación** (modifica el ADR-0014).
+    - En N17, la consola ofrece «[e]nmendar los requerimientos» y la web el botón «Enmendar los
+      requerimientos», con su ayuda; mientras procesa, la web dice qué hace el sistema.
+    - En N6, ambas muestran la enmienda en curso: quién la pidió, su texto, los requerimientos
+      enmendados y las observaciones anteriores del analista.
+    - `requerimientos.md` marca cada requerimiento enmendado con su origen («v0.2 · enmendado
+      desde N17 por …»), y la trazabilidad agrega la sección «Enmiendas».
+36. **Documentos fuente.**
+    - `docs/arquitectura.md` 1.3: Tabla 1 (N5, N6, N16 y N17), el flujo, los lazos y las tablas
+      4, 5 y 6.
+    - `docs/requerimientos.md` 1.2: el rechazo del RF-38 admite tres destinos, el RNF-09 lleva la
+      enmienda al elicitador y se agrega el RF-39, con su criterio Gherkin.
+
+**Verificación de la fase 6.**
+- **Sin costo:** 715 pruebas unitarias, 31 de integración, 19 de embeddings y 33 del entorno
+  aislado.
+- **Prueba `nube`** (`tests/integracion/test_enmienda_nube.py`). Usa el caso de avalúo, y en N17 la
+  persona pide redondear los avalúos al múltiplo de mil, una regla que el cliente no había dicho.
+  Pasa en la primera corrida, en 4 min 33 s:
+  - el tester aprobó la versión 1, y la enmienda recorrió N5, N6 y N16 hasta N10 y N17, sin pasar
+    por N7 a N9;
+  - N5 incorporó la regla a la del RF-01, que subió a la versión 0.2, y agregó el ESC-04 con las
+    cifras del ejemplo. N6 no encontró defectos. Tardó 3,7 s y costó 0,004 USD;
+  - el plan de pruebas incluyó el caso CP-RF-01-ESC-04;
+  - N10 corrigió la versión 1 al primer intento, con la enmienda como primera retroalimentación,
+    en 99 s y por 0,104 USD;
+  - el tester aprobó la versión 2 en la primera iteración del ciclo nuevo. Pasan sus 46 pruebas,
+    entre ellas la del ESC-04;
+  - la exportación marca el RF-01 como enmendado desde N17, y la trazabilidad registra la
+    enmienda aprobada.
+- **Costo de la fase:** 0,20 USD, frente a 0,3 del plan. Incluye la generación de la versión 1; de
+  la enmienda en adelante fueron 0,109 USD (N5 0,004, N10 0,104 y N14 0,001).
+
 ## Verificación
 
 _Pendiente._ Criterios, fijados antes de medir:
@@ -760,3 +854,13 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
   - Tabla 1, N6: corrige los defectos que N5 puede resolver aunque haya preguntas abiertas, y
     escala estas al analista.
   - Tabla 1, N10: antes de entregar, verifica también el estilo que rechazaría el tester.
+- **Fase 6:**
+  - Figura 7 (flujo del grafo): una arista de N17 a N5, para la enmienda, y una de N16 a N10,
+    tras aprobarla en N6. La enmienda no pasa por N7 a N9.
+  - Tabla 1: N5 enmienda los requerimientos vigentes con la regla de N17; N6 la verifica y el
+    analista la aprueba, sin devolver a N5 los defectos que ya había aceptado; N16 rehace el plan
+    y pasa a N10; N17 gana un tercer destino, la enmienda.
+  - Tabla 23 (requerimientos): el rechazo del RF-38 admite tres destinos, y se agrega el RF-39,
+    enmiendas de los requerimientos desde la validación final. Total: 39 RF.
+  - RNF-09: desde la validación final, la enmienda regresa al elicitador.
+  - Estado: la partición `requerimientos` guarda la enmienda en curso y las aplicadas.
