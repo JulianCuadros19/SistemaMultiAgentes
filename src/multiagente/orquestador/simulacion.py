@@ -152,10 +152,13 @@ class ServiciosSimulados:
     def dialogar(self, conversacion: Conversacion, contexto: Contexto) -> Dialogo:
         """Asigna la respuesta nueva al primer atributo pendiente y pregunta el siguiente (N3).
 
-        La necesidad inicial se toma como la funcionalidad.
+        La necesidad inicial se toma como la funcionalidad. La simulación no explora casos
+        límite ni pregunta por algo más antes del resumen.
         """
         self._contar("dialogar")
-        registro = conversacion.registro
+        registro = conversacion.registro.model_copy(
+            update={"casos_limite_cerrados": True, "algo_mas_preguntado": True}
+        )
         respuesta = conversacion.respuesta_nueva
         if respuesta is not None and conversacion.turnos_procesados == 0:
             registro = registro.model_copy(update={"funcionalidad": respuesta})

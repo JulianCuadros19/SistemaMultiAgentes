@@ -9,12 +9,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.agentes.elicitador.calidad import verificar_conjunto
 from multiagente.agentes.elicitador.contexto import (
+    CONSULTA_PATRONES_DE_REGLAS,
     CONSULTAS_ELICITACION,
+    FRAGMENTOS_PATRONES_DE_REGLAS,
     etiquetar,
     mensaje_contexto,
     recuperar_contexto,
 )
 from multiagente.agentes.elicitador.dialogo import (
+    PREGUNTA_ALGO_MAS,
     PREGUNTA_CIERRE,
     PREGUNTA_QUE_FALTA,
     SIN_RESPUESTA,
@@ -25,6 +28,7 @@ from multiagente.agentes.elicitador.dialogo import (
     mensajes_pregunta,
     registro_desde_salida,
     resumen_para_confirmar,
+    validar_caso_limite,
     validar_pregunta,
 )
 from multiagente.agentes.elicitador.fidelidad import raices, respaldado
@@ -147,7 +151,10 @@ def test_n2_consulta_la_metodologia_y_el_dominio_de_la_necesidad():
     metodologicas = [c for c in recuperador.consultas if c[1] is Coleccion.ELICITACION]
     assert [c[0] for c in metodologicas] == list(CONSULTAS_ELICITACION)
     assert {c[2] for c in metodologicas} == {3}
-    assert recuperador.consultas[-1] == (NECESIDAD, Coleccion.DOMINIO_NEGOCIO, None)
+    assert recuperador.consultas[-2:] == [
+        (NECESIDAD, Coleccion.DOMINIO_NEGOCIO, None),
+        (CONSULTA_PATRONES_DE_REGLAS, Coleccion.DOMINIO_NEGOCIO, FRAGMENTOS_PATRONES_DE_REGLAS),
+    ]
 
     elicitacion = contexto.fragmentos["elicitacion"]
     # La guía compartida aparece una sola vez.
@@ -162,10 +169,15 @@ def test_n2_consulta_la_metodologia_y_el_dominio_de_la_necesidad():
 def test_n2_declara_la_ausencia_de_contexto_de_dominio():
     contexto = recuperar_contexto(RecuperadorFalso(sin_dominio=True), abierta())
     assert contexto.fragmentos["dominio_negocio"] == ()
+    descarte = (
+        "dominio_negocio: dom-007 · Reglas (similitud 0.200 menor que el umbral 0.37 y sin "
+        "coincidencia léxica)"
+    )
     assert contexto.descartados == (
         f"dominio_negocio: sin contexto relevante para «{NECESIDAD}»",
-        "dominio_negocio: dom-007 · Reglas (similitud 0.200 menor que el umbral 0.37 y sin "
-        "coincidencia léxica)",
+        descarte,
+        f"dominio_negocio: sin contexto relevante para «{CONSULTA_PATRONES_DE_REGLAS}»",
+        descarte,
     )
 
 
@@ -231,6 +243,17 @@ REGLA_DEL_DOMINIO = (
 )
 
 
+CASO_LIMITE = "Si el documento soporte tiene más de un año, la solicitud igual se acepta"
+
+
+def salida_pregunta(
+    texto: str, categoria: str | None = None, sin_mas: bool = False
+) -> SalidaPregunta:
+    return SalidaPregunta(
+        siguiente_pregunta=texto, categoria_caso_limite=categoria, sin_mas_casos_limite=sin_mas
+    )
+
+
 def salida_extraccion(**cambios) -> SalidaExtraccion:
     base = {
         "rol": None,
@@ -241,6 +264,7 @@ def salida_extraccion(**cambios) -> SalidaExtraccion:
         "datos_salida": None,
         "excepciones": None,
         "condiciones": None,
+        "casos_limite": None,
         "prioridad": None,
         "retirar": [],
         "supuestos": [],
@@ -250,9 +274,19 @@ def salida_extraccion(**cambios) -> SalidaExtraccion:
     return SalidaExtraccion.model_validate(base | cambios)
 
 
-def registro_completo() -> RegistroCaptura:
-    return registro_desde_salida(
+def registro_completo(casos_limite_cerrados: bool = True) -> RegistroCaptura:
+    """Registro con todos los atributos; por defecto, listo para confirmar el resumen.
+
+    Con la fase de casos límite cerrada, también se dio por hecha la pregunta por algo más.
+    """
+    registro = registro_desde_salida(
         salida_extraccion(**COMPLETO), RegistroCaptura(), raices(DICHO_POR_EL_CLIENTE)
+    )
+    return registro.model_copy(
+        update={
+            "casos_limite_cerrados": casos_limite_cerrados,
+            "algo_mas_preguntado": casos_limite_cerrados,
+        }
     )
 
 
@@ -287,7 +321,13 @@ def test_la_extraccion_no_ve_el_contexto_de_dominio():
     conversacion = con_respuesta(RegistroCaptura(), "¿Quién lo usa?", "El analista catastral")
     [mensaje] = mensajes_extraccion(conversacion)
     datos = json.loads(mensaje["content"])
-    assert set(datos) == {"registro", "transcripcion", "pregunta_anterior", "respuesta_nueva"}
+    assert set(datos) == {
+        "registro",
+        "transcripcion",
+        "pregunta_anterior",
+        "caso_limite_preguntado",
+        "respuesta_nueva",
+    }
     assert datos["pregunta_anterior"] == "¿Quién lo usa?"
     assert datos["respuesta_nueva"] == "El analista catastral"
 
@@ -676,21 +716,17 @@ def test_resumen_para_confirmar_sale_del_registro():
 )
 def test_reglas_de_la_pregunta(pregunta, mensaje):
     with pytest.raises(ErrorValidacionSalida, match=mensaje):
-        validar_pregunta(SalidaPregunta(siguiente_pregunta=pregunta), RegistroCaptura())
+        validar_pregunta(salida_pregunta(pregunta), RegistroCaptura())
 
 
 def test_confirmar_un_dato_puntual_es_una_pregunta_valida():
     pregunta = "Estoy asumiendo que el número predial tiene 30 dígitos, ¿puede confirmarlo?"
-    assert validar_pregunta(SalidaPregunta(siguiente_pregunta=pregunta), RegistroCaptura()) == (
-        pregunta
-    )
+    assert validar_pregunta(salida_pregunta(pregunta), RegistroCaptura()) == (pregunta)
 
 
 def test_la_pregunta_de_cierre_lleva_el_resumen():
     registro = registro_completo()
-    pregunta = validar_pregunta(
-        SalidaPregunta(siguiente_pregunta="El revisor pide el año; ¿lo incluimos?"), registro
-    )
+    pregunta = validar_pregunta(salida_pregunta("El revisor pide el año; ¿lo incluimos?"), registro)
     assert pregunta == f"{resumen_para_confirmar(registro)}\nEl revisor pide el año; ¿lo incluimos?"
 
 
@@ -1008,7 +1044,7 @@ def agente(cliente, registro: RegistroEnMemoria, recuperador=None) -> AgenteElic
 
 
 def pregunta(texto: str) -> SalidaPregunta:
-    return SalidaPregunta(siguiente_pregunta=texto)
+    return salida_pregunta(texto)
 
 
 def test_los_prompts_del_elicitador_estan_versionados():
@@ -1034,22 +1070,108 @@ def test_n3_extrae_sin_contexto_y_pregunta_con_contexto(cliente_falso, completar
     assert "contexto" in json.loads(siguiente[1]["content"])
 
 
-def test_n3_presenta_el_resumen_sin_pedir_pregunta(cliente_falso, completar_respuesta):
+def casi_completo(casos_limite_cerrados: bool) -> Conversacion:
+    """Conversación a la que solo le falta el caso de error, que trae la respuesta nueva."""
     parcial = {k: v for k, v in COMPLETO.items() if k != "excepciones"}
     registro_parcial = registro_desde_salida(
         salida_extraccion(**parcial), RegistroCaptura(), raices(DICHO_POR_EL_CLIENTE)
+    ).model_copy(
+        update={
+            "casos_limite_cerrados": casos_limite_cerrados,
+            "algo_mas_preguntado": casos_limite_cerrados,
+        }
     )
-    conversacion = con_respuesta(
+    return con_respuesta(
         registro_parcial, "¿Qué pasa si hay un error?", "Si el número predial no existe, se rechaza"
     )
+
+
+def test_n3_presenta_el_resumen_sin_pedir_pregunta(cliente_falso, completar_respuesta):
     cliente = cliente_falso(
         completar_respuesta(salida_extraccion(excepciones=COMPLETO["excepciones"]))
     )
-    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        casi_completo(casos_limite_cerrados=True), contexto_recuperado()
+    )
     assert len(cliente.llamadas) == 1
     assert dialogo.siguiente_pregunta == (
         f"{resumen_para_confirmar(dialogo.registro)}\n{PREGUNTA_CIERRE}"
     )
+
+
+def test_n3_con_todo_capturado_pregunta_un_caso_limite(cliente_falso, completar_respuesta):
+    caso = "¿Qué debe pasar si el documento soporte es de hace más de un año?"
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion(excepciones=COMPLETO["excepciones"])),
+        completar_respuesta(salida_pregunta(caso, categoria="vigencia")),
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        casi_completo(casos_limite_cerrados=False), contexto_recuperado()
+    )
+    assert dialogo.siguiente_pregunta == caso
+    assert dialogo.registro.categorias_casos_limite == ("vigencia",)
+    assert dialogo.registro.caso_limite_preguntado == "vigencia"
+    estado = json.loads(cliente.llamadas[1]["messages"][2]["content"])
+    assert estado["pendientes"] == ["casos_limite", "confirmacion"]
+    assert estado["categorias_casos_limite_preguntadas"] == []
+
+
+def test_un_caso_limite_no_repite_su_categoria():
+    registro = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"categorias_casos_limite": ("vigencia",)}
+    )
+    with pytest.raises(ErrorValidacionSalida, match="Ya preguntaste por la categoría"):
+        validar_caso_limite(salida_pregunta("¿Y si cambia la vigencia?", "vigencia"), registro)
+    with pytest.raises(ErrorValidacionSalida, match="categoria_caso_limite"):
+        validar_caso_limite(salida_pregunta("¿Y si el predio no existe?"), registro)
+    assert validar_caso_limite(salida_pregunta("", sin_mas=True), registro) is None
+    # Sin ninguna pregunta todavía, no puede darse la fase por terminada.
+    sin_preguntas = registro.model_copy(update={"categorias_casos_limite": ()})
+    with pytest.raises(ErrorValidacionSalida, match="al menos por un caso límite"):
+        validar_caso_limite(salida_pregunta("", sin_mas=True), sin_preguntas)
+    assert validar_caso_limite(
+        salida_pregunta("¿Qué debe pasar si el predio no existe?", "existencia"), registro
+    ) == ("¿Qué debe pasar si el predio no existe?", "existencia")
+
+
+def test_sin_mas_casos_limite_cierra_la_fase_y_pregunta_por_algo_mas(
+    cliente_falso, completar_respuesta
+):
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion(excepciones=COMPLETO["excepciones"])),
+        completar_respuesta(salida_pregunta("", sin_mas=True)),
+    )
+    conversacion = casi_completo(casos_limite_cerrados=False)
+    ya_preguntado = conversacion.registro.model_copy(
+        update={"categorias_casos_limite": ("vigencia",)}
+    )
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        conversacion.model_copy(update={"registro": ya_preguntado}), contexto_recuperado()
+    )
+    assert dialogo.registro.casos_limite_cerrados
+    # Antes del resumen, una sola vez, la pregunta de cierre de eli-006, sin llamar al modelo.
+    assert dialogo.siguiente_pregunta == PREGUNTA_ALGO_MAS
+    assert dialogo.registro.algo_mas_preguntado
+    assert dialogo.registro.por_preguntar == ["confirmacion"]
+
+
+def test_lo_que_define_el_cliente_queda_como_caso_limite_y_va_al_resumen():
+    respuesta = "Si el documento soporte tiene más de un año, la solicitud igual se acepta"
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"categorias_casos_limite": ("vigencia",), "caso_limite_preguntado": "vigencia"}
+    )
+    conversacion = con_respuesta(
+        previo, "¿Qué debe pasar si el documento soporte es de hace más de un año?", respuesta
+    )
+    datos = json.loads(mensajes_extraccion(conversacion)[0]["content"])
+    assert datos["caso_limite_preguntado"] == "vigencia"
+    assert "categorias_casos_limite" not in datos["registro"]
+    registro = aplicar_extraccion(salida_extraccion(casos_limite=[respuesta]), conversacion)
+    assert registro.casos_limite == (respuesta,)
+    assert registro.caso_limite_preguntado is None
+    # Un «no sé» a un caso límite no cuenta contra un atributo.
+    assert registro.no_sabe == ()
+    assert f"- Casos especiales acordados: {respuesta}" in resumen_para_confirmar(registro)
 
 
 def test_n3_pregunta_que_falta_si_el_cliente_no_confirma_ni_corrige(
@@ -1180,8 +1302,18 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
         # Rol, beneficio y reglas: extracción y pregunta por los datos.
         completar_respuesta(salida_extraccion(**parcial)),
         completar_respuesta(pregunta("¿Qué información necesita tener a la mano?")),
-        # Datos y errores: con todo capturado, el sistema presenta el resumen.
+        # Datos y errores: con todo capturado, pregunta por un caso límite.
         completar_respuesta(salida_extraccion(**COMPLETO)),
+        completar_respuesta(
+            salida_pregunta(
+                "¿Qué debe pasar si el documento soporte es de hace más de un año?", "vigencia"
+            )
+        ),
+        # El cliente define el caso; no queda otra categoría que aplique, y sigue la pregunta por
+        # algo más, que hace el sistema.
+        completar_respuesta(salida_extraccion(casos_limite=[CASO_LIMITE])),
+        completar_respuesta(salida_pregunta("", sin_mas=True)),
+        completar_respuesta(salida_extraccion()),
         # Confirmación y síntesis.
         completar_respuesta(salida_extraccion(confirma_resumen=True)),
         completar_respuesta(salida_sintesis()),
@@ -1205,13 +1337,18 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
         DICHO_POR_EL_CLIENTE,
         "El número predial de 30 dígitos y la fecha del documento; entrega un radicado "
         "RAD-AAAA-NNNNNN. Si el número predial no existe, la solicitud se rechaza.",
+        CASO_LIMITE,
+        "No, eso es todo",
         "Sí, es correcto",
     ):
         assert avance.pausa.punto == "dialogo"
         preguntas.append(avance.pausa.datos["pregunta"])
         avance = avanzar(app, id_sesion, respuesta)
 
-    assert preguntas[2].startswith("Le resumo lo que entendí:")
+    assert preguntas[2].startswith("¿Qué debe pasar si el documento soporte")
+    assert preguntas[3] == PREGUNTA_ALGO_MAS
+    assert preguntas[4].startswith("Le resumo lo que entendí:")
+    assert f"Casos especiales acordados: {CASO_LIMITE}" in preguntas[4]
     assert avance.pausa.punto == "requerimientos"
     assert avance.pausa.datos["defectos"] == []
     assert avance.pausa.datos["referencias"]["RF-01"]
@@ -1219,7 +1356,22 @@ def test_una_conversacion_produce_un_requerimiento_que_pasa_la_calidad(
     [requerimiento] = estado["requerimientos"].requerimientos
     assert requerimiento.proyecto == "Gestión catastral"
     assert estado["conversacion"].registro.resumen_confirmado
-    assert [llamada.nodo for llamada in registro.llamadas] == ["N3"] * 6 + ["N5"]
+    assert [llamada.nodo for llamada in registro.llamadas] == ["N3"] * 10 + ["N5"]
     # El prompt de pregunta y el contexto forman un prefijo idéntico, apto para la caché.
     assert cliente.llamadas[1]["messages"][:2] == cliente.llamadas[3]["messages"][:2]
     assert avance.nodos == (Nodo.N3, Nodo.N4, Nodo.N5)
+
+
+def test_un_no_se_a_un_caso_limite_no_deja_preguntas_abiertas():
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"categorias_casos_limite": ("estado",), "caso_limite_preguntado": "estado"}
+    )
+    conversacion = con_respuesta(
+        previo, "¿Qué debe pasar si se reversa un abono ya reversado?", "No lo sé"
+    )
+    registro = aplicar_extraccion(
+        salida_extraccion(preguntas_abiertas=["Qué pasa al reversar un abono ya reversado"]),
+        conversacion,
+    )
+    assert registro.preguntas_abiertas == ()
+    assert registro.casos_limite == ()

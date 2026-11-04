@@ -167,6 +167,26 @@ class Turno(ModeloEstricto):
 INTENTOS_SIN_RESPUESTA = 2
 """Veces que el cliente dice no saber un atributo antes de que N3 deje de preguntarlo (RF-02)."""
 
+MAX_PREGUNTAS_CASOS_LIMITE = 3
+"""Preguntas por casos límite antes del resumen, una categoría de patrón por pregunta (ADR-0015)."""
+
+RESERVA_TURNOS_CONFIRMACION = 3
+"""Turnos que N3 reserva para el resumen y su confirmación: con menos, no pregunta casos límite."""
+
+
+class CategoriaCasoLimite(StrEnum):
+    """Patrón de regla de negocio por el que se pregunta un caso límite (dom-007)."""
+
+    VIGENCIA = "vigencia"
+    PRECEDENCIA = "precedencia"
+    TOPE = "tope"
+    DERIVACION = "derivacion"
+    EXISTENCIA = "existencia"
+    ESTADO = "estado"
+    TRAZABILIDAD = "trazabilidad"
+    FORMATO = "formato"
+    OTRA = "otra"
+
 
 class RegistroCaptura(ModeloEstricto):
     """Información capturada durante la elicitación (RF-03).
@@ -179,6 +199,15 @@ class RegistroCaptura(ModeloEstricto):
     `INTENTOS_SIN_RESPUESTA` veces queda sin respuesta: sigue pendiente, pero N3 no lo vuelve a
     preguntar y el cliente puede confirmar el resumen sin él. La prioridad y las condiciones que el
     cliente ya definió (quién consume lo que pide, cómo se prueba, qué cambiará) son opcionales.
+
+    Con los atributos completos, y antes del resumen, N3 pregunta por casos límite: situaciones
+    especiales de las reglas registradas, hasta `MAX_PREGUNTAS_CASOS_LIMITE`, una categoría de
+    dom-007 por pregunta. Lo que el cliente define queda en `casos_limite`. La fase se cierra al
+    agotar las preguntas, cuando no queda una categoría que aplique o cuando ya no hay turnos de
+    sobra (`RESERVA_TURNOS_CONFIRMACION`). Después, una sola vez, N3 pregunta si hay algo
+    importante que no se preguntó, como pide la fase de cierre de eli-006 (`algo_mas`). Ninguna de
+    las dos forma parte del criterio de suficiencia: son lo que falta preguntar antes de confirmar
+    (ADR-0015).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -191,10 +220,15 @@ class RegistroCaptura(ModeloEstricto):
     datos_salida: tuple[DatoSalida, ...] = ()
     excepciones: tuple[TextoObligatorio, ...] = ()
     condiciones: tuple[TextoObligatorio, ...] = ()
+    casos_limite: tuple[TextoObligatorio, ...] = ()
     prioridad: Prioridad | None = None
     supuestos: tuple[TextoObligatorio, ...] = ()
     preguntas_abiertas: tuple[TextoObligatorio, ...] = ()
     no_sabe: tuple[str, ...] = ()
+    categorias_casos_limite: tuple[CategoriaCasoLimite, ...] = ()
+    caso_limite_preguntado: CategoriaCasoLimite | None = None
+    casos_limite_cerrados: bool = False
+    algo_mas_preguntado: bool = False
     resumen_confirmado: bool = False
 
     @model_validator(mode="after")
@@ -220,9 +254,34 @@ class RegistroCaptura(ModeloEstricto):
         return faltantes
 
     @property
+    def explora_casos_limite(self) -> bool:
+        """Si N3 debe preguntar por un caso límite antes del resumen.
+
+        Requiere los atributos capturados, salvo los que el cliente no supo, y la fase abierta.
+        """
+        return (
+            not self.resumen_confirmado
+            and not self.casos_limite_cerrados
+            and len(self.categorias_casos_limite) < MAX_PREGUNTAS_CASOS_LIMITE
+            and set(self._faltantes()) <= set(self.sin_respuesta)
+        )
+
+    @property
     def pendientes(self) -> list[str]:
-        """Atributos que aún faltan, en el orden en que se preguntan; la confirmación al final."""
+        """Lo que falta, en el orden en que se pregunta.
+
+        Primero los atributos, después los casos límite y la pregunta por algo más, y al final la
+        confirmación.
+        """
         faltantes = self._faltantes()
+        if self.explora_casos_limite:
+            faltantes.append("casos_limite")
+        elif (
+            not self.resumen_confirmado
+            and not self.algo_mas_preguntado
+            and set(faltantes) <= set(self.sin_respuesta)
+        ):
+            faltantes.append("algo_mas")
         if not self.resumen_confirmado:
             faltantes.append("confirmacion")
         return faltantes

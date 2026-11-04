@@ -317,6 +317,10 @@ def verificar_historia(historia: HistoriaUsuario) -> list[DefectoCalidad]:
     return defectos
 
 
+ESCENARIOS_MINIMOS = 3
+"""Escenarios mínimos de un requerimiento: el camino feliz, uno alterno y uno de error (eli-004)."""
+
+
 def verificar_requerimiento(requerimiento: RequerimientoFormal) -> list[DefectoCalidad]:
     """Verifica un requerimiento formal del Anexo A de forma individual.
 
@@ -383,13 +387,15 @@ def verificar_requerimiento(requerimiento: RequerimientoFormal) -> list[DefectoC
             )
 
     escenarios = requerimiento.criterios_aceptacion
-    if len(escenarios) < 2:
+    if len(escenarios) < ESCENARIOS_MINIMOS:
+        # Cobertura mínima de eli-004: el camino feliz, uno alterno y uno de error.
         defectos.append(
             DefectoCalidad(
                 artefacto,
                 Caracteristica.VERIFICABLE,
                 "criterios_aceptacion",
-                "un solo escenario: falta el camino alterno o de error",
+                f"{len(escenarios)} escenarios: faltan el camino feliz, el alterno o el de error "
+                f"(al menos {ESCENARIOS_MINIMOS})",
             )
         )
     con_error = any(

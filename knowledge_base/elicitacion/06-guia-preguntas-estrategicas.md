@@ -5,8 +5,8 @@ fuente: Sommerville, Software Engineering (2015); ISO/IEC/IEEE 29148:2018
 tipo_fuente: practica_industria
 tags: [preguntas, conversacion, elicitacion]
 coleccion: elicitacion
-version: 1.1
-fecha: 2026-10-31
+version: 1.2
+fecha: 2026-11-04
 agente_consumidor: elicitador
 segmentacion: por_seccion
 ---
@@ -55,6 +55,23 @@ El agente recorre las fases en orden y no avanza a la siguiente hasta cerrar la 
 - ¿Cuántos registros maneja normalmente? ¿Y en el pico más alto?
 - ¿Hay algún plazo legal o normativo que cumplir?
 - ¿Existe alguna restricción sobre quién puede ver esta información?
+
+### Fase 5b · Casos límite
+
+Con los atributos capturados, y antes del resumen, el agente pregunta por situaciones
+especiales de las reglas que dio el cliente: hasta tres preguntas, una por turno y cada una de
+un patrón de regla distinto del dominio (dom-007), solo de los que aplican a lo que se pide.
+
+- ¿Qué debe pasar si llega un valor de un periodo que todavía no empieza o que ya cerró?
+- ¿Qué debe pasar si concurren dos reglas o beneficios? ¿Cuál se aplica primero?
+- ¿Qué debe pasar si el cálculo no cuadra al redondear, o si falta uno de sus componentes?
+- ¿Qué debe pasar si se repite o se deshace una operación que ya se hizo?
+
+Las preguntas son abiertas: el agente no propone la respuesta. Lo que el cliente define queda
+como caso especial, con su manejo, y cada uno tiene un escenario en el requerimiento. Si el
+cliente dice que no aplica o que no lo sabe, no se insiste ni queda como pregunta abierta: no
+tiene por qué conocer cada situación especial. Si quedan pocos turnos, el agente pasa al
+resumen.
 
 ### Fase 6 · Cierre y confirmación
 

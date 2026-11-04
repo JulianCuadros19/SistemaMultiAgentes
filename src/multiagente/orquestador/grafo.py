@@ -19,6 +19,7 @@ from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.llm.cliente import ErrorRespuestaModelo
 from multiagente.llm.invocador import ErrorValidacionSalida
 from multiagente.orquestador.estado import (
+    RESERVA_TURNOS_CONFIRMACION,
     AprobacionHumana,
     Arquitectura,
     CasoPrueba,
@@ -158,6 +159,22 @@ def _con_aprobacion(sesion: Sesion, aprobacion: AprobacionHumana, fase: Fase | N
     if fase is not None:
         actualizacion["fase"] = fase
     return sesion.model_copy(update=actualizacion)
+
+
+def _con_reserva_de_turnos(conversacion: Conversacion, limite: int) -> Conversacion:
+    """Va directo al resumen si ya no quedan turnos para los casos límite y para confirmar.
+
+    Cierra la fase de casos límite y omite la pregunta por algo más.
+    """
+    registro = conversacion.registro
+    if conversacion.turnos_cliente + RESERVA_TURNOS_CONFIRMACION < limite or (
+        registro.casos_limite_cerrados and registro.algo_mas_preguntado
+    ):
+        return conversacion
+    cerrado = registro.model_copy(
+        update={"casos_limite_cerrados": True, "algo_mas_preguntado": True}
+    )
+    return conversacion.model_copy(update={"registro": cerrado})
 
 
 def ruta_tras_suficiencia(estado: EstadoGrafo) -> Nodo:
@@ -317,6 +334,9 @@ class NodosGrafo:
         misma respuesta y descartaría cualquier otra, de modo que una falla persistente, como el
         filtro de contenido, dejaría la sesión atascada. En su lugar, pide al cliente que repita
         o reformule su respuesta.
+
+        Si ya no quedan turnos para el resumen y su confirmación (`RESERVA_TURNOS_CONFIRMACION`),
+        cierra la fase de casos límite antes de procesar la respuesta.
         """
         conversacion = estado["conversacion"]
         if conversacion.pregunta_pendiente is not None:
@@ -332,12 +352,14 @@ class NodosGrafo:
                 datos = {**datos, "aviso": "La respuesta no puede estar vacía."}
             turno = Turno(emisor=Emisor.CLIENTE, texto=respuesta, fecha=_ahora())
             conversacion = conversacion.model_copy(update={"turnos": (*conversacion.turnos, turno)})
+            conversacion = _con_reserva_de_turnos(conversacion, estado["control"].limite_turnos)
             try:
                 dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
             except Exception:
                 _log.exception("N3 no pudo procesar la respuesta del cliente; vuelve a preguntar")
                 return {"conversacion": _volver_a_preguntar(conversacion)}
         else:
+            conversacion = _con_reserva_de_turnos(conversacion, estado["control"].limite_turnos)
             dialogo = self.servicios.elicitador.dialogar(conversacion, estado["contexto"])
         turnos = conversacion.turnos
         if dialogo.siguiente_pregunta is not None:

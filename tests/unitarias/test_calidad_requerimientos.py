@@ -168,13 +168,18 @@ def test_escenarios_insuficientes():
         requerimiento(criterios_aceptacion=datos["criterios_aceptacion"][:1])
     )
     assert [d.detalle for d in solo_feliz] == [
-        "un solo escenario: falta el camino alterno o de error",
+        "1 escenarios: faltan el camino feliz, el alterno o el de error (al menos 3)",
         "ningún escenario cubre un caso de error o una entrada inválida",
     ]
-    sin_error = verificar_requerimiento(
+    # Con dos escenarios falta el tercero que pide eli-004, aunque uno sea de error.
+    dos = verificar_requerimiento(
         requerimiento(criterios_aceptacion=datos["criterios_aceptacion"][:2])
     )
-    assert caracteristicas(sin_error) == [Caracteristica.VERIFICABLE]
+    assert [d.detalle for d in dos] == [
+        "2 escenarios: faltan el camino feliz, el alterno o el de error (al menos 3)",
+        "ningún escenario cubre un caso de error o una entrada inválida",
+    ]
+    assert set(caracteristicas(dos)) == {Caracteristica.VERIFICABLE}
 
 
 def conjunto(rf: RequerimientoFormal | None = None, **cambios_historia) -> Requerimientos:

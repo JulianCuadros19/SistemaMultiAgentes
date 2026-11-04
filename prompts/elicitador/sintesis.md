@@ -2,7 +2,7 @@
 id: elicitador.sintesis
 agente: elicitador
 nodo: N5
-version: 1.4
+version: 1.5
 descripcion: Síntesis de la historia de usuario y de los requerimientos formales del Anexo A.
 ---
 
@@ -53,9 +53,9 @@ asigna sus identificadores.
 - `precondicion`: el estado que debe cumplirse antes de ejecutar la funcionalidad, según lo que
   dijo el cliente.
 - `regla_negocio`: las reglas del registro, sin ambigüedad y con los valores concretos que dio
-  el cliente, en texto corrido, sin saltos de línea ni viñetas. Incluye las `condiciones` del
-  registro que apliquen a ese requerimiento: el cliente ya las definió, así que nunca van en
-  `supuestos`.
+  el cliente, en texto corrido, sin saltos de línea ni viñetas. Incluye las `condiciones` y los
+  `casos_limite` del registro que apliquen a ese requerimiento: el cliente ya los definió, así que
+  nunca van en `supuestos`.
 - `datos_entrada` y `datos_salida`: los del registro, con nombres únicos, en minúsculas y sin
   espacios (por ejemplo, `numero_predial`).
 - `escenarios`: criterios de aceptación en Gherkin. Al menos tres: el camino feliz, un camino
@@ -66,6 +66,8 @@ asigna sus identificadores.
   lenguaje de negocio: sin nombres de funciones y sin operadores como `<=` o `=`; puedes nombrar
   los datos declarados en la ficha. Por ejemplo, «CUANDO se registra la solicitud», no «CUANDO
   registrar_solicitud()».
+  - Cada caso especial del registro (`casos_limite`) tiene, en el requerimiento al que aplica, un
+    escenario que lo verifica con sus valores, además de los tres mínimos.
 - `relacionados`: posiciones (1, 2…) de los otros requerimientos de esta misma respuesta de los
   que depende; lista vacía si no depende de ninguno.
 - `fuentes`: etiquetas del contexto en que te apoyaste, incluidas las del dominio de negocio

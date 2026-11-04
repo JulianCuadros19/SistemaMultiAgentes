@@ -17,13 +17,17 @@ El código, no el prompt, garantiza las reglas que deben cumplirse siempre:
   menciona en su respuesta;
 - solo entra al registro lo que está respaldado por lo que dijo el cliente
   (`multiagente.agentes.elicitador.fidelidad`), y solo hay preguntas abiertas si el cliente dijo
-  no saber algo;
+  no saber algo. La respuesta a un caso límite o a la pregunta por algo más no agrega preguntas
+  abiertas: el cliente no tiene por qué conocer cada situación especial;
 - el resumen solo queda confirmado con una respuesta nueva del cliente, con el registro completo
   y sin cambios respecto del resumen que se le presentó;
 - lo que el cliente no sabe no se pregunta sin fin: tras `INTENTOS_SIN_RESPUESTA` respuestas en
   que dice no saber el atributo que se le preguntaba, queda sin respuesta (RF-02);
 - hay pregunta si y solo si queda algo por preguntar, y es una sola, en lenguaje de negocio
   (RNF-08);
+- con los atributos completos, antes del resumen, se pregunta por casos límite, una categoría de
+  dom-007 por pregunta y sin repetirla, hasta `MAX_PREGUNTAS_CASOS_LIMITE`, y después, una vez,
+  si hay algo importante que no se preguntó (ADR-0015);
 - el resumen que el cliente confirma se arma con el registro, de modo que confirma exactamente
   lo que se va a sintetizar.
 """
@@ -49,7 +53,13 @@ from multiagente.agentes.elicitador.fidelidad import (
 from multiagente.core.esquemas.comunes import Prioridad
 from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida
 from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo
-from multiagente.orquestador.estado import Contexto, Conversacion, Emisor, RegistroCaptura
+from multiagente.orquestador.estado import (
+    CategoriaCasoLimite,
+    Contexto,
+    Conversacion,
+    Emisor,
+    RegistroCaptura,
+)
 from multiagente.orquestador.servicios import Dialogo
 
 
@@ -82,6 +92,7 @@ class ListaDelRegistro(StrEnum):
     DATOS_SALIDA = "datos_salida"
     EXCEPCIONES = "excepciones"
     CONDICIONES = "condiciones"
+    CASOS_LIMITE = "casos_limite"
 
 
 class RetiroModelo(BaseModel):
@@ -111,6 +122,7 @@ class SalidaExtraccion(BaseModel):
     datos_salida: list[DatoSalidaModelo] | None
     excepciones: list[str] | None
     condiciones: list[str] | None
+    casos_limite: list[str] | None
     prioridad: Prioridad | None
     retirar: list[RetiroModelo]
     supuestos: list[str]
@@ -119,23 +131,43 @@ class SalidaExtraccion(BaseModel):
 
 
 class SalidaPregunta(BaseModel):
-    """Salida de la pregunta de N3."""
+    """Salida de la pregunta de N3.
+
+    En la fase de casos límite, `categoria_caso_limite` es el patrón de dom-007 por el que se
+    pregunta, y `sin_mas_casos_limite` indica que ninguna categoría que falte aplica a la
+    necesidad: entonces no hay pregunta y sigue el resumen.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     siguiente_pregunta: str
+    categoria_caso_limite: CategoriaCasoLimite | None
+    sin_mas_casos_limite: bool
 
 
 D = TypeVar("D", DatoEntrada, DatoSalida)
 
-PREGUNTA_CIERRE = "¿Es correcto o falta algo?"
+PREGUNTA_CIERRE = "¿Es correcto? Si falta algo o hay algo que corregir, dígamelo todo de una vez."
+"""Pregunta con que cierra el resumen que el cliente confirma.
+
+Pide todas las correcciones en una respuesta: de a una, el resumen se repite hasta agotar los
+turnos (ADR-0015).
+"""
 
 ENCABEZADO_RESUMEN = "Le resumo lo que entendí:"
 """Primera línea del resumen que confirma el cliente."""
 
 PREGUNTA_QUE_FALTA = "¿Qué falta o qué debo corregir del resumen?"
 """Pregunta cuando el cliente no confirma el resumen, pero tampoco dice qué cambiar."""
-"""Pregunta con que cierra el resumen que el cliente confirma."""
+
+PREGUNTA_ALGO_MAS = (
+    "Antes de resumir, ¿hay algo importante que no le haya preguntado, como la prioridad, los "
+    "mensajes exactos de error, el formato de los valores o un ejemplo con cifras para verificar?"
+)
+"""Pregunta de cierre de eli-006 antes del resumen: reúne en un turno lo que nadie preguntó."""
+
+MIN_PREGUNTAS_CASOS_LIMITE = 1
+"""Preguntas por casos límite antes de que el modelo pueda dar la fase por terminada."""
 
 TERMINOS_TECNICOS = re.compile(
     r"\b(?:endpoint|api|esquema|entidad(?:es)?|base de datos|json|backend|frontend"
@@ -145,6 +177,18 @@ TERMINOS_TECNICOS = re.compile(
 
 PIDE_CONFIRMAR = re.compile(r"\bresumen\b")
 """Señal de que la pregunta pide confirmar el resumen; confirmar un dato puntual sí se admite."""
+
+
+CONTROL_DEL_REGISTRO = frozenset(
+    {
+        "no_sabe",
+        "categorias_casos_limite",
+        "caso_limite_preguntado",
+        "casos_limite_cerrados",
+        "algo_mas_preguntado",
+    }
+)
+"""Campos del registro que lleva el código para conducir el diálogo, no lo que dijo el cliente."""
 
 
 def _transcripcion(conversacion: Conversacion) -> list[dict[str, str]]:
@@ -166,9 +210,10 @@ def mensajes_extraccion(conversacion: Conversacion) -> list[ChatCompletionMessag
         if turno.emisor is Emisor.ELICITADOR
     ]
     datos = {
-        "registro": conversacion.registro.model_dump(mode="json", exclude={"no_sabe"}),
+        "registro": conversacion.registro.model_dump(mode="json", exclude=CONTROL_DEL_REGISTRO),
         "transcripcion": _transcripcion(conversacion),
         "pregunta_anterior": anteriores[-1] if anteriores else None,
+        "caso_limite_preguntado": conversacion.registro.caso_limite_preguntado,
         "respuesta_nueva": conversacion.respuesta_nueva,
     }
     return [{"role": "user", "content": json_texto(datos)}]
@@ -190,7 +235,8 @@ def mensajes_pregunta(
     estado = {
         "pendientes": registro.por_preguntar,
         "sin_respuesta": registro.sin_respuesta,
-        "registro": registro.model_dump(mode="json", exclude={"no_sabe"}),
+        "categorias_casos_limite_preguntadas": list(registro.categorias_casos_limite),
+        "registro": registro.model_dump(mode="json", exclude=CONTROL_DEL_REGISTRO),
         "transcripcion": _transcripcion(conversacion),
         "observaciones_revisor": list(conversacion.observaciones_revisor),
     }
@@ -251,6 +297,7 @@ def registro_desde_salida(
             *previo.reglas_negocio,
             *previo.excepciones,
             *previo.condiciones,
+            *previo.casos_limite,
             *(dato.nombre for dato in previo.datos_entrada),
             *(dato.nombre for dato in previo.datos_salida),
             *(dato.restriccion for dato in previo.datos_entrada),
@@ -317,10 +364,16 @@ def registro_desde_salida(
         datos_salida=datos(datos_salida, previo.datos_salida),
         excepciones=lista(salida.excepciones, previo.excepciones),
         condiciones=lista(salida.condiciones, previo.condiciones),
+        casos_limite=lista(salida.casos_limite, previo.casos_limite),
         prioridad=prioridad or previo.prioridad,
         supuestos=_textos(salida.supuestos),
         preguntas_abiertas=_textos(salida.preguntas_abiertas),
         no_sabe=previo.no_sabe,
+        # La respuesta ya atendió la pregunta de caso límite, si la había.
+        categorias_casos_limite=previo.categorias_casos_limite,
+        caso_limite_preguntado=None,
+        casos_limite_cerrados=previo.casos_limite_cerrados,
+        algo_mas_preguntado=previo.algo_mas_preguntado,
     )
 
 
@@ -390,7 +443,9 @@ def anotar_desconocimiento(
         Registro con el atributo anotado, o el mismo registro si no hay nada que anotar.
     """
     preguntado = previo.por_preguntar[0] if previo.por_preguntar else "confirmacion"
-    if preguntado == "confirmacion" or preguntado not in registro.pendientes:
+    if preguntado in ("confirmacion", "casos_limite", "algo_mas") or (
+        preguntado not in registro.pendientes
+    ):
         return registro
     if not dice_no_saber(respuesta):
         return registro
@@ -440,6 +495,8 @@ def resumen_para_confirmar(registro: RegistroCaptura) -> str:
     ]
     if registro.condiciones:
         lineas.append(f"- Condiciones ya definidas: {'; '.join(registro.condiciones)}")
+    if registro.casos_limite:
+        lineas.append(f"- Casos especiales acordados: {'; '.join(registro.casos_limite)}")
     if registro.prioridad:
         lineas.append(f"- Prioridad: {registro.prioridad}")
     if registro.supuestos:
@@ -455,9 +512,19 @@ def _huella(registro: RegistroCaptura) -> str:
     Excluye la confirmación, los supuestos y las preguntas abiertas: al confirmar, el modelo
     puede dar por resueltos los supuestos que el cliente acaba de aceptar.
     """
-    excluir = {"resumen_confirmado", "supuestos", "preguntas_abiertas"}
+    excluir = {"resumen_confirmado", "supuestos", "preguntas_abiertas", *CONTROL_DEL_REGISTRO}
     texto = json.dumps(registro.model_dump(mode="json", exclude=excluir), ensure_ascii=False)
     return re.sub(r"\s+", " ", normalizar(texto))
+
+
+def _respondio_exploracion(conversacion: Conversacion) -> bool:
+    """Si la respuesta nueva contesta un caso límite o la pregunta por algo más."""
+    if conversacion.respuesta_nueva is None:
+        return False
+    preguntas = [t.texto for t in conversacion.turnos if t.emisor is Emisor.ELICITADOR]
+    return conversacion.registro.caso_limite_preguntado is not None or (
+        bool(preguntas) and preguntas[-1] == PREGUNTA_ALGO_MAS
+    )
 
 
 def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> RegistroCaptura:
@@ -484,6 +551,9 @@ def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> 
             registro = anotar_desconocimiento(previo, registro, nueva)
     if registro.preguntas_abiertas and not desconoce_algo(conversacion):
         registro = registro.model_copy(update={"preguntas_abiertas": ()})
+    if _respondio_exploracion(conversacion):
+        # Lo que el cliente no sabe de una situación especial no bloquea los requerimientos.
+        registro = registro.model_copy(update={"preguntas_abiertas": previo.preguntas_abiertas})
     confirmado = (
         salida.confirma_resumen
         and nueva is not None
@@ -495,6 +565,25 @@ def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> 
             {**registro.model_dump(), "resumen_confirmado": True}
         )
     return registro
+
+
+def _problemas_de_pregunta(pregunta: str | None, registro: RegistroCaptura) -> list[str]:
+    problemas: list[str] = []
+    if pregunta is None:
+        problemas.append("Debes formular la siguiente pregunta.")
+    else:
+        if pregunta.count("?") != 1 or pregunta.count("¿") > 1:
+            problemas.append(
+                "La siguiente pregunta debe ser una sola, con un único signo de interrogación."
+            )
+        if tecnicos := sorted(set(TERMINOS_TECNICOS.findall(normalizar(pregunta)))):
+            problemas.append(f"La pregunta usa términos técnicos con el cliente: {tecnicos}.")
+        faltantes = [p for p in registro.por_preguntar if p != "confirmacion"]
+        if faltantes and PIDE_CONFIRMAR.search(normalizar(pregunta)):
+            problemas.append(
+                f"Aún faltan {faltantes}: pregunta por el primero y no pidas confirmar el resumen."
+            )
+    return problemas
 
 
 def validar_pregunta(salida: SalidaPregunta, registro: RegistroCaptura) -> str:
@@ -512,26 +601,59 @@ def validar_pregunta(salida: SalidaPregunta, registro: RegistroCaptura) -> str:
             técnicos.
     """
     pregunta = _texto(salida.siguiente_pregunta)
-    problemas: list[str] = []
-    if pregunta is None:
-        problemas.append("Debes formular la siguiente pregunta.")
-    else:
-        if pregunta.count("?") != 1 or pregunta.count("¿") > 1:
-            problemas.append(
-                "La siguiente pregunta debe ser una sola, con un único signo de interrogación."
-            )
-        if tecnicos := sorted(set(TERMINOS_TECNICOS.findall(normalizar(pregunta)))):
-            problemas.append(f"La pregunta usa términos técnicos con el cliente: {tecnicos}.")
-        faltantes = [p for p in registro.por_preguntar if p != "confirmacion"]
-        if faltantes and PIDE_CONFIRMAR.search(normalizar(pregunta)):
-            problemas.append(
-                f"Aún faltan {faltantes}: pregunta por el primero y no pidas confirmar el resumen."
-            )
-    if problemas:
+    problemas = _problemas_de_pregunta(pregunta, registro)
+    if problemas or pregunta is None:
         raise ErrorValidacionSalida(problemas)
     if registro.por_preguntar == ["confirmacion"]:
         return f"{resumen_para_confirmar(registro)}\n{pregunta}"
     return pregunta
+
+
+def validar_caso_limite(
+    salida: SalidaPregunta, registro: RegistroCaptura
+) -> tuple[str, CategoriaCasoLimite] | None:
+    """Verifica la pregunta de un caso límite: una sola, con una categoría que no se preguntó.
+
+    Args:
+        salida: Salida de la pregunta.
+        registro: Registro actualizado del turno, con la fase de casos límite abierta.
+
+    Returns:
+        La pregunta y su categoría, o None si el modelo indica que ninguna categoría que falte
+        aplica a la necesidad.
+
+    Raises:
+        ErrorValidacionSalida: Si la pregunta no cumple las reglas de una pregunta, falta la
+            categoría o la categoría ya se preguntó.
+    """
+    if salida.sin_mas_casos_limite and (
+        len(registro.categorias_casos_limite) >= MIN_PREGUNTAS_CASOS_LIMITE
+    ):
+        return None
+    if salida.sin_mas_casos_limite:
+        raise ErrorValidacionSalida(
+            [
+                "Pregunta al menos por un caso límite antes de pasar al resumen: elige la "
+                "categoría que más aplique a las reglas del registro."
+            ]
+        )
+    pregunta = _texto(salida.siguiente_pregunta)
+    problemas = _problemas_de_pregunta(pregunta, registro)
+    categoria = salida.categoria_caso_limite
+    if categoria is None:
+        problemas.append(
+            "Indica en categoria_caso_limite el patrón por el que preguntas, o marca "
+            "sin_mas_casos_limite si ninguno aplica."
+        )
+    elif categoria in registro.categorias_casos_limite:
+        preguntadas = ", ".join(registro.categorias_casos_limite)
+        problemas.append(
+            f"Ya preguntaste por la categoría «{categoria}» ({preguntadas}): elige otra o marca "
+            "sin_mas_casos_limite."
+        )
+    if problemas or pregunta is None or categoria is None:
+        raise ErrorValidacionSalida(problemas)
+    return pregunta, categoria
 
 
 def dialogar(
@@ -559,6 +681,25 @@ def dialogar(
             SalidaExtraccion,
             lambda salida: aplicar_extraccion(salida, conversacion),
         )
+    if registro.explora_casos_limite:
+        caso = pregunta.invocar_validado(
+            mensajes_pregunta(conversacion, registro, contexto),
+            SalidaPregunta,
+            lambda salida: validar_caso_limite(salida, registro),
+        )
+        if caso is not None:
+            texto, categoria = caso
+            registro = registro.model_copy(
+                update={
+                    "categorias_casos_limite": (*registro.categorias_casos_limite, categoria),
+                    "caso_limite_preguntado": categoria,
+                }
+            )
+            return Dialogo(registro=registro, siguiente_pregunta=texto)
+        registro = registro.model_copy(update={"casos_limite_cerrados": True})
+    if registro.por_preguntar[:1] == ["algo_mas"]:
+        registro = registro.model_copy(update={"algo_mas_preguntado": True})
+        return Dialogo(registro=registro, siguiente_pregunta=PREGUNTA_ALGO_MAS)
     if not registro.por_preguntar:
         return Dialogo(registro=registro, siguiente_pregunta=None)
     if registro.por_preguntar == ["confirmacion"] and nueva is not None:

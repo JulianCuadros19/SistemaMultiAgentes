@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from openai import OpenAI
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from multiagente.core.cabecera import ErrorCabecera, separar_cabecera
 from multiagente.core.esquemas.comunes import (
@@ -28,6 +28,23 @@ RAIZ_EVALUACION = Path(__file__).resolve().parents[3] / "evaluacion"
 """Carpeta `evaluacion/` del repositorio."""
 
 
+class ReglaOculta(ModeloEstricto):
+    """Regla que el cliente simulado solo dice si se le pregunta por su situación (ADR-0015).
+
+    Attributes:
+        id: Identificador de la regla en el caso, p. ej. `R1`.
+        descripcion: La regla, como la sabe el cliente.
+        terminos: Raíces que deben aparecer juntas en un requerimiento para darla por capturada,
+            sin tildes ni mayúsculas, p. ej. `anterior` y `vigencia`.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    id: TextoObligatorio
+    descripcion: TextoObligatorio
+    terminos: tuple[TextoObligatorio, ...] = Field(min_length=1)
+
+
 class CasoElicitacion(ModeloEstricto):
     """Caso sintético: datos de apertura de la sesión y lo que sabe el cliente.
 
@@ -35,6 +52,9 @@ class CasoElicitacion(ModeloEstricto):
         arquitecturas_esperadas: Arquitecturas del catálogo a las que apuntan las señales del
             caso, según los criterios de arq-003. Solo sirven para evaluar la selección de N8:
             el cliente simulado no las ve, porque recibe únicamente `conocimiento`.
+        reglas_ocultas: Reglas que el cliente solo dice si se le pregunta por su situación; el
+            cuerpo las trae en «Lo que solo dices si te preguntan». Sirven para evaluar si el
+            elicitador explora los casos límite.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -47,6 +67,7 @@ class CasoElicitacion(ModeloEstricto):
     version: Version
     conocimiento: TextoObligatorio
     arquitecturas_esperadas: tuple[IdArquitectura, ...] = ()
+    reglas_ocultas: tuple[ReglaOculta, ...] = ()
 
 
 class ErrorCaso(ValueError):

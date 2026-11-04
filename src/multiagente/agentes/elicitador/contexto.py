@@ -2,7 +2,9 @@
 
 La colección `elicitacion` se consulta con preguntas metodológicas fijas, porque su contenido
 (guía de preguntas, plantillas, Gherkin, antipatrones) no depende de lo que pida el cliente. La
-colección `dominio_negocio` se consulta con la necesidad con que el cliente abrió la sesión.
+colección `dominio_negocio` se consulta con la necesidad con que el cliente abrió la sesión y,
+aparte, con una consulta fija por los patrones de reglas de dom-007, de los que salen las
+preguntas por casos límite (ADR-0015).
 Los fragmentos se presentan al modelo con etiquetas `[F1]…[Fn]` estables, que N5 usa para
 referenciar el contexto en cada requerimiento.
 """
@@ -31,6 +33,15 @@ CONSULTAS_ELICITACION: tuple[str, ...] = (
 """Consultas metodológicas; cada una trae las secciones de un documento de la colección."""
 
 FRAGMENTOS_POR_CONSULTA_METODOLOGICA = 3
+
+CONSULTA_PATRONES_DE_REGLAS = (
+    "Patrones de reglas de negocio del dominio y preguntas que activa cada uno: vigencia "
+    "temporal, precedencia normativa, tope o límite, derivación y redondeo, existencia y "
+    "consistencia referencial, estado y transición, trazabilidad, formato y dominio de valores"
+)
+"""Consulta fija por los patrones de dom-007: su introducción y sus ocho patrones."""
+
+FRAGMENTOS_PATRONES_DE_REGLAS = 9
 COLECCIONES_ELICITADOR: tuple[Coleccion, ...] = (Coleccion.ELICITACION, Coleccion.DOMINIO_NEGOCIO)
 
 
@@ -60,7 +71,15 @@ def recuperar_contexto(recuperador: Recuperador, conversacion: Conversacion) -> 
         Coleccion.ELICITACION,
     )
     dominio, descartes_dominio = fragmentos_de(
-        [recuperador.recuperar(necesidad, [Coleccion.DOMINIO_NEGOCIO])], Coleccion.DOMINIO_NEGOCIO
+        [
+            recuperador.recuperar(necesidad, [Coleccion.DOMINIO_NEGOCIO]),
+            recuperador.recuperar(
+                CONSULTA_PATRONES_DE_REGLAS,
+                [Coleccion.DOMINIO_NEGOCIO],
+                k=FRAGMENTOS_PATRONES_DE_REGLAS,
+            ),
+        ],
+        Coleccion.DOMINIO_NEGOCIO,
     )
     return Contexto(
         fragmentos={

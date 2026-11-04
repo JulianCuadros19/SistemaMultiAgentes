@@ -14,10 +14,13 @@ from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.esquemas.requerimiento import DatoEntrada, DatoSalida, RequerimientoFormal
 from multiagente.orquestador.estado import (
     INTENTOS_SIN_RESPUESTA,
+    MAX_PREGUNTAS_CASOS_LIMITE,
     PARTICIONES,
+    RESERVA_TURNOS_CONFIRMACION,
     AprobacionHumana,
     Arquitectura,
     CasoPrueba,
+    CategoriaCasoLimite,
     Codigo,
     ConformidadModulo,
     Contexto,
@@ -135,7 +138,15 @@ def test_registro_declara_pendientes_en_orden():
     ]
     parcial = registro_completo(funcionalidad=None, datos_salida=())
     assert parcial.pendientes == ["funcionalidad", "datos_salida", "confirmacion"]
-    assert registro_completo().pendientes == ["confirmacion"]
+    # Con los atributos completos, antes del resumen, quedan los casos límite (ADR-0015).
+    assert registro_completo().pendientes == ["casos_limite", "confirmacion"]
+    # Cerrada la fase, una sola vez, la pregunta por algo más (eli-006).
+    cerrada = registro_completo(casos_limite_cerrados=True)
+    assert cerrada.pendientes == ["algo_mas", "confirmacion"]
+    assert cerrada.model_copy(update={"algo_mas_preguntado": True}).pendientes == ["confirmacion"]
+    preguntadas = tuple(CategoriaCasoLimite)[:MAX_PREGUNTAS_CASOS_LIMITE]
+    agotados = registro_completo(categorias_casos_limite=preguntadas)
+    assert agotados.pendientes == ["algo_mas", "confirmacion"]
     assert registro_completo(resumen_confirmado=True).pendientes == []
 
 
@@ -155,9 +166,9 @@ def test_lo_que_el_cliente_no_sabe_deja_de_preguntarse():
         datos_salida=(), no_sabe=("datos_salida",) * INTENTOS_SIN_RESPUESTA
     )
     assert sin_salidas.sin_respuesta == ["datos_salida"]
-    # Sigue declarado como pendiente (RF-03), pero N3 ya no lo pregunta.
-    assert sin_salidas.pendientes == ["datos_salida", "confirmacion"]
-    assert sin_salidas.por_preguntar == ["confirmacion"]
+    # Sigue declarado como pendiente (RF-03), pero N3 ya no lo pregunta: siguen los casos límite.
+    assert sin_salidas.pendientes == ["datos_salida", "casos_limite", "confirmacion"]
+    assert sin_salidas.por_preguntar == ["casos_limite", "confirmacion"]
 
 
 def test_confirmar_sin_lo_que_el_cliente_no_sabe_cierra_la_elicitacion():
@@ -389,3 +400,25 @@ def test_version_de_codigo_conserva_el_contenido_tal_cual():
     )
     assert version.archivos["src/a.py"] == contenido
     assert version.defectos_atendidos == ("D1",)
+
+
+def test_cerca_del_limite_de_turnos_no_se_preguntan_casos_limite():
+    from multiagente.orquestador.grafo import _con_reserva_de_turnos
+
+    ahora = datetime.now(UTC)
+
+    def conversacion(turnos_cliente: int) -> Conversacion:
+        turnos = tuple(
+            Turno(emisor=Emisor.CLIENTE, texto=f"respuesta {n}", fecha=ahora)
+            for n in range(turnos_cliente)
+        )
+        return Conversacion(turnos=turnos, registro=registro_completo())
+
+    limite = 15
+    con_margen = _con_reserva_de_turnos(
+        conversacion(limite - RESERVA_TURNOS_CONFIRMACION - 1), limite
+    )
+    assert con_margen.registro.por_preguntar == ["casos_limite", "confirmacion"]
+    sin_margen = _con_reserva_de_turnos(conversacion(limite - RESERVA_TURNOS_CONFIRMACION), limite)
+    assert sin_margen.registro.casos_limite_cerrados
+    assert sin_margen.registro.por_preguntar == ["confirmacion"]

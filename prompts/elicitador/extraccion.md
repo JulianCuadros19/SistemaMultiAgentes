@@ -2,7 +2,7 @@
 id: elicitador.extraccion
 agente: elicitador
 nodo: N3
-version: 1.4
+version: 1.5
 descripcion: Extracción de N3. Registra lo que el cliente acaba de decir, sin contexto de dominio.
 ---
 
@@ -17,6 +17,8 @@ Un mensaje con:
   abrió la sesión.
 - `pregunta_anterior`: lo último que le dijiste al cliente, o `null` si aún no le has preguntado
   nada.
+- `caso_limite_preguntado`: si no es `null`, la `pregunta_anterior` preguntaba por un caso límite
+  de esa categoría: una situación especial de las reglas del cliente.
 - `respuesta_nueva`: lo que el cliente acaba de decir.
 
 A veces llega un segundo mensaje con `problemas_intento_anterior`: corrígelos.
@@ -44,7 +46,7 @@ valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
   venir con «para…», «para que…», «así podemos…» o como el problema que se quiere evitar.
 - `reglas_negocio`: cada condición o regla del proceso que expresó el cliente, una por
   elemento, en una frase y con sus valores concretos. Los casos de error van en `excepciones`,
-  no aquí.
+  no aquí. No registres como regla lo que solo repite la funcionalidad o el beneficio.
 - `datos_entrada`: lo que recibe la funcionalidad para hacer su trabajo, sea que lo dé una
   persona o que llegue de otro sistema o en un aviso. Cada dato con `nombre` (como lo nombra el
   cliente, por ejemplo «número predial»), `tipo` (texto, número entero, número decimal, fecha,
@@ -58,11 +60,19 @@ valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
 - `excepciones`: cada caso de error o excepción que mencionó el cliente y cómo se maneja.
 - `condiciones`: lo que el cliente da por definido sobre cómo se usa, se prueba o se guarda lo
   que pide, una por elemento: quién lo consume y por qué medio, cómo se prueba, qué cambiará
-  después (por ejemplo, «para las pruebas, el canal puede funcionar en memoria»).
+  después (por ejemplo, «para las pruebas, el canal puede funcionar en memoria»). Lo que el
+  cliente cuenta sobre cómo se hace hoy, como «hoy se anota en una hoja de cálculo», no es una
+  condición ni una regla.
+- `casos_limite`: cada situación especial que el cliente definió al responder un caso límite,
+  en una frase con la situación, cómo se maneja y sus valores concretos. Por ejemplo: «si la
+  fecha de pago es anterior al inicio de la vigencia, el pago se rechaza».
+  - Si el cliente dice que esa situación no aplica, no ocurre o no la sabe, no registres nada: no
+    es una pregunta abierta.
 - `prioridad`: `alta`, `media` o `baja`, solo si el cliente la dice; si no, `null`.
 - `retirar`: lo que la respuesta rechaza del registro sin decir con qué reemplazarlo, por
   ejemplo «eso no es un resultado» o «esa regla no aplica». Cada elemento con `lista`
-  (`reglas_negocio`, `datos_entrada`, `datos_salida`, `excepciones` o `condiciones`) y
+  (`reglas_negocio`, `datos_entrada`, `datos_salida`, `excepciones`, `condiciones` o
+  `casos_limite`) y
   `entrada`, copiada tal como figura en `registro`; de un dato, su `nombre`. Si el cliente da el
   reemplazo, corrige la lista como siempre. Si no rechaza nada, devuelve `[]`.
 - `supuestos`: lista completa y vigente de lo que tú asumes y el cliente debe confirmar. Quita
