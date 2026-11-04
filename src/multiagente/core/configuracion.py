@@ -140,7 +140,9 @@ class ConfiguracionOrquestador(BaseSettings):
     )
 
     max_iteraciones_correccion: PositiveInt = 3
-    max_turnos_elicitacion: PositiveInt = 15
+    # 18 desde el ADR-0015: la fase de casos límite y la pregunta por algo más agregan hasta
+    # cuatro turnos antes del resumen.
+    max_turnos_elicitacion: PositiveInt = 18
     max_correcciones_calidad: PositiveInt = 2
     max_correcciones_diseno: PositiveInt = 2
 
