@@ -6,7 +6,8 @@ conversa: BGE-M3 en N2 y Azure OpenAI en N3 y N5. Los demás agentes son simulad
 se detiene en N6.
 
 Por corrida informa:
-- los turnos del cliente, si la sesión llegó al límite y si el cliente confirmó el resumen;
+- los turnos del cliente, también sin contar las respuestas a la exploración (casos límite y
+  pregunta por algo más), si la sesión llegó al límite y si el cliente confirmó el resumen;
 - las preguntas por casos límite, con su categoría, y los casos que el cliente definió;
 - los requerimientos, sus escenarios y los defectos de calidad con que llegaron a N6;
 - en los casos con reglas ocultas, cuáles quedaron en el registro y cuáles en los requerimientos,
@@ -153,6 +154,7 @@ class Corrida:
     caso: str
     numero: int
     turnos: int
+    exploracion: int
     en_limite: bool
     confirmado: bool
     categorias: tuple[str, ...]
@@ -276,6 +278,7 @@ def elicitar(
         caso=caso.id,
         numero=numero,
         turnos=conversacion.turnos_cliente,
+        exploracion=len(registro.categorias_casos_limite) + int(registro.algo_mas_preguntado),
         en_limite=conversacion.turnos_cliente >= configuracion.max_turnos_elicitacion,
         confirmado=registro.resumen_confirmado,
         categorias=tuple(registro.categorias_casos_limite),
@@ -366,7 +369,8 @@ def main() -> None:
                 )
                 print(
                     f"{corrida.caso} #{numero}: {corrida.turnos} turnos"
-                    f"{' (en el límite)' if corrida.en_limite else ''} · resumen "
+                    f"{' (en el límite)' if corrida.en_limite else ''}, "
+                    f"{corrida.turnos - corrida.exploracion} sin exploración · resumen "
                     f"{'confirmado' if corrida.confirmado else 'sin confirmar'} · casos límite "
                     f"{list(corrida.categorias)} ({corrida.casos_limite} definidos) · "
                     f"{corrida.requerimientos} RF, {corrida.escenarios} escenarios, "
@@ -379,9 +383,11 @@ def main() -> None:
         return
     sistema = sum((c.costo_sistema for c in corridas), Decimal(0))
     cliente = sum((c.costo_cliente for c in corridas), Decimal(0))
+    turnos = sum(c.turnos for c in corridas)
+    exploracion = sum(c.exploracion for c in corridas)
     print(
-        f"\n{len(corridas)} corridas · turnos {sum(c.turnos for c in corridas)} · resúmenes "
-        f"confirmados {sum(c.confirmado for c in corridas)} · en el límite "
+        f"\n{len(corridas)} corridas · turnos {turnos}, {turnos - exploracion} sin exploración · "
+        f"resúmenes confirmados {sum(c.confirmado for c in corridas)} · en el límite "
         f"{sum(c.en_limite for c in corridas)} · preguntas por casos límite "
         f"{sum(len(c.categorias) for c in corridas)} · USD {sistema:.4f} del sistema y "
         f"{cliente:.4f} del cliente"
