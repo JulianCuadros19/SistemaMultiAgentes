@@ -41,6 +41,23 @@ def test_hay_un_caso_de_desarrollo_por_caso_de_diseno():
     assert {caso.stem.removeprefix("desarrollo-") for caso in CASOS} == disenos
 
 
+FUNCIONES_CON_SELF = {
+    "desarrollo-pagos": {
+        "suscribir_pago_confirmado",
+        "suscribir_pago_reversado",
+        "publicar_pago_confirmado",
+        "publicar_pago_reversado",
+    }
+}
+"""Funciones con `self` de los diseños históricos, que N9 hoy devuelve al arquitecto.
+
+El diseño de pagos reproduce la v6 de la sesión `5f5d2739`, anterior a los métodos `Clase.metodo`
+(fase 4 del ADR-0015): declara los métodos del bus como funciones con `self`, y su código los
+enlaza a la clase con `# noqa: ANN001`. Sirve al corpus de defectos del tester, que se conserva tal
+cual para no invalidar su medición; desde la decisión 37, N9 no admite ese diseño.
+"""
+
+
 @pytest.mark.parametrize("archivo", CASOS, ids=[caso.stem for caso in CASOS])
 def test_el_diseno_del_caso_pasa_el_anexo_b(archivo):
     caso = cargar_caso_desarrollo(archivo)
@@ -53,7 +70,10 @@ def test_el_diseno_del_caso_pasa_el_anexo_b(archivo):
         cargar_catalogo_tecnologico(),
         frozenset(titulos_del_catalogo()),
     )
-    assert errores == []
+    historicas = FUNCIONES_CON_SELF.get(archivo.stem, set())
+    assert len(errores) == len(historicas), errores
+    for funcion in historicas:
+        assert any(f".{funcion} recibe self, que solo lleva un método" in e for e in errores)
     assert caso.especificacion.arquitectura_base in caso.candidatas
     assert caso.id.startswith("caso-desarrollo-")
 

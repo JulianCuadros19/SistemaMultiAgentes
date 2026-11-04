@@ -270,6 +270,27 @@ def test_callable_de_collections_abc_se_admite():
     assert validar(espec) == []
 
 
+@pytest.mark.parametrize(
+    ("firma", "propio"),
+    [
+        ("consumir_venta(self, evento: str) -> None", "self"),
+        ("consumir_venta(cls, evento: str) -> None", "cls"),
+        ("consumir_venta(evento: str, self) -> None", "self"),
+    ],
+)
+def test_una_funcion_de_modulo_no_recibe_self_ni_cls(firma, propio):
+    # Corrida de la fase 7 (ADR-0015): los consumidores de ARQ-06 se declararon como funciones
+    # con self, y el código generado solo cumplía el estilo silenciándolo.
+    espec = especificacion(
+        **{
+            "modulos__0__interfaces_publicas__1__nombre": "consumir_venta",
+            "modulos__0__interfaces_publicas__1__firma": firma,
+        }
+    )
+    esperado = f"la función dominio.predio.consumir_venta recibe {propio}, que solo lleva un método"
+    assert any(esperado in error for error in validar(espec)), validar(espec)
+
+
 def con_metodo(nombre: str, firma: str, tipo: str = "funcion") -> EspecificacionDiseno:
     datos = especificacion().model_dump(mode="json")
     datos["modulos"][0]["interfaces_publicas"].append(

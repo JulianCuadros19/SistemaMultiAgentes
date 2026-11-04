@@ -5,9 +5,9 @@ Aplica las tres validaciones del Anexo B, de forma determinística:
 1. Conformidad con el esquema y ausencia de dependencias circulares, más las reglas de la
    plantilla arq-002 que el código necesita para verificar la conformidad en N12: firmas
    completas con tipos (sin funciones como `callable` en lugar de un tipo), métodos `Clase.metodo`
-   de una clase del mismo módulo y con `self` o `cls`, rutas coherentes con la capa y con el
-   nombre del módulo, y paquetes que no tapen un módulo de la biblioteca estándar ni una
-   dependencia (un paquete `io` rompería `import io`).
+   de una clase del mismo módulo y con `self` o `cls`, funciones de módulo sin `self` ni `cls`,
+   rutas coherentes con la capa y con el nombre del módulo, y paquetes que no tapen un módulo de
+   la biblioteca estándar ni una dependencia (un paquete `io` rompería `import io`).
 2. Cobertura: todo requerimiento aprobado queda asignado al menos a un módulo.
 3. Catálogo tecnológico: toda dependencia externa pertenece al catálogo autorizado (arq-004) y
    la arquitectura base es una del catálogo de referencia.
@@ -83,6 +83,17 @@ def _errores_de_firma(modulo: Modulo, interfaz: InterfazPublica) -> list[str]:
         errores.append(f"{ESQUEMA}: la firma de {ubicacion} declara el nombre {funcion.name}")
     if "." in interfaz.nombre:
         errores.extend(_errores_de_metodo(modulo, interfaz, funcion))
+    elif interfaz.tipo is TipoInterfaz.FUNCION and (
+        propios := [a.arg for a in [*funcion.args.posonlyargs, *funcion.args.args]]
+    ):
+        # Una función de módulo con `self` obliga al código a anotarlo (ANN001) o a silenciar el
+        # estilo; la firma de una clase sí lo admite, porque es la de su `__init__` (ADR-0015).
+        if impropios := [nombre for nombre in propios if nombre in ("self", "cls")]:
+            errores.append(
+                f"{ESQUEMA}: la función {ubicacion} recibe {impropios[0]}, que solo lleva un "
+                "método: quítalo de la firma, o declárala como Clase.metodo de una clase del "
+                "mismo módulo"
+            )
     argumentos = funcion.args
     todos = [*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs]
     todos += [a for a in (argumentos.vararg, argumentos.kwarg) if a is not None]
