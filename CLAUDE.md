@@ -155,7 +155,8 @@ Mantener esta sección actualizada al cerrar cada paso.
   en `docs/anexos.md`; el PDF queda solo en local. «Contrato de diseño» pasa a ser
   «especificación de diseño» (prefijo `ED-`). Flujo de 17 nodos con tres puntos de control
   humano (N6, N9 y N17) y plan de pruebas del tester (N16); nuevo RF-38, total 38 RF.
-  Pendiente del equipo: actualizar el documento de tesis (RF-38, Tabla 23, Figura 7, Anexos B y C).
+  Pendiente del equipo: actualizar el documento de tesis (RF-38, Tabla 23, Figura 7, Anexos B y C)
+  con la lista «Cambios para el documento de tesis» del ADR-0015, que incluye el RF-39.
 - **Paso 4: cerrado el 2026-10-08.** Esquemas Pydantic en `multiagente.core.esquemas`
   (ADR-0005): `BacklogHistorias` y `RequerimientoFormal` (Anexo A) y `EspecificacionDiseno`
   (Anexo B, con la validación 1: estructura y ausencia de ciclos). Validan el backlog y el RF-27
@@ -185,7 +186,8 @@ Mantener esta sección actualizada al cerrar cada paso.
     desarrollador no tiene recuperador. Combina búsqueda semántica y léxica con fusión por
     rango recíproco y umbral de relevancia 0,37 calibrado.
   - **Verificado:** 120 pruebas unitarias, 27 de integración y 15 con el modelo real
-    (`pytest -m embeddings`).
+    (`pytest -m "embeddings and not nube"`: `-m embeddings` a secas también recolecta las pruebas
+    `nube`, que llaman a Azure).
   - **Pendiente para los pasos 7, 8 y 10:** construir las consultas con los artefactos
     completos, que N7 recupere todo el catálogo de seis arquitecturas y recalibrar el umbral.
 - **Paso 7: cerrado el 2026-10-09.** Agente elicitador real en `agentes/elicitador/` (ADR-0008):
@@ -313,56 +315,51 @@ Mantener esta sección actualizada al cerrar cada paso.
     importar y sangría rota). El reintento lo corrige, pero duplica su costo;
   - el paso 12 debe mostrar cuántas iteraciones quedan antes de decidir en N17, porque un rechazo
     allí consume el ciclo de corrección.
-- **Paso actual: 12, implementado y en pulido antes de cerrarlo (ADR-0015).** Interfaces de
-  consola y web (ADR-0014; `docs/arquitectura.md` 1.3):
+- **Paso 12: cerrado el 2026-11-04.** Interfaces de consola y web (ADR-0014) y calidad de la
+  primera salida (ADR-0015; `docs/arquitectura.md` 1.3, `docs/requerimientos.md` 1.2):
   - comando `multiagente` (nueva, continuar, cerrar, sesiones, ver, exportar, web) y web local
     en `http://127.0.0.1:8000/`, con panel del equipo y vista del cliente; ambas usan el
     `Operador` de `interfaces/operacion.py`;
-  - flujo sin bloqueos:
-    - N3 vuelve a preguntar si falla;
-    - las fallas del modelo en N5, N8, N10 y N14 se vuelven decisiones;
-    - al agotar el ciclo, N15 escala a N17, que devuelve al desarrollador o al arquitecto en un
-      ciclo nuevo;
-    - toda sesión en pausa o detenida se puede cerrar (fase `cerrada`);
-  - `openpyxl` en el catálogo y en el entorno aislado; el paquete exportado trae
-    `requirements.txt` y «Cómo ponerlo en marcha»;
-  - prompts: arquitecto 1.2 y desarrollador 1.5, cuyo reintento corrige el intento rechazado.
-
-  Verificado:
-  - 509 pruebas unitarias, 30 de integración, 19 de embeddings y 26 del entorno aislado;
-  - extremo a extremo, 3 de 3 casos validados;
-  - la web se reconecta tras reiniciar el contenedor `db`.
-
-  Verificación con el equipo: hecha el 2026-11-03 (sesiones `61e1e121`, `5f5d2739` y
-  `b271c343`) y registrada en el ADR-0014. Se mantiene la regla de excepciones declaradas.
-
-  Pulido antes de cerrar el paso (ADR-0015), con el plan aprobado en
-  `~/.claude/plans/lee-claude-md-y-continuemos-fluttering-shamir.md`:
-  - **fases 1 a 5, cerradas el 2026-11-04:**
-    - defectos de las interfaces;
+  - flujo sin bloqueos: las fallas del modelo se vuelven decisiones, N15 escala a N17 al agotar el
+    ciclo y toda sesión en pausa o detenida se puede cerrar (fase `cerrada`);
+  - N17 devuelve el módulo al desarrollador o al arquitecto, o pide al elicitador una enmienda de
+    los requerimientos (N17 → N5 → N6 → N16 → N10, RF-39);
+  - pulido de los cuatro agentes, con el plan aprobado en
+    `~/.claude/plans/lee-claude-md-y-continuemos-fluttering-shamir.md`:
     - el tester reconoce las pruebas que simulan el efecto (CAL-FS-006);
-    - el arquitecto declara recorridos ejecutables y métodos `Clase.metodo`;
+    - el arquitecto declara recorridos ejecutables y métodos `Clase.metodo`, y N9 rechaza `self`
+      en las funciones de módulo;
     - el desarrollador sigue los recorridos, parte de la versión previa tras un rediseño y se
       adelanta al estilo del tester;
-    - el elicitador pregunta por casos límite, con un límite de 18 turnos, y N6 corrige lo
-      corregible aunque haya preguntas abiertas;
-    - los ejemplos de los prompts ya no salen de los casos de evaluación;
-  - **criterio sin cumplir de la fase 5,** por decisión del equipo: 15 de 20 resúmenes
-    confirmados (criterio 17) y 224 turnos sin exploración (criterio 211). Se mide de nuevo en la
-    fase 7;
-  - **fase 6, cerrada el 2026-11-04:** enmiendas desde N17 por el elicitador
-    (N17 → N5 → N6 → N16 → N10, sin pasar por el diseño):
-    - prompt `elicitador.enmienda` 1.0 y validación en `agentes/elicitador/enmienda.py`;
-    - RF-39 nuevo y RF-38 con tres destinos (`docs/requerimientos.md` 1.2);
-    - por decisión del equipo, N6 no devuelve a N5 los defectos que el analista ya aceptó;
-    - la prueba `nube` `tests/integracion/test_enmienda_nube.py` pasa: RF-01 v0.2 con su
-      escenario, versión corregida aprobada por el tester y exportación con la enmienda, por
-      0,20 USD;
-  - **siguiente: fase 7,** medición de extremo a extremo con los 20 casos ampliados y cierre del
-    paso aquí. Espera el visto bueno del equipo; para retomar basta «continúa con la fase 7
-    siguiendo el plan»;
-  - **verificado al cerrar la fase 6:** 715 pruebas unitarias, 31 de integración, 19 de
-    embeddings y 33 del entorno aislado.
+    - el elicitador pregunta por casos límite, con un límite de 18 turnos, y su resumen solo
+      muestra el tipo y la obligatoriedad que dijo el cliente;
+    - N6 corrige lo corregible aunque haya preguntas abiertas;
+  - prompts vigentes: elicitador diálogo 1.10, extracción 1.7, síntesis 1.9 y enmienda 1.0;
+    `arquitecto.parametrizacion` 1.6, `desarrollador.generacion` 1.9 y `tester.veredicto` 1.2.
+
+  Verificado:
+  - 731 pruebas unitarias, 31 de integración, 19 de embeddings y 33 del entorno aislado;
+  - la verificación con el equipo del 2026-11-03 (sesiones `61e1e121`, `5f5d2739` y `b271c343`);
+  - la prueba `nube` de la enmienda (`test_enmienda_nube.py`): el RF sube a v0.2 y el módulo
+    corregido sale aprobado, por 0,20 USD;
+  - la corrida ampliada final (ADR-0015, fase 7), sobre 20 casos y por 7,59 USD:
+    - 20 de 20 módulos validados, 18 en la v1 (línea base: 10 de 19), y ninguno escalado;
+    - 0,342 USD por módulo y 5,3 min de media.
+
+  Sin cumplir, por decisión del equipo:
+  - primeros intentos de N10 rechazados: 7 de 23, con el criterio en 2 de 29;
+  - resúmenes confirmados: 16 de 20, con el criterio en 17.
+  Las decisiones 37 a 39 atienden tres de sus causas, sin medir.
+
+  Pendiente:
+  - la respuesta incompleta de N10, un archivo de pruebas de relleno, en 3 de 23 primeros
+    intentos;
+  - lo que el cliente pide en los resultados queda en las reglas (caso 12);
+  - las necesidades de eventos se plantean como «publicar un aviso»;
+  - el costo por módulo está al borde del criterio, empujado por ARQ-06; el presupuesto que
+    detiene la ejecución es el paso 13.
+- **Paso actual: 13, control de costo y observabilidad.** Terminado cuando el presupuesto detiene
+  una ejecución que lo supera.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
@@ -384,4 +381,6 @@ Mantener esta sección actualizada al cerrar cada paso.
   cobra igual.
 - **Modelo de costos: unidad de trabajo medida en el paso 11** (ADR-0013). Un módulo cuesta de
   0,16 a 0,37 USD, con media de 0,27, sin el cliente simulado. N10 aporta el 51 %, N8 el 31 %, N3
-  el 14 %, N5 el 4 % y N14 el 0,4 %. Falta el presupuesto que detiene la ejecución (paso 13).
+  el 14 %, N5 el 4 % y N14 el 0,4 %. En la corrida ampliada final del paso 12 (ADR-0015), la media
+  sube a 0,342 USD, de 0,18 a 0,87: N10 aporta el 41 %, N8 el 27 %, N3 el 21 %, N5 el 11 % y N14
+  menos del 1 %. Falta el presupuesto que detiene la ejecución (paso 13).
