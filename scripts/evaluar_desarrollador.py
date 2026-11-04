@@ -18,9 +18,9 @@ Al final resume los primeros intentos rechazados, las v1 aprobadas y las detecci
 (pruebas que simulan) y CAL-MT-010 (nombres privados).
 
 Cada versión queda en JSON en la carpeta de salida (por defecto
-data/local/versiones-desarrollador/). Cada llamada al modelo se agrega a la traza (por defecto
-docs/mediciones/paso-12-desarrollador.jsonl; otra con `--traza`), sin el contenido de los
-mensajes.
+data/local/versiones-desarrollador/), con el intento rechazado si lo hubo. Cada llamada al modelo
+se agrega a la traza (por defecto docs/mediciones/paso-12-desarrollador.jsonl; otra con
+`--traza`), sin el contenido de los mensajes.
 
 Requiere `docker compose up -d --wait`, la imagen del entorno aislado, el corpus ingerido y el
 archivo .env. Tiene costo: unos 0,15 USD por corrida.
@@ -44,6 +44,8 @@ from pathlib import Path
 import psycopg
 from langgraph.checkpoint.memory import InMemorySaver
 
+from multiagente.agentes.desarrollador import servicio as servicio_desarrollador
+from multiagente.agentes.desarrollador.generacion import mensaje_intento_rechazado
 from multiagente.agentes.desarrollador.servicio import crear_agente_desarrollador
 from multiagente.agentes.desarrollador.verificacion import verificar_version
 from multiagente.agentes.tester.servicio import crear_agente_tester
@@ -69,6 +71,21 @@ CARPETA = RAIZ / "evaluacion" / "casos" / "con-recorridos"
 ARCHIVO_MEDICIONES = RAIZ / "docs" / "mediciones" / "paso-12-desarrollador.jsonl"
 SALIDA = RAIZ / "data" / "local" / "versiones-desarrollador"
 RECHAZO_N10 = "N10: salida rechazada en el intento 1"
+
+
+RECHAZADOS: list[dict[str, object]] = []
+"""Intentos que rechazó la verificación de N10 en la corrida en curso, con sus problemas."""
+
+
+def _guardar_intento(archivos, problemas):  # noqa: ANN001, ANN202
+    """Guarda el intento rechazado antes de armar el mensaje del reintento."""
+    RECHAZADOS.append({"archivos": dict(archivos), "problemas": list(problemas)})
+    return mensaje_intento_rechazado(archivos, problemas)
+
+
+# El servicio del desarrollador arma el reintento con esta función: se envuelve para guardar el
+# intento rechazado, que el flujo no conserva.
+servicio_desarrollador.mensaje_intento_rechazado = _guardar_intento
 
 
 class Avisos(logging.Handler):
@@ -139,6 +156,7 @@ def correr(
         checkpointer=InMemorySaver(serde=serializador())
     )
     avisos.mensajes.clear()
+    RECHAZADOS.clear()
     inicio = time.perf_counter()
     iniciar_sesion(app, caso.cliente, caso.proyecto, caso.necesidad, id_sesion)
     avanzar(app, id_sesion, aprobar())
@@ -159,6 +177,7 @@ def correr(
                 "version": version.model_dump(mode="json") if version else None,
                 "validacion": validacion.model_dump(mode="json"),
                 "avisos": list(avisos.mensajes),
+                "intentos_rechazados": list(RECHAZADOS),
             },
             ensure_ascii=False,
             indent=2,

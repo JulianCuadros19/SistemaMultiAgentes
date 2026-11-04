@@ -215,6 +215,15 @@ def _agregados_y_retirados(
     ]
 
 
+def _firma_con_clase(interfaz: InterfazPublica) -> str:
+    """La firma de la interfaz; la de un método, precedida de su clase."""
+    clase = interfaz.nombre.rpartition(".")[0]
+    firma = interfaz.firma.strip()
+    if clase and not firma.startswith(f"{clase}."):
+        return f"{clase}.{firma}"
+    return firma
+
+
 def _cambios_de_modulo(antes: Modulo, despues: Modulo) -> list[str]:
     nombre = despues.nombre
     cambios = [
@@ -225,13 +234,18 @@ def _cambios_de_modulo(antes: Modulo, despues: Modulo) -> list[str]:
     previas = {i.nombre: i for i in antes.interfaces_publicas}
     nuevas = {i.nombre: i for i in despues.interfaces_publicas}
     cambios += [
-        f"Interfaz nueva en {nombre}: `{nuevas[i].firma}`" for i in nuevas if i not in previas
+        f"Interfaz nueva en {nombre}: `{_firma_con_clase(nuevas[i])}`"
+        for i in nuevas
+        if i not in previas
     ]
     cambios += [f"Interfaz retirada de {nombre}: {i}" for i in previas if i not in nuevas]
     for interfaz in (i for i in nuevas if i in previas):
         previa, nueva = previas[interfaz], nuevas[interfaz]
         if previa.firma != nueva.firma:
-            cambios.append(f"Firma de {nombre}.{interfaz}: `{previa.firma}` → `{nueva.firma}`")
+            cambios.append(
+                f"Firma de {nombre}.{interfaz}: `{_firma_con_clase(previa)}` → "
+                f"`{_firma_con_clase(nueva)}`"
+            )
         if sorted(previa.excepciones) != sorted(nueva.excepciones):
             cambios.append(
                 f"Excepciones de {nombre}.{interfaz}: {sorted(previa.excepciones)} → "

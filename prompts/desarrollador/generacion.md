@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.7
+version: 1.8
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -42,7 +42,8 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
 
 # Qué produces
 
-- `archivos`: cada archivo con su `ruta` y su `contenido` completo, sin `...` ni partes omitidas.
+- `archivos`: cada archivo con su `ruta` y su `contenido` completo y final, sin `...`, partes
+  omitidas ni marcadores de posición por completar.
   - Un archivo por módulo declarado, exactamente en su `ruta`. No crees otros módulos ni
     archivos `__init__.py`: los paquetes son de espacio de nombres.
   - Las pruebas, en `tests/test_<nombre>.py`. Puedes agregar `tests/conftest.py` para fixtures

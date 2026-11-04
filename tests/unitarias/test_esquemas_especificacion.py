@@ -226,3 +226,20 @@ def test_firma_de_un_metodo_con_o_sin_el_nombre_de_la_clase():
             nombre="Registro.registrar", tipo=TipoInterfaz.FUNCION, firma=firma, descripcion="x"
         )
         assert firma_como_funcion(metodo).name == "registrar"
+
+
+def test_diferencias_nombran_la_clase_de_un_metodo(especificacion):
+    previa = EspecificacionDiseno.model_validate(especificacion)
+    datos = copy.deepcopy(especificacion)
+    datos["modulos"][0]["interfaces_publicas"].append(
+        {
+            "nombre": "Predio.area_total",
+            "tipo": "funcion",
+            "firma": "area_total(self) -> Decimal",
+            "descripcion": "Área total del predio",
+        }
+    )
+    nueva = EspecificacionDiseno.model_validate(datos)
+    assert diferencias(previa, nueva) == [
+        "Interfaz nueva en dominio.predio: `Predio.area_total(self) -> Decimal`"
+    ]

@@ -887,6 +887,17 @@ def _problemas_de_escenarios(
     return problemas
 
 
+def _contexto_de_linea(contenido: str, linea: int | None) -> str:
+    """La línea con el error y la anterior, con su sangría a la vista, para corregirla."""
+    lineas = contenido.splitlines()
+    if not linea or not 1 <= linea <= len(lineas):
+        return ""
+    muestra = [
+        f"{numero}: {lineas[numero - 1]!r}" for numero in range(max(1, linea - 1), linea + 1)
+    ]
+    return f" (líneas {'; '.join(muestra)})"
+
+
 def analizar_conformidad(
     archivos: Mapping[str, str],
     especificacion: EspecificacionDiseno,
@@ -950,7 +961,8 @@ def analizar_conformidad(
                 Problema(
                     TipoProblema.SINTAXIS,
                     ruta,
-                    f"{ruta}:{error.lineno} no es Python 3.11 válido: {error.msg}",
+                    f"{ruta}:{error.lineno} no es Python 3.11 válido: {error.msg}"
+                    + _contexto_de_linea(archivos[ruta], error.lineno),
                     error.lineno,
                     modulos[ruta].nombre if ruta in modulos else None,
                 )

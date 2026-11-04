@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-11-03
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (enmiendas desde N17), ADR-0008 (casos límite y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas y versión previa tras un rediseño) y ADR-0012 (pruebas que simulan el efecto)
+modifica: ADR-0006 (enmiendas desde N17), ADR-0008 (casos límite y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos y versión previa tras un rediseño), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos) y ADR-0013 (rediseño desde N17)
 ---
 
 # ADR-0015 · Calidad de la primera salida y enmiendas de los requerimientos desde N17
@@ -299,6 +299,125 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
   almacén, se llaman igual. El reintento lo corrige, pero cuesta una parametrización más, unos
   0,07 USD. Pedir nombres únicos en el prompt queda propuesto, sin medir.
 
+#### Fase 4 · Métodos como interfaces y desarrollador guiado por los escenarios
+
+**Decisiones del equipo (2026-11-04):**
+- admitir métodos de clase como interfaces;
+- un nombre único por interfaz;
+- medir al desarrollador con diseños del arquitecto vigente.
+
+15. **Métodos como interfaces** (modifica el ADR-0010, el ADR-0011 y el ADR-0012).
+    - **Convención:**
+      - una interfaz de tipo `funcion` llamada `Clase.metodo` es un método de `Clase`, que el
+        mismo módulo declara como `clase`;
+      - su firma es la del método, con `self` o `cls`: `registrar(self, prestamo: Prestamo) ->
+        None`;
+      - el Anexo B no cambia: es una forma de nombrar sus interfaces.
+    - **N9:** exige la clase en el mismo módulo, el `self` o `cls` y un solo punto. Admite que la
+      firma repita la clase.
+    - **Conformidad compartida por N10 y N12:** busca el método dentro de su clase y compara
+      parámetros y retorno. `self` sigue sin anotación, por la decisión del equipo del paso 12.
+    - **Detector de pruebas que simulan (CAL-FS-006):**
+      - sigue a los objetos que devuelven los métodos, salvo que el nombre corto sea ambiguo;
+      - cuenta los métodos declarados entre los atributos de su clase.
+    - **Recorridos:**
+      - resuelven `Clase.metodo`, con o sin el módulo, y el nombre corto si no es ambiguo;
+      - un método de otra clase no vale.
+    - **Compatibilidad:** las funciones sueltas con `self` siguen valiendo, como en el caso de
+      pagos y su corpus.
+    - **Base de conocimiento:** arq-002 1.3 agrega la fila «Métodos», con reingesta.
+    - **Por qué:**
+      - la v0.1 de pensiones declaraba los métodos del bus como `BusEventosMemoria.suscribir…`, y
+        N9 la devolvió;
+      - las versiones siguientes los convirtieron en funciones sueltas con `self`, colgadas de la
+        clase;
+      - con el prompt 1.4, los contratos de pagos describían en prosa métodos que nadie
+        verificaba.
+16. **Prompt `arquitecto.parametrizacion` 1.5:**
+    - los almacenes y los contratos declaran sus operaciones como métodos;
+    - el contrato y su implementación declaran cada uno los suyos;
+    - un nombre único por interfaz;
+    - en los recorridos, un método se nombra `Clase.metodo`.
+17. **Casos de desarrollo con recorridos** (modifica el ADR-0011).
+    - `evaluacion/casos/con-recorridos/` guarda un diseño por caso de diseño, de la medición del
+      prompt 1.5, con la especificación anotada y sus recorridos.
+    - La prueba `nube` del desarrollador pasa a esos casos.
+    - Los casos del paso 9 quedan para los corpus de defectos.
+18. **Prompt `desarrollador.generacion` 1.7** (modifica el ADR-0011):
+    - **Pruebas:**
+      - siguen el recorrido anotado de su escenario;
+      - usan solo interfaces públicas o dobles de dependencias externas que el módulo recibe por
+        parámetro;
+      - sin nombres privados ni atributos no declarados;
+      - sin armar ni restaurar el efecto, y sin lanzar la excepción esperada;
+      - lo que no se puede preparar u observar va a Supuestos.
+    - **Código:**
+      - los métodos van dentro de su clase, con `self` sin anotar;
+      - el estado vive en las instancias, nunca en variables globales del módulo.
+    - **Contra las causas medidas de reintento:**
+      - sangría de 4 espacios;
+      - excepciones importadas aunque solo se propaguen;
+      - archivos completos.
+    - **Ejemplo:** ya no escribe las secciones de `USO.md` que agrega el sistema.
+19. **La versión previa como referencia tras un rediseño** (modifica el ADR-0011 y el ADR-0013).
+    - **Antes:** N10 descartaba la versión previa y la retroalimentación de N17 cuando cambiaba la
+      especificación, y generaba de cero.
+    - **Ahora:** recibe un `Rediseno` con la versión anterior y la última revisión del registro
+      de decisión.
+    - **En el mensaje del modelo,** el bloque `rediseno` trae:
+      - los archivos que siguen valiendo: los módulos aún declarados, las pruebas y `USO.md`;
+      - la retroalimentación de N17;
+      - la revisión.
+    - **Resultado:** la salida se combina sobre esos archivos, y la versión declara atendida la
+      retroalimentación.
+
+**Verificación de la fase 4.**
+- **Sin costo:** 653 pruebas unitarias, 31 de integración, 33 del entorno aislado y 19 de
+  embeddings.
+- **Arquitecto con el prompt 1.5,** cuatro casos por tres corridas:
+  - 12 de 12 primeros diseños válidos;
+  - ningún reintento en N8, frente a 3 con la 1.4;
+  - 0,0997 USD por diseño;
+  - diez diseños declaran métodos, de 4 a 36; los dos restantes son de avalúo y no tienen
+    almacén;
+  - ninguno usa funciones sueltas con `self` ni describe métodos en prosa.
+- **Desarrollador con el prompt 1.7** sobre los casos con recorridos, con el tester real y una sola
+  iteración (`scripts/evaluar_desarrollador.py`, traza en
+  `docs/mediciones/paso-12-desarrollador.jsonl`):
+
+| Medición | Corridas | Primer intento rechazado | v1 aprobada por el tester | CAL-FS-006 | CAL-MT-010 | Pruebas fallidas | USD por corrida |
+|---|---|---|---|---|---|---|---|
+| Dos por caso, y una de pagos | 7 | 2 | 7 | 0 | 0 | 0 | 0,122 |
+| Lotes y mutación, dos más | 4 | 1 | 2 | 0 | 0 | 0 | 0,120 |
+
+- **Los tres primeros intentos rechazados** tienen un archivo de pruebas con la sintaxis rota.
+  - El que se capturó traía, después de `@pytest.fixture`, la línea ` def_placeholder = None`:
+    un marcador de posición sin terminar.
+  - El reintento lo corrigió en los tres casos.
+  - El mensaje de sintaxis muestra ahora las líneas exactas, y el prompt 1.8 prohíbe los
+    marcadores de posición. La 1.8 no se midió aparte: se mide en la fase 7.
+  - Línea base: 7 de 29 primeros intentos rechazados. Ahora: 3 de 11. Esta causa no mejora.
+- **Las dos v1 rechazadas** son de lotes: una por complejidad (CAL-MT-003) y otra por cinco
+  docstrings incompletos (CAL-MT-001). N10 no aplica Ruff; solo lo aplica el tester.
+- **Rediseño real** (`ce78c1e3`, avalúo, 0,29 USD): N17 devolvió al arquitecto con «agrega una
+  consulta que liste los valores registrados de una vigencia».
+  - El registro ganó la revisión: la observación, la respuesta y once cambios de la
+    especificación.
+  - La v2 conservó idéntico `tests/test_liquidacion.py`, cambió solo los módulos que tocaba el
+    rediseño y agregó el módulo y las pruebas nuevos.
+  - La v2 declara atendida la observación.
+- **Revisión a mano:** las pruebas de la v1 de pagos siguen su recorrido. Preparan con el almacén,
+  ejecutan con el productor y observan con la consulta, sin nombres privados.
+- **Costo de la fase:** 2,82 USD, frente a 2,8 del plan.
+
+**Pendientes de la fase 4.**
+- **Verificación de estilo en N10** (propuesta para el equipo).
+  - Aplicar en N10 las reglas de Ruff de severidad media que dictamina el tester (CAL-MT-001,
+    CAL-MT-002 y CAL-MT-003), para que el reintento las corrija antes del tester.
+  - Evitaría las dos v1 rechazadas de esta medición.
+  - Cambia el reparto de los pasos 9 y 10, en el que el estilo solo lo dictamina el tester.
+- **Sintaxis rota:** sigue causando reintentos, 3 de 11.
+
 ## Verificación
 
 _Pendiente._ Criterios, fijados antes de medir:
@@ -326,3 +445,10 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
   - Tabla 1, N9: además verifica los recorridos y rechaza `callable` y `any` como tipos.
   - Anexo B: sin cambios. Los recorridos lo acompañan y se anotan en las descripciones.
   - Propuesta para el equipo: ampliar RF-12 de los requerimientos a los escenarios.
+- **Fase 4:**
+  - Anexo B: un método se declara como interfaz `Clase.metodo`, sin campos nuevos.
+  - Tabla 1, N10: una prueba por escenario según su recorrido, y tras un rediseño parte de la
+    versión anterior y de la retroalimentación.
+  - Tabla 1, N12: la conformidad cubre los métodos.
+  - Flujo: la devolución de N17 al arquitecto conserva la versión anterior como referencia para
+    N10.
