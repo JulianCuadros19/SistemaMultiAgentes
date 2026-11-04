@@ -489,6 +489,18 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
     - **«Sin respuesta del cliente».** El cliente rechazaba esa frase en un atributo sin
       definir, como los casos de error, y pedía que dijera que no hay ninguno (casos 13, 17 y
       19). Ahora el resumen muestra «sin definir».
+    - **«No sé» sin la palabra.** «Eso no me lo especificaron», «no está definido» o «no tengo
+      una regla» no se reconocían, así que el atributo nunca quedaba sin respuesta y N3 lo
+      preguntaba hasta el límite (casos 11 y 18). `MARCAS_DESCONOCIMIENTO` las reconoce.
+    - **Quién lo usa y a quién le sirve.** El cliente distinguía a quien lo usa, como el jefe de
+      bodega, de quien obtiene el valor, como operaciones (casos 02, 05 y 06).
+      - `RegistroCaptura.usuarios` guarda quién usa, opera o ejecuta lo pedido, si no es el rol:
+        personas, sistemas o procesos.
+      - El rol sigue siendo a quien le sirve.
+      - El resumen muestra los usuarios en «Quién lo usa y cómo», y la síntesis los lleva a la
+        regla, nunca al título.
+    - **Datos por operación y rechazos.** Un dato que sirve a una sola operación lo dice en su
+      restricción, y un rechazo con su mensaje es una excepción, no una regla (casos 05 y 10).
 24. **La síntesis y la verificación ante la exploración** (modifica el ADR-0008).
     - **Preguntas abiertas.** En la corrida ampliada, 14 de 20 historias llegaron a N6 con
       preguntas abiertas. En 4 de ellas, el registro no tenía preguntas abiertas ni atributos sin
@@ -517,20 +529,25 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
       - Hasta la 1.8, el ejemplo de pregunta por un caso límite («¿Qué debe pasar si el pago
         llega con una fecha anterior al inicio de la vigencia?») era la regla oculta R1 del caso
         del predial. La 1.9 usa un ejemplo de otro proceso, y la medición final es con ella.
-    - `elicitador.extraccion` 1.6:
+    - `elicitador.extraccion` 1.7:
       - registra los casos límite y los ejemplos;
       - una entrada omitida se conserva;
       - la situación actual no es una condición, y no registra como regla lo que repite la
-        funcionalidad.
-    - `elicitador.sintesis` 1.8:
+        funcionalidad;
+      - registra los usuarios; un dato con valor por defecto no es obligatorio; los datos de una
+        sola operación y los rechazos con mensaje, de la decisión 23.
+    - `elicitador.sintesis` 1.9:
       - cada caso especial entra en la regla de su requerimiento con un escenario que lo
         verifica, y los ejemplos dan los datos de los escenarios;
       - las preguntas abiertas y la historia con varias capacidades de la decisión 24;
       - un defecto en el título de un requerimiento se corrige en la historia, porque el sistema
         la copia como título. En el caso 14 de la medición final, N5 corregía el título y el C5
-        seguía tras dos correcciones. La 1.8 no se midió.
+        seguía tras dos correcciones;
+      - los usuarios van en la regla, nunca en el título.
     - Las corridas intermedias usaron borradores sin cambiar la versión. La traza los distingue
       por `huella_prompt`.
+    - Extracción 1.7, síntesis 1.9 y la detección del «no sé» no se midieron: el equipo decidió
+      medirlas en la fase 7.
 26. **RF-07 de N6 alineado con eli-004:** al menos tres escenarios por requerimiento: el camino
     feliz, el alterno y el de error.
 27. **Base de conocimiento:** eli-006 1.2 agrega la fase de casos límite, con reingesta.
@@ -609,6 +626,19 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
   - reparto: N3 4,51, N5 1,42, cliente simulado 2,53 y juez 0,10;
   - aparte, las dos corridas de la prueba `nube`, de unos 0,08 USD cada una.
 
+31. **Los ejemplos de los prompts no salen de los casos de evaluación.**
+    - Varios ejemplos de los prompts del elicitador venían de los casos con que se mide:
+      - la fecha anterior a la vigencia y el cálculo de 1.000.000 del caso predial, que es una
+        regla oculta y su ejemplo de verificación;
+      - la tarea programada de los casos 14 y 15;
+      - el portal y la app de los asesores del catálogo de inmuebles;
+      - el canal en memoria y la hoja de cálculo, presentes en varios casos;
+      - los escaneos del caso 14.
+    - Enseñaban para la prueba. Ahora vienen de un proceso que ningún caso usa: los préstamos de
+      una biblioteca.
+    - Las mediciones de la fase 5 anteriores a diálogo 1.9, extracción 1.7 y síntesis 1.9 pudieron
+      beneficiarse de esas fugas. La medición de la fase 7 se hace sin ellas.
+
 **Decisiones del equipo sobre la fase 5 (2026-11-04).**
 - **Corrida de 20 casos:** se repite ahora, antes de la fase 6, con las decisiones 23, 24 y 30.
 - **N6:** se implementa la propuesta antes de la corrida (decisión 30).
@@ -617,6 +647,10 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
 - **Criterio de turnos:** pasa a «como máximo 211 turnos sin contar las respuestas a la
   exploración», y se mantienen al menos 17 de 20 resúmenes confirmados. La exploración se
   informa aparte.
+- **Tras la segunda corrida:** se corrigen el «no sé» sin la palabra y la separación entre
+  quien lo usa y a quien le sirve (decisión 23), y la convergencia se mide en la corrida de
+  extremo a extremo de la fase 7. La fase 5 se cierra con el criterio de convergencia sin
+  cumplir: 15 de 20 resúmenes confirmados y 224 turnos sin exploración.
 
 **Corrida de 20 casos con las decisiones 23, 24 y 30** (`data/local/elicitaciones-ampliada-final`,
 una corrida por caso):
@@ -713,7 +747,8 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
 - **Fase 5:**
   - Tabla 1, N3: antes del resumen, pregunta por los casos límite de las reglas capturadas, hasta
     tres y cada uno de un patrón distinto, y una vez por algo más. El límite de turnos pasa a 18.
-  - Registro de información capturada: casos especiales acordados y ejemplos con cifras.
+  - Registro de información capturada: casos especiales acordados, ejemplos con cifras y
+    usuarios (quién más usa lo pedido, aparte del rol).
   - Tabla 1, N5: con el resumen confirmado, las preguntas abiertas de la historia son las del
     registro.
   - RF-07 en N6: al menos tres escenarios por requerimiento.
