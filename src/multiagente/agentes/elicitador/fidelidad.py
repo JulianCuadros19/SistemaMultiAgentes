@@ -204,6 +204,18 @@ def desconoce_algo(conversacion: Conversacion) -> bool:
     )
 
 
+def oraciones(texto: str) -> list[str]:
+    """Divide un texto en oraciones, separadas por punto o punto y coma.
+
+    Args:
+        texto: Texto en una o varias oraciones.
+
+    Returns:
+        Las oraciones, sin espacios sobrantes y en el orden original.
+    """
+    return [parte.strip() for parte in re.split(r"(?<=[.;])\s+", texto) if parte.strip()]
+
+
 def oraciones_respaldadas(texto: str, fuente: set[str]) -> str:
     """Conserva solo las oraciones de un texto que están respaldadas por lo que dijo el cliente.
 
@@ -214,5 +226,4 @@ def oraciones_respaldadas(texto: str, fuente: set[str]) -> str:
     Returns:
         Las oraciones respaldadas, unidas en el orden original; vacío si ninguna lo está.
     """
-    oraciones = [parte.strip() for parte in re.split(r"(?<=[.;])\s+", texto) if parte.strip()]
-    return " ".join(oracion for oracion in oraciones if respaldado(oracion, fuente))
+    return " ".join(oracion for oracion in oraciones(texto) if respaldado(oracion, fuente))

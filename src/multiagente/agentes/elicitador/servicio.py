@@ -1,10 +1,18 @@
-"""Agente elicitador real: implementa los servicios de N2, N3, N5 y N6 (paso 7)."""
+"""Agente elicitador real: implementa los servicios de N2, N3, N5 y N6 (paso 7).
+
+N5 también enmienda los requerimientos aprobados con una regla nueva de N17 (ADR-0015).
+"""
 
 from openai import OpenAI
 
 from multiagente.agentes.elicitador.calidad import verificar_conjunto
 from multiagente.agentes.elicitador.contexto import recuperar_contexto
 from multiagente.agentes.elicitador.dialogo import dialogar
+from multiagente.agentes.elicitador.enmienda import (
+    SalidaEnmienda,
+    mensajes_enmienda,
+    validar_enmienda,
+)
 from multiagente.agentes.elicitador.sintesis import (
     SalidaSintesis,
     mensajes_sintesis,
@@ -36,6 +44,7 @@ class AgenteElicitador:
         extraccion: InvocadorNodo,
         pregunta: InvocadorNodo,
         sintesis: InvocadorNodo,
+        enmienda: InvocadorNodo,
     ) -> None:
         """Crea el agente con sus dependencias ya configuradas.
 
@@ -44,11 +53,13 @@ class AgenteElicitador:
             extraccion: Invocador de la extracción de N3, sin contexto de dominio.
             pregunta: Invocador de la pregunta de N3, con el contexto recuperado.
             sintesis: Invocador del modelo de N5.
+            enmienda: Invocador de N5 en modo enmienda, sin contexto recuperado.
         """
         self.recuperador = recuperador
         self.extraccion = extraccion
         self.pregunta = pregunta
         self.sintesis = sintesis
+        self.enmienda = enmienda
 
     def recuperar_contexto(self, conversacion: Conversacion) -> Contexto:
         """Recupera la guía de elicitación y el dominio de la necesidad del cliente (N2)."""
@@ -72,6 +83,16 @@ class AgenteElicitador:
             lambda salida: validar_sintesis(salida, conversacion, contexto, previos, proyecto),
         )
 
+    def enmendar(
+        self, conversacion: Conversacion, requerimientos: Requerimientos, proyecto: str
+    ) -> Sintesis:
+        """Incorpora la enmienda en curso a los requerimientos vigentes (N5, ADR-0015)."""
+        return self.enmienda.invocar_validado(
+            mensajes_enmienda(requerimientos, proyecto),
+            SalidaEnmienda,
+            lambda salida: validar_enmienda(salida, conversacion, requerimientos),
+        )
+
     def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
         """Verifica los atributos de calidad de los requerimientos (N6, RF-07)."""
         defectos = verificar_conjunto(requerimientos)
@@ -91,7 +112,8 @@ def crear_agente_elicitador(
 
     Los despliegues salen de MODELO_N3_DIALOGO y MODELO_N5_SINTESIS, el esfuerzo y el límite de
     salida de ESFUERZO_* y MAX_TOKENS_*, y los prompts de `prompts/elicitador/`. Las dos llamadas
-    de N3, extracción y pregunta, usan los parámetros del nodo.
+    de N3, extracción y pregunta, usan los parámetros del nodo; la síntesis y la enmienda, los
+    de N5.
 
     Args:
         conexion: Conexión con la base de conocimiento.
@@ -118,17 +140,17 @@ def crear_agente_elicitador(
     pregunta = InvocadorNodo(
         cliente, n3, cargar_prompt("elicitador", "dialogo"), registrador, tarifas
     )
+    n5 = ParametrosNodo(
+        nodo="N5",
+        despliegue=modelos.n5_sintesis,
+        esfuerzo=razonamiento.esfuerzo_n5_sintesis,
+        max_tokens_salida=razonamiento.max_tokens_n5_sintesis,
+    )
     sintesis = InvocadorNodo(
-        cliente,
-        ParametrosNodo(
-            nodo="N5",
-            despliegue=modelos.n5_sintesis,
-            esfuerzo=razonamiento.esfuerzo_n5_sintesis,
-            max_tokens_salida=razonamiento.max_tokens_n5_sintesis,
-        ),
-        cargar_prompt("elicitador", "sintesis"),
-        registrador,
-        tarifas,
+        cliente, n5, cargar_prompt("elicitador", "sintesis"), registrador, tarifas
+    )
+    enmienda = InvocadorNodo(
+        cliente, n5, cargar_prompt("elicitador", "enmienda"), registrador, tarifas
     )
     recuperador = Recuperador(conexion, vectorizador or VectorizadorTEI(), Agente.ELICITADOR)
-    return AgenteElicitador(recuperador, extraccion, pregunta, sintesis)
+    return AgenteElicitador(recuperador, extraccion, pregunta, sintesis, enmienda)

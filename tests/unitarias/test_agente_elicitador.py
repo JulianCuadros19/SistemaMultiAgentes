@@ -1172,6 +1172,7 @@ def agente(cliente, registro: RegistroEnMemoria, recuperador=None) -> AgenteElic
         invocador("N3", "extraccion"),
         invocador("N3", "dialogo"),
         invocador("N5", "sintesis"),
+        invocador("N5", "enmienda"),
     )
 
 
@@ -1180,7 +1181,12 @@ def pregunta(texto: str) -> SalidaPregunta:
 
 
 def test_los_prompts_del_elicitador_estan_versionados():
-    for nombre, nodo in (("extraccion", "N3"), ("dialogo", "N3"), ("sintesis", "N5")):
+    for nombre, nodo in (
+        ("extraccion", "N3"),
+        ("dialogo", "N3"),
+        ("sintesis", "N5"),
+        ("enmienda", "N5"),
+    ):
         prompt = cargar_prompt("elicitador", nombre)
         assert prompt.metadatos.nodo == nodo
         assert prompt.identificador == f"elicitador.{nombre}@{prompt.metadatos.version}"

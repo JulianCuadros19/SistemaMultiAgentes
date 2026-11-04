@@ -144,25 +144,47 @@ def mensajes_sintesis(
     return [mensaje_contexto(contexto), {"role": "user", "content": json_texto(datos)}]
 
 
-def _corrido(texto: str) -> str:
-    """Une en un solo párrafo un texto con saltos de línea, reales o escritos como barra y n."""
+def corrido(texto: str) -> str:
+    """Une en un solo párrafo un texto con saltos de línea, reales o escritos como barra y n.
+
+    Args:
+        texto: Texto del modelo.
+
+    Returns:
+        El texto en un solo párrafo, sin espacios repetidos.
+    """
     return re.sub(r"(?:\\n|\s)+", " ", texto).strip()
 
 
-def _clausula(texto: str, claves: tuple[str, ...]) -> str:
+def clausula(texto: str, claves: tuple[str, ...]) -> str:
     """Quita la palabra clave Gherkin que el modelo repite al inicio de la cláusula.
 
     El esquema guarda «dado que», «cuando» y «entonces» en campos separados: la palabra clave la
     pone quien presenta el escenario, no el texto.
+
+    Args:
+        texto: Cláusula del escenario, tal como la devuelve el modelo.
+        claves: Palabras clave que pueden encabezarla, como `("dado que", "dado")`.
+
+    Returns:
+        La cláusula en un solo párrafo, sin la palabra clave ni el punto final.
     """
-    limpio = _corrido(texto)
+    limpio = corrido(texto)
     patron = re.compile(rf"^(?:{'|'.join(claves)})\b[\s,:]*", re.IGNORECASE)
     while (sin_clave := patron.sub("", limpio)) != limpio:
         limpio = sin_clave
     return limpio.rstrip(".").strip()
 
 
-def _texto(valor: str | None) -> str | None:
+def texto_opcional(valor: str | None) -> str | None:
+    """Texto de un campo opcional: None si el modelo lo dejó vacío.
+
+    Args:
+        valor: Texto del modelo, o None.
+
+    Returns:
+        El texto sin espacios sobrantes, o None si queda vacío.
+    """
     limpio = valor.strip() if valor else ""
     return limpio or None
 
@@ -171,7 +193,15 @@ def _textos(valores: list[str]) -> list[str]:
     return list(dict.fromkeys(limpio for valor in valores if (limpio := valor.strip())))
 
 
-def _errores(error: ValidationError) -> str:
+def errores_de_esquema(error: ValidationError) -> str:
+    """Errores de un artefacto que incumple su esquema, en una línea para el modelo.
+
+    Args:
+        error: Error de validación de Pydantic.
+
+    Returns:
+        Cada error con la ruta de su campo, separados por punto y coma.
+    """
     return "; ".join(
         f"{'.'.join(str(parte) for parte in detalle['loc'])}: {detalle['msg']}"
         for detalle in error.errors()
@@ -216,7 +246,7 @@ def validar_sintesis(
         historia = HistoriaUsuario(
             id="HU-01",
             enunciado=Enunciado(**salida.historia.enunciado.model_dump()),
-            epica=_texto(salida.historia.epica),
+            epica=texto_opcional(salida.historia.epica),
             prioridad=registro.prioridad or salida.historia.prioridad,
             supuestos=_textos(salida.historia.supuestos),
             preguntas_abiertas=(
@@ -226,7 +256,7 @@ def validar_sintesis(
             ),
         )
     except ValidationError as error:
-        raise ErrorValidacionSalida([f"historia: {_errores(error)}"]) from error
+        raise ErrorValidacionSalida([f"historia: {errores_de_esquema(error)}"]) from error
     if not salida.requerimientos:
         raise ErrorValidacionSalida(["Debes producir al menos un requerimiento formal."])
 
@@ -236,8 +266,8 @@ def validar_sintesis(
     referencias: dict[str, tuple[str, ...]] = {}
     for numero, contenido in enumerate(salida.requerimientos, 1):
         id_rf = f"RF-{numero:02d}"
-        precondicion = oraciones_respaldadas(_corrido(contenido.precondicion), fuente)
-        regla = oraciones_respaldadas(_corrido(contenido.regla_negocio), fuente)
+        precondicion = oraciones_respaldadas(corrido(contenido.precondicion), fuente)
+        regla = oraciones_respaldadas(corrido(contenido.regla_negocio), fuente)
         entradas = [d for d in contenido.datos_entrada if respaldado(d.nombre, fuente)]
         salidas = [d for d in contenido.datos_salida if respaldado(d.nombre, fuente)]
         if incompleto:
@@ -274,10 +304,10 @@ def validar_sintesis(
                 tipo_solicitud=contenido.tipo_solicitud,
                 impacto=contenido.impacto,
                 modulo=contenido.modulo,
-                riesgo=_texto(contenido.riesgo),
+                riesgo=texto_opcional(contenido.riesgo),
                 autor=AUTOR,
                 area_funcional=contenido.area_funcional,
-                funcional_responsable=_texto(contenido.funcional_responsable),
+                funcional_responsable=texto_opcional(contenido.funcional_responsable),
                 titulo=historia.enunciado,
                 descripcion=Descripcion(
                     precondicion=precondicion,
@@ -287,7 +317,7 @@ def validar_sintesis(
                             nombre=identificador(dato.nombre),
                             tipo=dato.tipo,
                             obligatorio=dato.obligatorio,
-                            restriccion=_texto(dato.restriccion),
+                            restriccion=texto_opcional(dato.restriccion),
                         )
                         for dato in entradas
                     ],
@@ -295,7 +325,7 @@ def validar_sintesis(
                         DatoSalida(
                             nombre=identificador(dato.nombre),
                             tipo=dato.tipo,
-                            formato=_texto(dato.formato),
+                            formato=texto_opcional(dato.formato),
                         )
                         for dato in salidas
                     ],
@@ -303,10 +333,10 @@ def validar_sintesis(
                 criterios_aceptacion=[
                     EscenarioAceptacion(
                         id=f"ESC-{posicion:02d}",
-                        nombre=_texto(escenario.nombre),
-                        dado_que=_clausula(escenario.dado_que, ("dado que", "dado")),
-                        cuando=_clausula(escenario.cuando, ("cuando",)),
-                        entonces=_clausula(escenario.entonces, ("entonces",)),
+                        nombre=texto_opcional(escenario.nombre),
+                        dado_que=clausula(escenario.dado_que, ("dado que", "dado")),
+                        cuando=clausula(escenario.cuando, ("cuando",)),
+                        entonces=clausula(escenario.entonces, ("entonces",)),
                     )
                     for posicion, escenario in enumerate(contenido.escenarios, 1)
                 ],
@@ -320,7 +350,7 @@ def validar_sintesis(
                 ),
             )
         except ValidationError as error:
-            problemas.append(f"{id_rf}: {_errores(error)}")
+            problemas.append(f"{id_rf}: {errores_de_esquema(error)}")
             continue
         requerimientos.append(requerimiento)
         referencias[id_rf] = tuple(

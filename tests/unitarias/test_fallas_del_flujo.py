@@ -63,6 +63,10 @@ class SimulacionConFallas(ServiciosSimulados):
         self._quizas_fallar("sintetizar")
         return super().sintetizar(conversacion, contexto, previos, proyecto)
 
+    def enmendar(self, conversacion, requerimientos, proyecto):
+        self._quizas_fallar("enmendar")
+        return super().enmendar(conversacion, requerimientos, proyecto)
+
     def disenar(self, requerimientos, contexto, previa):
         self._quizas_fallar("disenar")
         return super().disenar(requerimientos, contexto, previa)
@@ -174,6 +178,30 @@ def test_n5_que_falla_una_vez_se_corrige_sola():
     hasta(op, id_sesion, "requerimientos")
     datos = op.vista(id_sesion).pausa.datos
     assert datos["requerimientos"] and datos["defectos"] == []
+
+
+def test_una_enmienda_que_siempre_falla_llega_al_analista_con_los_requerimientos_vigentes():
+    op = operador(SimulacionConFallas({"enmendar": SIEMPRE}))
+    id_sesion = abrir(op)
+    hasta(op, id_sesion, "final")
+    op.decidir(
+        id_sesion,
+        Decision.RECHAZADO,
+        "Revisor",
+        "El radicado debe incluir el año",
+        destino=Destino.REQUERIMIENTOS,
+    )
+
+    # Tras las correcciones automáticas, el analista decide con el fallo a la vista.
+    datos = op.vista(id_sesion).pausa.datos
+    assert datos["defectos"][0].startswith("La síntesis falló: Falla simulada de enmendar")
+    assert datos["requerimientos"][0]["version"] == "0.1"
+    assert datos["enmienda"]["requerimientos"] == {}
+    # Puede rechazar para que se intente de nuevo, o aprobar los vigentes: hay salida.
+    avance = op.decidir(id_sesion, Decision.RECHAZADO, "Analista", "Incorporen la regla del año")
+    assert avance.pausa.punto == "requerimientos"
+    avance = op.decidir(id_sesion, Decision.APROBADO, "Analista")
+    assert avance.pausa.punto == "final"
 
 
 def test_n8_sin_diseno_escala_al_arquitecto_humano():
