@@ -2,6 +2,7 @@
 
 import json
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,7 @@ from multiagente.agentes.tester.veredicto import (
     pruebas_fuente,
     sugerencia_de_ejecucion,
 )
+from multiagente.interfaces.casos import cargar_caso_desarrollo
 from multiagente.llm.costos import Tarifa
 from multiagente.llm.invocador import InvocadorNodo, ParametrosNodo
 from multiagente.llm.prompts import cargar_prompt
@@ -254,6 +256,34 @@ def test_el_juez_recibe_solo_los_casos_cuyas_pruebas_pasaron(cliente_falso, comp
     assert "Compara con 6" in dictamen.veredictos[0].evidencia
 
 
+def test_el_juez_ve_las_interfaces_y_el_modelo_de_datos(cliente_falso, completar_respuesta):
+    caso = cargar_caso_desarrollo(
+        Path(__file__).resolve().parents[2] / "evaluacion/casos/desarrollo-avaluo.json"
+    )
+    sin_esc_02 = PRUEBAS.replace("test_rf_01_esc_02_rechaza", "test_rechaza")
+    cliente = cliente_falso(
+        completar_respuesta(juicios(("CP-RF-01-ESC-01", True, "")), modelo=MODELO)
+    )
+    validacion = Validacion(plan_pruebas=PLAN, ejecucion=EJECUCION)
+    dictaminar_version(
+        PLAN,
+        validacion,
+        Contexto(),
+        version(sin_esc_02),
+        REGLAS,
+        0,
+        juez(cliente),
+        caso.especificacion,
+    )
+    datos = json.loads(cliente.llamadas[0]["messages"][-1]["content"])
+    # Con la especificación, el juez sabe qué ofrece el módulo para preparar y observar.
+    interfaces = datos["especificacion"]["interfaces_publicas"]
+    assert [m["modulo"] for m in interfaces] == [m.nombre for m in caso.especificacion.modulos]
+    assert {"nombre", "tipo", "firma"} <= set(interfaces[0]["interfaces"][0])
+    entidades = datos["especificacion"]["modelo_datos"]
+    assert [e["entidad"] for e in entidades] == [e.nombre for e in caso.especificacion.modelo_datos]
+
+
 def test_el_juez_detecta_una_prueba_que_no_verifica_el_escenario(
     cliente_falso, completar_respuesta
 ):
@@ -261,13 +291,37 @@ def test_el_juez_detecta_una_prueba_que_no_verifica_el_escenario(
         ("CP-RF-01-ESC-01", False, "Compara con el valor exacto 6"),
         ("CP-RF-01-ESC-02", True, ""),
     )
-    cliente = cliente_falso(completar_respuesta(respuesta, modelo=MODELO))
+    confirmacion = juicios(("CP-RF-01-ESC-01", False, "Compara con el valor exacto 6"))
+    cliente = cliente_falso(
+        completar_respuesta(respuesta, modelo=MODELO),
+        completar_respuesta(confirmacion, modelo=MODELO),
+    )
     dictamen = dictaminar(juez=juez(cliente))
     assert dictamen.veredicto is Veredicto.RECHAZADO
     (juicio,) = [h for h in dictamen.hallazgos if h.origen == "juez"]
     assert juicio.regla == "CAL-FS-001"
     assert juicio.sugerencia == "Compara con el valor exacto 6"
     assert juicio.ubicacion == "tests/test_avaluo.py::test_rf_01_esc_01_calcula"
+    # La segunda opinión solo vuelve a juzgar el caso incumplido.
+    segunda = json.loads(cliente.llamadas[1]["messages"][-1]["content"])
+    assert [c["id_caso"] for c in segunda["casos"]] == ["CP-RF-01-ESC-01"]
+
+
+def test_un_rechazo_que_la_segunda_opinion_no_confirma_no_se_reporta(
+    cliente_falso, completar_respuesta
+):
+    respuesta = juicios(
+        ("CP-RF-01-ESC-01", False, "Compara con el valor exacto 6"),
+        ("CP-RF-01-ESC-02", True, ""),
+    )
+    cliente = cliente_falso(
+        completar_respuesta(respuesta, modelo=MODELO),
+        completar_respuesta(juicios(("CP-RF-01-ESC-01", True, "")), modelo=MODELO),
+    )
+    dictamen = dictaminar(juez=juez(cliente))
+    assert dictamen.veredicto is Veredicto.APROBADO
+    assert all(veredicto.cumple for veredicto in dictamen.veredictos)
+    assert not [h for h in dictamen.hallazgos if h.origen == "juez"]
 
 
 def test_el_juez_reintenta_si_omite_un_caso(cliente_falso, completar_respuesta):

@@ -650,7 +650,11 @@ class NodosGrafo:
         """Emite el veredicto por caso y el único, la retroalimentación y el reporte."""
         validacion = estado["validacion"]
         dictamen = self.servicios.tester.dictaminar(
-            validacion.plan_pruebas, validacion, estado["contexto"], estado["codigo"].vigente
+            validacion.plan_pruebas,
+            validacion,
+            estado["contexto"],
+            estado["codigo"].vigente,
+            estado["arquitectura"].especificacion,
         )
         return {
             "validacion": validacion.model_copy(

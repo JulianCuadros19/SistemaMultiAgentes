@@ -342,6 +342,7 @@ class ServiciosSimulados:
         validacion: Validacion,
         contexto: Contexto,
         version: VersionCodigo,
+        especificacion: EspecificacionDiseno | None = None,
     ) -> Dictamen:
         """Marca todos los casos como no cumplidos en los primeros dictámenes configurados (N14)."""
         cumple = self._contar("dictaminar") > self.fallos_veredicto

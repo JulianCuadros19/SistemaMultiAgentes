@@ -98,7 +98,7 @@ def test_el_tester_detecta_cada_defecto_y_aprueba_los_controles(tester, corpus, 
         no_evaluadas=analisis.no_evaluadas,
     )
     contexto = tester.recuperar_criterios(validacion)
-    dictamen = tester.dictaminar(plan, validacion, contexto, version)
+    dictamen = tester.dictaminar(plan, validacion, contexto, version, caso.especificacion)
     reglas = {h.regla for h in dictamen.hallazgos}
     print(f"{variante.id}: {dictamen.veredicto.value} · {sorted(reglas)}")
 

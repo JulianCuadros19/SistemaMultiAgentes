@@ -91,6 +91,7 @@ class AgenteTester:
         validacion: Validacion,
         contexto: Contexto,
         version: VersionCodigo,
+        especificacion: EspecificacionDiseno | None = None,
     ) -> Dictamen:
         """Dictamina cada caso, aplica la regla de veredicto y arma la retroalimentación (N14)."""
         return dictaminar_version(
@@ -101,6 +102,7 @@ class AgenteTester:
             self.reglas,
             self.configuracion.umbral_hallazgos_media,
             self.juez,
+            especificacion,
         )
 
 

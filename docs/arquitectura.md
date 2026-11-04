@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo**      | **Contenido**                                               |
 |----------------|-------------------------------------------------------------|
 | Producto       | Entregable del Objetivo Específico 2                        |
-| Versión        | 1.2                                                         |
+| Versión        | 1.3                                                         |
 | Fecha          | 14 de septiembre de 2026                                    |
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |
@@ -44,9 +44,9 @@ El grafo adopta el principio de más nodos que agentes. Cada nodo encapsula una 
 | **N9**   | Arquitecto    | Validación contra esquema, verificación de cobertura y aprobación humana.                                        | Determinística y humana |
 | **N10**  | Desarrollador | Generación del módulo: código, documentación y pruebas conforme a la especificación.                             | LLM                     |
 | **N11**  | Tester        | Ejecución del código y las pruebas en contenedor efímero sin red.                                                | Determinística          |
-| **N12**  | Tester        | Análisis estático de estilo y seguridad, y verificación de conformidad arquitectónica.                           | Determinística          |
+| **N12**  | Tester        | Análisis estático de estilo y seguridad, verificación de conformidad arquitectónica y detección de pruebas que simulan el efecto del módulo (CAL-FS-006). | Determinística          |
 | **N13**  | Tester        | Recuperación de los criterios de calidad aplicables al módulo.                                                   | Embeddings              |
-| **N14**  | Tester        | Veredicto por criterio y retroalimentación estructurada.                                                         | LLM                     |
+| **N14**  | Tester        | Veredicto por criterio y retroalimentación estructurada. El juez ve las interfaces y el modelo de datos de la especificación, y cada caso que rechaza se confirma con una segunda opinión. | LLM                     |
 | **N15**  | Orquestador   | Decisión de enrutamiento: remite el módulo aprobado por el tester a la validación humana final (N17), reabre el ciclo de corrección o, agotados los intentos, escala la sesión a N17 para que decida una persona. | Determinística          |
 | **N16**  | Tester        | Plan de pruebas de aceptación: al aprobarse los requerimientos (N6), deriva un caso de prueba por cada escenario Gherkin aprobado. Corre en paralelo con N7 y es la base del veredicto de N14. | Determinística          |
 | **N17**  | Orquestador   | Validación y aprobación humana final: la persona revisa el reporte y el código, puede ejecutar pruebas propias en el entorno aislado y aprueba el módulo, lo devuelve con observaciones al desarrollador (N10) o al arquitecto (N8), o cierra la sesión. Una sesión escalada no puede aprobarse. | Humano                  |
@@ -288,3 +288,4 @@ El presente documento se considera aprobado cuando el equipo técnico de Realtix
 | 1.0 | 14 de septiembre de 2026 | Versión aprobada por el equipo técnico. |
 | 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): especificación de diseño en lugar de contrato; nodo N16 (plan de pruebas de aceptación del tester) y nodo N17 (validación y aprobación humana final); retornos con observaciones desde los tres puntos de control; entidad `aprobaciones_humanas`. |
 | 1.2 | 9 de octubre de 2026 | Flujo sin bloqueos (ADR-0014): N10 pasa a N15 si no logra una versión válida; agotado el ciclo de corrección, N15 escala la sesión a N17, donde no puede aprobarse; N17 devuelve el módulo al desarrollador (N10) o al arquitecto (N8), y cada devolución abre un ciclo nuevo; toda sesión en pausa o detenida puede cerrarse en la fase `cerrada`, con su registro. |
+| 1.3 | 3 de noviembre de 2026 | Calidad de la primera salida (ADR-0015), en curso: N12 detecta las pruebas que simulan el efecto del módulo (CAL-FS-006), y el juez de N14 ve las interfaces y el modelo de datos de la especificación y confirma cada rechazo con una segunda opinión. |

@@ -215,8 +215,12 @@ class ServiciosTester(Protocol):
         validacion: Validacion,
         contexto: Contexto,
         version: VersionCodigo,
+        especificacion: EspecificacionDiseno | None = None,
     ) -> Dictamen:
-        """Emite el veredicto por caso y el único, y la retroalimentación (N14, RF-21, RF-24)."""
+        """Emite el veredicto por caso y el único, y la retroalimentación (N14, RF-21, RF-24).
+
+        La especificación le dice al juez qué interfaces y qué datos ofrece el módulo.
+        """
         ...
 
 

@@ -33,6 +33,7 @@ from multiagente.core.conformidad import (
     funciones_de_prueba,
     nombre_de_prueba,
 )
+from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.llm.cliente import ErrorRespuestaModelo
 from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo
 from multiagente.orquestador.estado import (
@@ -240,18 +241,25 @@ class CasoPorJuzgar:
 
 
 def mensajes_veredicto(
-    casos: list[CasoPorJuzgar], contexto: Contexto, archivos: Mapping[str, str]
+    casos: list[CasoPorJuzgar],
+    contexto: Contexto,
+    archivos: Mapping[str, str],
+    especificacion: EspecificacionDiseno | None = None,
 ) -> list[ChatCompletionMessageParam]:
     """Arma los mensajes de datos del juez: los criterios y los casos con sus pruebas.
 
     Además del código de cada prueba, el juez recibe completos los archivos de prueba
     implicados y `tests/conftest.py`: el «dado que» suele prepararse en fixtures y constantes
-    fuera de la función, y sin verlos el juez rechazaba pruebas correctas.
+    fuera de la función, y sin verlos el juez rechazaba pruebas correctas. Recibe también las
+    interfaces públicas y el modelo de datos de la especificación: sin ellos no podía saber si una
+    prueba prepara la situación con el módulo o le inyecta datos que sus clases no tienen
+    (ADR-0015).
 
     Args:
         casos: Casos por juzgar.
         contexto: Contexto acumulado; solo se presentan los criterios de calidad.
         archivos: Archivos de la versión, de los que se toman los de prueba.
+        especificacion: Especificación aprobada, si se conoce.
 
     Returns:
         Dos mensajes de datos que acompañan al prompt del veredicto.
@@ -278,12 +286,31 @@ def mensajes_veredicto(
     rutas = {prueba.archivo for por_juzgar in casos for prueba in por_juzgar.pruebas}
     rutas |= {RUTA_CONFTEST} & set(archivos)
     archivos_prueba = [{"ruta": ruta, "contenido": archivos[ruta]} for ruta in sorted(rutas)]
-    contenido = json.dumps(
-        {"casos": datos, "archivos_prueba": archivos_prueba},
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
+    cuerpo: dict[str, object] = {"casos": datos, "archivos_prueba": archivos_prueba}
+    if especificacion is not None:
+        cuerpo = {"especificacion": _especificacion_para_el_juez(especificacion), **cuerpo}
+    contenido = json.dumps(cuerpo, ensure_ascii=False, separators=(",", ":"))
     return [mensaje_contexto(contexto), {"role": "user", "content": contenido}]
+
+
+def _especificacion_para_el_juez(especificacion: EspecificacionDiseno) -> dict[str, object]:
+    """Interfaces públicas y modelo de datos: lo que el módulo ofrece para preparar y observar."""
+    return {
+        "interfaces_publicas": [
+            {
+                "modulo": modulo.nombre,
+                "interfaces": [
+                    {"nombre": i.nombre, "tipo": i.tipo.value, "firma": i.firma}
+                    for i in modulo.interfaces_publicas
+                ],
+            }
+            for modulo in especificacion.modulos
+        ],
+        "modelo_datos": [
+            {"entidad": entidad.nombre, "campos": [campo.nombre for campo in entidad.campos]}
+            for entidad in especificacion.modelo_datos
+        ],
+    }
 
 
 def validar_juicios(salida: SalidaVeredicto, esperados: set[str]) -> dict[str, JuicioCaso]:
@@ -318,6 +345,39 @@ def validar_juicios(salida: SalidaVeredicto, esperados: set[str]) -> dict[str, J
     return {juicio.id_caso.strip(): juicio for juicio in salida.juicios}
 
 
+def _segunda_opinion(
+    juez: InvocadorNodo,
+    por_juzgar: list[CasoPorJuzgar],
+    juicios: dict[str, JuicioCaso],
+    contexto: Contexto,
+    version: VersionCodigo,
+    especificacion: EspecificacionDiseno | None,
+) -> dict[str, JuicioCaso]:
+    """Vuelve a juzgar los casos incumplidos y acepta los que la segunda opinión da por cumplidos.
+
+    Un rechazo del juez le cuesta al flujo un ciclo de corrección, y una llamada al juez cuesta
+    mucho menos: un caso se rechaza solo si dos juicios independientes coinciden (ADR-0015). Si la
+    segunda llamada falla, se conserva el primer juicio.
+
+    Returns:
+        El juicio que reemplaza al primero en cada caso que la segunda opinión da por cumplido.
+    """
+    incumplidos = [item for item in por_juzgar if not juicios[item.caso.id].cumple]
+    if not incumplidos:
+        return {}
+    esperados = {item.caso.id for item in incumplidos}
+    try:
+        segunda = juez.invocar_validado(
+            mensajes_veredicto(incumplidos, contexto, version.archivos, especificacion),
+            SalidaVeredicto,
+            lambda salida: validar_juicios(salida, esperados),
+        )
+    except (ErrorRespuestaModelo, ErrorValidacionSalida) as error:
+        _log.warning("N14: la segunda opinión del juez no respondió: %s", error)
+        return {}
+    return {id_caso: juicio for id_caso, juicio in segunda.items() if juicio.cumple}
+
+
 # Dictamen ---------------------------------------------------------------------------------------
 
 
@@ -333,6 +393,7 @@ def dictaminar_version(
     reglas: dict[str, ReglaCalidad],
     umbral_media: int,
     juez: InvocadorNodo | None,
+    especificacion: EspecificacionDiseno | None = None,
 ) -> Dictamen:
     """Dictamina cada caso del plan, aplica la regla de veredicto y arma la retroalimentación.
 
@@ -345,6 +406,8 @@ def dictaminar_version(
         umbral_media: Hallazgos de severidad media que se toleran.
         juez: Invocador del modelo que juzga los casos cuyas pruebas pasaron. Sin juez, esos
             casos se dan por cumplidos; solo sirve para probar la parte determinística.
+        especificacion: Especificación aprobada, que el juez consulta para saber qué
+            interfaces y qué datos ofrece el módulo.
 
     Returns:
         El dictamen por caso, todos los hallazgos, el veredicto, la retroalimentación y el
@@ -433,9 +496,12 @@ def dictaminar_version(
         esperados = {item.caso.id for item in por_juzgar}
         try:
             juicios = juez.invocar_validado(
-                mensajes_veredicto(por_juzgar, contexto, version.archivos),
+                mensajes_veredicto(por_juzgar, contexto, version.archivos, especificacion),
                 SalidaVeredicto,
                 lambda salida: validar_juicios(salida, esperados),
+            )
+            juicios.update(
+                _segunda_opinion(juez, por_juzgar, juicios, contexto, version, especificacion)
             )
         except (ErrorRespuestaModelo, ErrorValidacionSalida) as error:
             # El juez solo agrega un control sobre pruebas que ya pasan: si no responde, los
