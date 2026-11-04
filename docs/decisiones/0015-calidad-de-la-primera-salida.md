@@ -184,6 +184,121 @@ Para la regla nueva que aparece en N17:
 - El corpus cuenta como rechazo falso que el juez marque el caso de una inyección determinista,
   aunque esté bien marcado.
 
+#### Fase 3 · El arquitecto diseña escenarios ejecutables
+
+10. **Recorrido de cada escenario** (modifica el ADR-0010).
+    - **Qué declara la parametrización:** por cada escenario aprobado, en `recorridos`:
+      - las interfaces que preparan su «dado que»;
+      - la que ejecuta su «cuando»;
+      - las que observan su «entonces».
+    - **Fuera del Anexo B,** como las capacidades no cubiertas:
+      - vive en `Arquitectura.recorridos`;
+      - N9 lo muestra en la consola y en la web;
+      - la exportación lo agrega al final de `especificacion.md`.
+    - **Verificación en código** (`agentes/arquitecto/recorridos.py`), en N8 y en N9:
+      - cada escenario aprobado tiene exactamente un recorrido;
+      - cada nombre es una interfaz declarada. Al preparar vale también una entidad del modelo de
+        datos, que la prueba construye. Un nombre repetido en dos módulos se califica con el
+        módulo;
+      - el «entonces» no se puede observar solo con una función que no devuelve nada ni lanza
+        excepciones.
+    - **En N8,** un recorrido incompleto es una salida inválida: el modelo reintenta una vez con
+      los problemas, en la misma llamada. N9 lo vuelve a verificar.
+    - **El desarrollador los recibe dentro de la especificación.**
+      - El código anota en la descripción de cada interfaz los escenarios en que participa, por
+        ejemplo «· Escenarios: RF-02 ESC-01 (ejecuta; prepara con registrar_prestamo; observa
+        con consultar_prestamo)».
+      - Así el Anexo B no cambia, y el desarrollador no gana un insumo (RF-15).
+      - La anotación se puede aplicar dos veces con el mismo resultado. Se quita antes de mostrarle
+        al modelo la especificación previa.
+11. **Prompt `arquitecto.parametrizacion` 1.4** (1.3 en la primera medición). Pide:
+    - recorrer cada escenario antes de cerrar el diseño;
+    - declarar dónde vive el estado: un almacén con registro y consulta, que recibe quien lo usa,
+      sin estado global del módulo;
+    - dar una fuente declarada a cada dato que un módulo usa;
+    - guardar el estado con la clave de la entidad de la que habla el requerimiento;
+    - escribir tipos en las firmas, no funciones (`Callable`, no `callable`), y tipar un almacén
+      con su clase, no con `object`.
+
+    Los ejemplos nuevos del prompt son de préstamos de una biblioteca, un dominio que no está en
+    ningún caso de evaluación. La 1.3 traía ejemplos de facturas y de liquidación, demasiado
+    cercanos a los casos de pagos y de lotes, y la medición de pagos salía favorecida.
+12. **Revisiones del registro de decisión** (modifica el ADR-0010).
+    - **La selección responde:** con observaciones nuevas, `respuesta_observaciones` es
+      obligatoria (`validar_seleccion`; prompt `arquitecto.seleccion` 1.2).
+    - **Sección «Revisiones» del registro:** por cada rediseño que atendió observaciones, registra
+      las observaciones, la respuesta y los cambios de la especificación.
+      - Los cambios los calcula el código (`diferencias`, en `core/esquemas/especificacion_diseno.py`).
+      - Cuentan módulos, interfaces, firmas, excepciones, entidades y dependencias, pero no las
+        descripciones.
+    - **La parametrización ve la revisión en curso,** con la respuesta, para cumplirla.
+    - **La corrección por errores de N9 conserva las revisiones.**
+13. **Regla nueva de N9:** una firma no puede usar `callable` ni `any` como tipo.
+    - La destapó el caso de pagos.
+    - El caso y su corpus pasan a `Callable[[AvisoPago…Enriquecido], object]`.
+14. **Base de conocimiento.**
+    - ARQ-06 1.1 ubica en infraestructura el almacén del estado, con registro y consulta.
+    - arq-002 1.2 agrega la validación de escenarios ejecutables.
+    - ARQ-03 1.1 y ARQ-05 1.1 cambian la carpeta `io/` por `entrada_salida/`. El catálogo sugería un
+      paquete que N9 rechaza, porque tapa un módulo de la biblioteca estándar. Lo destapó la
+      medición: con el prompt 1.3, el modelo puso los almacenes del caso de lotes en `io/`.
+    - Reingesta: 36 documentos y 187 fragmentos.
+
+**Reproducción.** `evaluacion/casos/recorridos-pagos.json` guarda las especificaciones 0.2 a 0.5 de
+`5f5d2739`, con los recorridos que exigen sus nueve escenarios. Los nombres son los del diseño
+completo de `desarrollo-pagos.json`.
+
+La validación nueva rechaza cada versión y nombra lo que le faltaba
+(`tests/unitarias/test_recorridos_casos.py`):
+
+| Versión | Qué pasó | Interfaces que faltaban |
+|---|---|---|
+| 0.2 | Pasó N9; rechazada en N17 | Registro y consulta de facturas, emisión y consulta de recibos, registro y consulta de la cartera |
+| 0.3 | Pasó N9; rechazada en N17 | Las mismas |
+| 0.4 | Pasó N9; rechazada por el revisor | Emisión y consulta de recibos, registro y consulta de la cartera |
+| 0.5 | Pasó N9; aprobada | Consulta de recibos, que se agregó a mano en la fase 2 |
+
+Con los recorridos, la v0.2 no habría llegado a la persona. N9 la habría devuelto con lo mismo que
+pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
+
+**Verificación de la fase 3.**
+- **Sin costo:** 628 pruebas unitarias, 31 de integración, 33 del entorno aislado y 19 de
+  embeddings.
+- **Con costo:** `python scripts/evaluar_arquitecto.py --corridas 3`, sobre los cuatro casos de
+  diseño, con la traza en `docs/mediciones/paso-12-arquitecto.jsonl`. La línea base es el paso 8:
+  9 de 9 primeros diseños válidos sin recorridos, a 0,05–0,08 USD por diseño.
+
+| Medición | Primer diseño válido | Reintentos dentro de N8 | Devueltos por N9 | USD por diseño |
+|---|---|---|---|---|
+| Prompt 1.3, 4 casos × 3 | 9 de 12 | 1, por un nombre repetido | 3, todos de lotes | 0,108 |
+| Prompt 1.3, lotes × 3 más | 1 de 3 | 0 | 2, por el paquete `io` | 0,131 |
+| Prompt 1.4 y catálogo sin `io`, 4 casos × 3 | 12 de 12 | 3, por un nombre repetido en dos módulos | 0 | 0,110 |
+
+- Con la 1.4, los tres diseños de pagos guardan la cartera por familia y declaran de dónde sale la
+  familia. Con la 1.3, dos de tres la guardaban por la referencia del pago.
+- Cada escenario aprobado tiene su recorrido en las 27 corridas.
+- Costo de la fase: unos 3 USD, frente a 0,9 del plan, por la ronda extra que encontró el paquete
+  `io` y la medición de cierre.
+
+**Pendientes de la fase 3.**
+- **Métodos como interfaces** (decisión abierta del equipo).
+  - La conformidad de N12 exige interfaces de nivel superior, y N9 rechaza una interfaz llamada
+    `Clase.metodo`.
+  - Por eso la v0.1 de pensiones, que declaraba así los métodos del bus, volvió a N8. La v0.2 los
+    declaró como funciones con `self`, y el código tuvo que definir funciones sueltas y colgarlas
+    de la clase.
+  - En la medición, los diseños de pagos describen en prosa los métodos de sus puertos («obtener
+    (numero) -> Factura | None; guardar(factura) -> None»), porque no los pueden declarar.
+  - El prompt pide declarar las operaciones como funciones que reciben la instancia. Admitir
+    `Clase.metodo` en N9 y en N12 sería más natural, pero cambia una regla de conformidad de los
+    pasos 9 y 10.
+- **Lo que el código no verifica:** que la preparación y la observación correspondan al texto del
+  escenario, o que la clave del estado sea la entidad correcta. Lo pide el prompt, lo revisa la
+  persona en N9 con los recorridos a la vista, y lo juzga N14 sobre las pruebas.
+- **Nombres repetidos:** en 3 de 12 corridas, el contrato y su implementación, o el servicio y el
+  almacén, se llaman igual. El reintento lo corrige, pero cuesta una parametrización más, unos
+  0,07 USD. Pedir nombres únicos en el prompt queda propuesto, sin medir.
+
 ## Verificación
 
 _Pendiente._ Criterios, fijados antes de medir:
@@ -205,3 +320,9 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
     rechazo se confirma con una segunda opinión. N14 sigue siendo uno de los cinco nodos que usan
     modelo, y hace una llamada más solo cuando rechaza.
   - Criterios de calidad: regla nueva CAL-FS-006.
+- **Fase 3:**
+  - Tabla 1, N8: además declara el recorrido de cada escenario con interfaces públicas y, si hay
+    observaciones, una revisión del registro de decisión.
+  - Tabla 1, N9: además verifica los recorridos y rechaza `callable` y `any` como tipos.
+  - Anexo B: sin cambios. Los recorridos lo acompañan y se anotan en las descripciones.
+  - Propuesta para el equipo: ampliar RF-12 de los requerimientos a los escenarios.

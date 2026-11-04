@@ -4,8 +4,8 @@ titulo: Aplicación de línea de comandos por subcomandos
 fuente: Catálogo de arquitecturas de referencia, elaboración propia sobre patrones consolidados
 tipo_fuente: practica_industria
 tags: [arquitectura, catalogo, aplicacion_de_linea_de_comandos]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-11-03
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -30,7 +30,7 @@ coleccion: arquitecturas_referencia
         - `comandos/ · un módulo por subcomando, solo análisis de argumentos y presentación`
 - `servicios/ · lógica de negocio invocada por los comandos`
 - `dominio/ · entidades y reglas`
-- `io/ · lectura y escritura de archivos`
+- `entrada_salida/ · lectura y escritura de archivos` (no se llama io, que es un módulo de la biblioteca estándar)
 
         ## Regla de dependencia
 

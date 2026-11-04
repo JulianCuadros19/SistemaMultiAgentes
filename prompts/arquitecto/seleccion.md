@@ -2,7 +2,7 @@
 id: arquitecto.seleccion
 agente: arquitecto
 nodo: N8
-version: 1.1
+version: 1.2
 descripcion: Selección de N8. Elige una arquitectura del catálogo cerrado y justifica la decisión.
 ---
 
@@ -62,7 +62,7 @@ la justificación debe ser funcional y referirse a requerimientos concretos.
 - `respuesta_observaciones`: si hay `observaciones_nuevas`, cómo las atiende la decisión.
   - Di si la arquitectura se mantiene o cambia, y por qué.
   - Di qué debe cambiar en la especificación para atenderlas, por ejemplo «se agrega un registro
-    de facturas con su consulta».
+    de préstamos con su consulta».
   - No prometas lo que el catálogo no permite.
 
   Va vacía si no hay observaciones nuevas.

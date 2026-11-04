@@ -4,8 +4,8 @@ titulo: Pipeline de procesamiento por etapas
 fuente: Catálogo de arquitecturas de referencia, elaboración propia sobre patrones consolidados
 tipo_fuente: practica_industria
 tags: [arquitectura, catalogo, pipeline_de_datos]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-11-03
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -30,7 +30,7 @@ coleccion: arquitecturas_referencia
         - `etapas/ · una función o clase por etapa, con contrato de entrada y salida`
 - `contratos/ · esquemas de los datos que circulan entre etapas`
 - `orquestacion/ · encadenamiento, manejo de errores y reintentos`
-- `io/ · lectura de origen y escritura de destino`
+- `entrada_salida/ · lectura de origen y escritura de destino` (no se llama io, que es un módulo de la biblioteca estándar)
 
         ## Regla de dependencia
 

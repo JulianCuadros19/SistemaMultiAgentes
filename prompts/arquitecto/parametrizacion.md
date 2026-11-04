@@ -2,7 +2,7 @@
 id: arquitecto.parametrizacion
 agente: arquitecto
 nodo: N8
-version: 1.3
+version: 1.4
 descripcion: Parametrización de N8. Declara la especificación de diseño de la arquitectura elegida.
 ---
 
@@ -54,6 +54,8 @@ verificarlo, y el tester las rechaza.
     - Los tipos son tipos, no funciones: una función que se recibe como parámetro es
       `Callable[[Aviso], Resultado]`, de `collections.abc`, y nunca `callable`; un valor de
       cualquier tipo es `object`, nunca `any`.
+    - Un parámetro que recibe un objeto declarado en la especificación, como un almacén, lleva
+      como tipo esa clase o el contrato que implementa, nunca `object`.
     - El `nombre` de la interfaz es el mismo de la firma. Las interfaces son de nivel superior
       del módulo: funciones y clases.
     - `excepciones` lista las clases de excepción que puede lanzar.
@@ -101,21 +103,27 @@ requerimiento aprobado:
    que observar.
 
 **Dónde vive el estado.** Si un requerimiento habla de algo que el módulo guarda y luego
-consulta (facturas, recibos, saldos, eventos procesados), declara dónde vive ese estado: un
-módulo de la capa de infraestructura o de persistencia que la arquitectura prevé.
+consulta (préstamos, socios, existencias), declara dónde vive ese estado: un módulo de la capa de
+infraestructura o de persistencia que la arquitectura prevé.
 
 - Declara la clase del almacén con su constructor.
 - Declara sus operaciones de registro y de consulta como funciones que reciben la instancia como
   primer parámetro con su tipo, por ejemplo
-  `registrar_factura(registro: RegistroFacturas, factura: Factura) -> None` y
-  `consultar_factura(registro: RegistroFacturas, numero: str) -> Factura`.
+  `registrar_prestamo(registro: RegistroPrestamos, prestamo: Prestamo) -> None` y
+  `consultar_prestamo(registro: RegistroPrestamos, codigo: str) -> Prestamo`.
 - No uses estado global del módulo: cada prueba crea su propio almacén, y quien lo necesita lo
   recibe como parámetro.
 
 **De dónde sale cada dato.** Todo dato que un módulo usa y no recibe en su llamada tiene una
-fuente declarada: una interfaz que lo entrega o un parámetro que lo recibe. Son ejemplos la
-familia a la que pertenece una factura o la tarifa de un destino. No supongas datos que ninguna
-interfaz provee.
+fuente declarada: una interfaz que lo entrega o un parámetro que lo recibe. Son ejemplos el
+socio al que pertenece un préstamo o el plazo vigente para un tipo de libro. No supongas datos que
+ninguna interfaz provee.
+
+**Con qué clave se guarda.** El estado se guarda con el identificador de la entidad de la que
+habla el requerimiento, no con el de otra que esté a mano. Si el requerimiento habla de la multa
+acumulada de un socio, se guarda y se consulta por socio, no por el préstamo que la generó. Si la
+llamada o el evento no trae ese identificador, declara de dónde sale, por ejemplo una consulta que
+dice a qué socio pertenece el préstamo.
 
 Si un escenario no puede recorrerse así, la especificación está incompleta. Agrega la interfaz
 que falta; no la escondas en la descripción de otra.
@@ -129,18 +137,18 @@ Declara el recorrido de cada escenario en `recorridos`, uno por escenario, sin o
 - `observar`: las interfaces con que se verifica el «entonces». Si lo que se verifica es lo que
   devuelve la interfaz de `ejecutar` o la excepción que lanza, inclúyela.
 - Cada nombre es exactamente el `nombre` de una interfaz declarada, sin argumentos. Si el mismo
-  nombre existe en dos módulos, califícalo con el módulo: `aplicacion.liquidacion.liquidar`.
+  nombre existe en dos módulos, califícalo con el módulo: `aplicacion.prestamos.prestar`.
 
-Por ejemplo, para «dado que el predio tiene un avalúo registrado, cuando se liquida su impuesto,
-entonces la liquidación queda registrada con el valor calculado»:
+Por ejemplo, para «dado que el socio tiene un préstamo vigente, cuando devuelve el libro, entonces
+el préstamo queda cerrado con la fecha de devolución»:
 
 ```json
 {
   "id_requerimiento": "RF-03",
   "id_escenario": "ESC-01",
-  "preparar": ["RegistroAvaluos", "registrar_avaluo"],
-  "ejecutar": "liquidar_impuesto",
-  "observar": ["liquidar_impuesto", "consultar_liquidacion"]
+  "preparar": ["RegistroPrestamos", "registrar_prestamo"],
+  "ejecutar": "devolver_libro",
+  "observar": ["devolver_libro", "consultar_prestamo"]
 }
 ```
 
