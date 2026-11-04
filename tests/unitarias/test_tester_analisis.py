@@ -188,7 +188,7 @@ def analizar(archivos):
 
 
 def test_reglas_y_severidades_salen_de_la_base_de_conocimiento():
-    assert len(REGLAS) == 33
+    assert len(REGLAS) == 34
     assert REGLAS["CAL-SG-002"].severidad is Severidad.ALTA
     assert REGLAS["CAL-MT-004"].severidad is Severidad.MEDIA
     assert REGLAS["CAL-MT-009"].severidad is Severidad.BAJA

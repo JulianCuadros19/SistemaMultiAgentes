@@ -56,7 +56,7 @@ def test_ingesta_completa_e_idempotente(conexion_aislada, vectorizador_prueba):
     assert len(primera.nuevos) == 36
     assert primera.fragmentos_por_coleccion == {
         "arquitecturas_referencia": 33,
-        "criterios_calidad": 51,
+        "criterios_calidad": 52,
         "dominio_negocio": 40,
         "elicitacion": 62,
     }

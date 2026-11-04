@@ -64,6 +64,7 @@ CRITERIO_POR_TIPO: dict[TipoProblema, str] = {
     TipoProblema.SIN_DOCSTRING: DOCUMENTACION,
     TipoProblema.ESCENARIO_SIN_PRUEBA: PRUEBAS,
     TipoProblema.PRUEBA_SIN_ESCENARIO: PRUEBAS,
+    TipoProblema.PRUEBA_SIMULADA: PRUEBAS,
 }
 """Criterio del desarrollador al que corresponde cada tipo de problema que verifica N10."""
 

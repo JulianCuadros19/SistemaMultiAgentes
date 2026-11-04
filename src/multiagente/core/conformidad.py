@@ -65,6 +65,7 @@ class TipoProblema(StrEnum):
     SIN_DOCSTRING = "sin_docstring"
     ESCENARIO_SIN_PRUEBA = "escenario_sin_prueba"
     PRUEBA_SIN_ESCENARIO = "prueba_sin_escenario"
+    PRUEBA_SIMULADA = "prueba_simulada"
 
 
 @dataclass(frozen=True)
@@ -445,6 +446,223 @@ def funciones_de_prueba(arbol: ast.Module) -> Iterator[Funcion]:
             )
 
 
+# Pruebas que simulan el efecto ---------------------------------------------------------------
+#
+# Una prueba que pasa sin que el módulo haga su trabajo no verifica nada (CAL-FS-006). Aquí se
+# reconocen en el árbol sintáctico los tres patrones que no admiten otra lectura (ADR-0015):
+# inyectar en un objeto del módulo un atributo que su clase no tiene, escribirle atributos
+# saltándose sus validaciones y lanzar desde la propia prueba la excepción que espera. Lo demás,
+# como reconstruir en la prueba el estado que debía producir el módulo, lo juzga N14.
+
+_DEFINICIONES_ANIDADAS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+
+
+def _atributos_implementados(clase: ast.ClassDef) -> set[str]:
+    """Atributos que define una clase: sus campos, sus métodos y lo que asigna sobre `self`."""
+    nombres: set[str] = set()
+    for sentencia in clase.body:
+        if isinstance(sentencia, ast.AnnAssign) and isinstance(sentencia.target, ast.Name):
+            nombres.add(sentencia.target.id)
+        elif isinstance(sentencia, ast.Assign):
+            nombres.update(t.id for t in sentencia.targets if isinstance(t, ast.Name))
+        elif isinstance(sentencia, ast.FunctionDef | ast.AsyncFunctionDef):
+            nombres.add(sentencia.name)
+    for nodo in ast.walk(clase):
+        if (
+            isinstance(nodo, ast.Attribute)
+            and isinstance(nodo.ctx, ast.Store)
+            and isinstance(nodo.value, ast.Name)
+            and nodo.value.id == "self"
+        ):
+            nombres.add(nodo.attr)
+        elif _es_escritura_forzada(nodo) and len(nodo.args) > 1:
+            # `object.__setattr__(self, "campo", …)` en el `__post_init__` de una dataclass.
+            if isinstance(nombre := nodo.args[1], ast.Constant) and isinstance(nombre.value, str):
+                nombres.add(nombre.value)
+    return nombres
+
+
+def _atributos_de_clases(
+    especificacion: EspecificacionDiseno, modulos: Mapping[str, ast.Module]
+) -> dict[str, frozenset[str]]:
+    """Atributos de cada clase declarada, según su firma, su entidad y su implementación."""
+    atributos: dict[str, set[str]] = {}
+    for modulo in especificacion.modulos:
+        for interfaz in modulo.interfaces_publicas:
+            if interfaz.tipo is TipoInterfaz.CLASE:
+                try:
+                    parametros = _parametros(firma_como_funcion(interfaz))
+                except SyntaxError:
+                    parametros = []
+                atributos.setdefault(interfaz.nombre, set()).update(p.nombre for p in parametros)
+    for entidad in especificacion.modelo_datos:
+        atributos.setdefault(entidad.nombre, set()).update(c.nombre for c in entidad.campos)
+    for arbol in modulos.values():
+        for clase in (nodo for nodo in ast.walk(arbol) if isinstance(nodo, ast.ClassDef)):
+            if clase.name in atributos:
+                atributos[clase.name].update(_atributos_implementados(clase))
+    return {clase: frozenset(nombres) for clase, nombres in atributos.items()}
+
+
+def _retornos_de_clases(
+    especificacion: EspecificacionDiseno, clases: Mapping[str, frozenset[str]]
+) -> dict[str, str]:
+    """Clase declarada que devuelve cada interfaz: la clase misma o el retorno de una función."""
+    retornos = {clase: clase for clase in clases}
+    for modulo in especificacion.modulos:
+        for interfaz in modulo.interfaces_publicas:
+            if interfaz.tipo is TipoInterfaz.FUNCION:
+                try:
+                    tipo = tipo_normalizado(firma_como_funcion(interfaz).returns)
+                except SyntaxError:
+                    continue
+                if tipo in clases:
+                    retornos[interfaz.nombre] = tipo
+    return retornos
+
+
+def _nodos_propios(funcion: Funcion) -> Iterator[ast.AST]:
+    """Nodos del cuerpo de una función, sin entrar en las funciones o clases que define."""
+    pendientes = list(ast.iter_child_nodes(funcion))
+    while pendientes:
+        nodo = pendientes.pop()
+        yield nodo
+        if not isinstance(nodo, _DEFINICIONES_ANIDADAS):
+            pendientes.extend(ast.iter_child_nodes(nodo))
+
+
+def _llamado(expresion: ast.expr | None) -> str:
+    """Nombre de lo que llama una expresión `f(…)` o `m.f(…)`; vacío si no es una llamada."""
+    if isinstance(expresion, ast.Call):
+        if isinstance(expresion.func, ast.Name):
+            return expresion.func.id
+        if isinstance(expresion.func, ast.Attribute):
+            return expresion.func.attr
+    return ""
+
+
+def _objetos_del_modulo(funcion: Funcion, retornos: Mapping[str, str]) -> dict[str, str]:
+    """Variables de la función que guardan un objeto de una clase declarada, con su clase."""
+    variables = {}
+    for nodo in _nodos_propios(funcion):
+        if isinstance(nodo, ast.Assign) and len(nodo.targets) == 1:
+            objetivo, valor = nodo.targets[0], nodo.value
+        elif isinstance(nodo, ast.AnnAssign):
+            objetivo, valor = nodo.target, nodo.value
+        else:
+            continue
+        if isinstance(objetivo, ast.Name) and (clase := retornos.get(_llamado(valor))):
+            variables[objetivo.id] = clase
+    return variables
+
+
+def _es_escritura_forzada(nodo: ast.AST) -> bool:
+    """Indica si el nodo es `setattr(…)` u `object.__setattr__(…)`."""
+    if not isinstance(nodo, ast.Call):
+        return False
+    funcion = nodo.func
+    return (isinstance(funcion, ast.Name) and funcion.id == "setattr") or (
+        isinstance(funcion, ast.Attribute)
+        and funcion.attr == "__setattr__"
+        and isinstance(funcion.value, ast.Name)
+        and funcion.value.id == "object"
+    )
+
+
+def _espera_excepcion(bloque: ast.With | ast.AsyncWith) -> bool:
+    """Indica si el bloque es `with pytest.raises(…)`."""
+    return any(_llamado(item.context_expr) == "raises" for item in bloque.items)
+
+
+def _problemas_de_simulacion(
+    ruta: str,
+    arbol: ast.Module,
+    atributos: Mapping[str, frozenset[str]],
+    retornos: Mapping[str, str],
+) -> Iterator[Problema]:
+    """Problemas de un archivo de pruebas que pasan sin que el módulo haga su trabajo."""
+    funciones = [
+        nodo for nodo in ast.walk(arbol) if isinstance(nodo, ast.FunctionDef | ast.AsyncFunctionDef)
+    ]
+    # Un ayudante del archivo que devuelve un objeto del módulo cuenta como su fuente.
+    retornos = dict(retornos)
+    for _ in range(2):
+        for funcion in funciones:
+            variables = _objetos_del_modulo(funcion, retornos)
+            for nodo in _nodos_propios(funcion):
+                if isinstance(nodo, ast.Return) and nodo.value is not None:
+                    valor = nodo.value
+                    nombre = valor.id if isinstance(valor, ast.Name) else None
+                    clase = variables.get(nombre or "") or retornos.get(_llamado(valor))
+                    if clase:
+                        retornos[funcion.name] = clase
+    for funcion in funciones:
+        variables = _objetos_del_modulo(funcion, retornos)
+        for nodo in _nodos_propios(funcion):
+            if isinstance(nodo, ast.Assign | ast.AugAssign | ast.AnnAssign):
+                objetivos = nodo.targets if isinstance(nodo, ast.Assign) else [nodo.target]
+                for objetivo in objetivos:
+                    if not (
+                        isinstance(objetivo, ast.Attribute)
+                        and isinstance(objetivo.value, ast.Name)
+                        and (clase := variables.get(objetivo.value.id))
+                        and objetivo.attr not in atributos.get(clase, frozenset())
+                    ):
+                        continue
+                    yield Problema(
+                        TipoProblema.PRUEBA_SIMULADA,
+                        ruta,
+                        f"{ruta}:{nodo.lineno}: `{funcion.name}` le agrega a "
+                        f"`{objetivo.value.id}` el atributo `{objetivo.attr}`, que {clase} no "
+                        "tiene. Prepara cada situación con las interfaces públicas del módulo, "
+                        "sin inyectar datos en sus objetos",
+                        nodo.lineno,
+                    )
+            elif (
+                _es_escritura_forzada(nodo)
+                and len(nodo.args) > 1
+                and isinstance(objeto := nodo.args[0], ast.Name)
+                and (clase := variables.get(objeto.id))
+                and isinstance(nombre := nodo.args[1], ast.Constant)
+                and isinstance(nombre.value, str)
+                and nombre.value not in atributos.get(clase, frozenset())
+            ):
+                # Cambiar con `object.__setattr__` un campo que la clase sí tiene, para probar que
+                # el módulo vuelve a validarlo, no simula su efecto.
+                yield Problema(
+                    TipoProblema.PRUEBA_SIMULADA,
+                    ruta,
+                    f"{ruta}:{nodo.lineno}: `{funcion.name}` le agrega a `{objeto.id}` el "
+                    f"atributo `{nombre.value}` con `{ast.unparse(nodo.func)}`, que {clase} no "
+                    "tiene. Prepara cada situación con las interfaces públicas del módulo, sin "
+                    "inyectar datos en sus objetos",
+                    nodo.lineno,
+                )
+            elif isinstance(nodo, ast.With | ast.AsyncWith) and _espera_excepcion(nodo):
+                for interno in (n for s in nodo.body for n in [s, *_nodos_de(s)]):
+                    if isinstance(interno, ast.Raise):
+                        yield Problema(
+                            TipoProblema.PRUEBA_SIMULADA,
+                            ruta,
+                            f"{ruta}:{interno.lineno}: `{funcion.name}` lanza ella misma una "
+                            "excepción dentro de `pytest.raises`, así que pasa aunque el módulo "
+                            "no la lance. Dentro del bloque llama solo a la interfaz del módulo",
+                            interno.lineno,
+                        )
+
+
+def _nodos_de(sentencia: ast.stmt) -> Iterator[ast.AST]:
+    """Nodos de una sentencia, sin entrar en las funciones o clases que define."""
+    if isinstance(sentencia, _DEFINICIONES_ANIDADAS):
+        return
+    pendientes = list(ast.iter_child_nodes(sentencia))
+    while pendientes:
+        nodo = pendientes.pop()
+        yield nodo
+        if not isinstance(nodo, _DEFINICIONES_ANIDADAS):
+            pendientes.extend(ast.iter_child_nodes(nodo))
+
+
 # Análisis ------------------------------------------------------------------------------------
 
 
@@ -730,11 +948,16 @@ def analizar_conformidad(
         declarados=declarados,
         paquetes_propios=permitidos.paquetes_propios,
     )
+    atributos = _atributos_de_clases(
+        especificacion, {ruta: arbol for ruta, arbol in arboles.items() if ruta in modulos}
+    )
+    retornos = _retornos_de_clases(especificacion, atributos)
     archivos_prueba = []
     for ruta in [*pruebas, RUTA_CONFTEST]:
         if ruta not in arboles:
             continue
         problemas.extend(_problemas_de_importacion(ruta, arboles[ruta], de_pruebas, None))
+        problemas.extend(_problemas_de_simulacion(ruta, arboles[ruta], atributos, retornos))
         importados = frozenset(
             importacion.modulo
             for importacion in _importaciones(arboles[ruta], declarados)

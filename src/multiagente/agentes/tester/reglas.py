@@ -48,7 +48,7 @@ EVALUADAS: frozenset[str] = frozenset(
     | {REGLA_ESTILO}
     | {"CAL-AR-001", "CAL-AR-002", "CAL-AR-003", "CAL-AR-004", "CAL-AR-005"}
     | {"CAL-MT-005", "CAL-MT-006", "CAL-MT-008", "CAL-MT-010"}
-    | {"CAL-FS-001", "CAL-FS-002", "CAL-FS-003", "CAL-FS-005"}
+    | {"CAL-FS-001", "CAL-FS-002", "CAL-FS-003", "CAL-FS-005", "CAL-FS-006"}
     | {"CAL-SG-001"}
 )
 """Reglas con comprobación automática. CAL-MT-005 se verifica con CAL-AR-001 y CAL-AR-003,
@@ -70,6 +70,8 @@ SUGERENCIAS: dict[str, str] = {
     "CAL-FS-003": "Corrige el error para que el módulo se pueda importar.",
     "CAL-FS-005": "Usa decimal.Decimal, construido desde str o int, en todo valor monetario o "
     "de avalúo.",
+    "CAL-FS-006": "Prepara la situación con las interfaces públicas del módulo y verifica lo que "
+    "él devuelve o deja registrado; no inyectes atributos ni lances tú la excepción esperada.",
     "CAL-MT-001": "Agrega un docstring al estilo Google con Args, Returns y Raises.",
     "CAL-MT-002": "Anota el tipo de cada parámetro y del valor de retorno.",
     "CAL-MT-003": "Divide la función en funciones más pequeñas hasta bajar del umbral de "

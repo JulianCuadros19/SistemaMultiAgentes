@@ -60,6 +60,7 @@ REGLA_POR_PROBLEMA: dict[TipoProblema, str] = {
     TipoProblema.IMPORTACION_RELATIVA: "CAL-MT-006",
     TipoProblema.IMPORTACION_PRIVADA: "CAL-MT-010",
     TipoProblema.SINTAXIS: "CAL-FS-003",
+    TipoProblema.PRUEBA_SIMULADA: "CAL-FS-006",
 }
 """Regla de cada problema de conformidad. Los docstrings faltantes los reporta Ruff
 (CAL-MT-001) y los escenarios sin prueba, N14 (CAL-FS-001)."""

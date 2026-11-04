@@ -4,8 +4,8 @@ titulo: Adecuación funcional
 fuente: ISO/IEC 25010:2023, característica de adecuación funcional
 tipo_fuente: estandar_internacional
 tags: [25010, funcional, reglas]
-version: 1.1
-fecha: 2026-10-08
+version: 1.2
+fecha: 2026-11-03
 agente_consumidor: tester
 segmentacion: una_regla_por_fragmento
 coleccion: criterios_calidad
@@ -82,3 +82,17 @@ coleccion: criterios_calidad
 **Verificación.** Analizar el árbol sintáctico buscando operaciones aritméticas sobre valores anotados como monetarios que usen el tipo float.
 
 **Evidencia esperada.** Ubicación de cada operación monetaria y el tipo empleado.
+
+
+### REGLA CAL-FS-006 · Pruebas que no simulan el efecto del módulo
+
+- **Característica:** Adecuación funcional › Corrección funcional
+- **Norma de referencia:** ISO/IEC 25010:2023
+- **Severidad:** Alta
+- **Aplica a:** pruebas generadas
+
+**Enunciado.** Una prueba debe obtener el resultado que verifica del módulo, preparando la situación con sus interfaces públicas. No cumple si inyecta en los objetos del módulo atributos que sus clases no tienen, ni si lanza ella misma la excepción que espera: así pasa aunque el módulo no haga su trabajo.
+
+**Verificación.** Recorrer el árbol sintáctico de las pruebas buscando atributos asignados a objetos de clases declaradas que esas clases no definen, también con `setattr` u `object.__setattr__`, y sentencias `raise` dentro de un bloque `pytest.raises`.
+
+**Evidencia esperada.** Archivo, línea y prueba de cada inyección o excepción lanzada por la prueba.

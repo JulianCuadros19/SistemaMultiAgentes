@@ -456,3 +456,78 @@ def test_las_pruebas_pueden_importar_nombres_privados():
 def test_nombres_monetarios():
     assert es_monetario("avaluo_total") and es_monetario("valorM2") and es_monetario("Tarifa")
     assert not es_monetario("area_terreno") and not es_monetario("vigencia")
+
+
+ENCABEZADO_SIMULACION = (
+    "import pytest\n\nfrom aplicacion.avaluo import calcular_avaluo\n"
+    "from dominio.predio import Predio\n\n\n"
+)
+
+
+def simuladas(pruebas: str) -> list[str]:
+    archivos = archivos_validos() | {"tests/test_simulacion.py": ENCABEZADO_SIMULACION + pruebas}
+    informe = analizar_conformidad(archivos, especificacion(), (RF1,))
+    return [problema.mensaje for problema in informe.de_tipo(TipoProblema.PRUEBA_SIMULADA)]
+
+
+@pytest.mark.parametrize(
+    "pruebas, esperado",
+    [
+        (
+            "def test_x():\n    predio = Predio('1', 2)\n    predio.zona = 'A'\n",
+            "`test_x` le agrega a `predio` el atributo `zona`, que Predio no tiene",
+        ),
+        # Un ayudante del archivo que devuelve un objeto del módulo cuenta como su fuente.
+        (
+            "def _predio():\n    predio = Predio('1', 2)\n    return predio\n\n\n"
+            "def test_x():\n    predio = _predio()\n    predio.zona = 'A'\n",
+            "`test_x` le agrega a `predio` el atributo `zona`",
+        ),
+        (
+            "def test_x():\n    predio = Predio('1', 2)\n"
+            "    object.__setattr__(predio, 'zona', 'A')\n",
+            "el atributo `zona` con `object.__setattr__`",
+        ),
+        (
+            "def test_x():\n    with pytest.raises(ValueError):\n"
+            "        raise ValueError('valor')\n",
+            "`test_x` lanza ella misma una excepción dentro de `pytest.raises`",
+        ),
+    ],
+)
+def test_detecta_las_pruebas_que_simulan_el_efecto(pruebas, esperado):
+    [mensaje] = simuladas(pruebas)
+    assert esperado in mensaje
+    assert mensaje.startswith("tests/test_simulacion.py:")
+
+
+@pytest.mark.parametrize(
+    "pruebas",
+    [
+        # Cambiar un campo que la clase tiene, también con object.__setattr__, para probar que
+        # el módulo lo vuelve a validar.
+        "def test_x():\n    predio = Predio('1', 2)\n    predio.area_terreno = 3\n"
+        "    object.__setattr__(predio, 'numero_predial', '')\n",
+        # Un objeto que no es del módulo y el monkeypatch de un nombre privado.
+        "class Doble:\n    pass\n\n\ndef test_x(monkeypatch):\n    doble = Doble()\n"
+        "    doble.zona = 'A'\n    monkeypatch.setattr('aplicacion.avaluo._TARIFA', 1)\n",
+        # La excepción la lanza el módulo; la que lanza la función interna no cuenta.
+        "def test_x():\n    with pytest.raises(ValueError):\n        def interna():\n"
+        "            raise RuntimeError('ayudante')\n\n"
+        "        calcular_avaluo(Predio('1', 2), 0)\n",
+        # Un raise fuera del bloque pytest.raises.
+        "def test_x():\n    if False:\n        raise AssertionError('nunca')\n"
+        "    with pytest.raises(ValueError):\n        calcular_avaluo(Predio('1', 2), 0)\n",
+    ],
+)
+def test_no_marca_lo_que_no_simula(pruebas):
+    assert simuladas(pruebas) == []
+
+
+def test_la_verificacion_pide_corregir_la_prueba_que_simula():
+    archivos = archivos_validos() | {
+        "tests/test_simulacion.py": ENCABEZADO_SIMULACION
+        + "def test_x():\n    predio = Predio('1', 2)\n    predio.zona = 'A'\n"
+    }
+    problemas = verificar(archivos)
+    assert any(p.startswith("RF-18 · pruebas: tests/test_simulacion.py:") for p in problemas)
