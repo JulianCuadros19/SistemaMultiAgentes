@@ -530,3 +530,140 @@ def test_las_pruebas_propias_solo_se_admiten_en_la_aprobacion_final():
     avance = avanzar(app, id_sesion, aprobar() | {"pruebas_propias": PROPIAS})
     assert avance.pausa.punto == "requerimientos"
     assert "solo se registran en la aprobación final" in avance.pausa.datos["aviso"]
+
+
+# Enmiendas desde N17 (ADR-0015) ------------------------------------------------------------
+
+REGLA_NUEVA = "El radicado debe incluir el año de la solicitud"
+
+
+def enmendar(regla: str = REGLA_NUEVA) -> dict[str, str]:
+    """Rechazo en N17 que pide enmendar los requerimientos con una regla nueva."""
+    return rechazar(regla) | {"destino": "requerimientos"}
+
+
+def test_una_enmienda_desde_n17_pasa_por_el_elicitador_sin_redisenar():
+    simulacion = SimulacionQueObserva()
+    app = compilar(simulacion)
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
+
+    # N17 → N5 → N6: el elicitador enmienda y el analista revisa la enmienda en la pausa.
+    avance = avanzar(app, id_sesion, enmendar())
+    assert avance.nodos == (Nodo.N17, Nodo.N5)
+    assert avance.pausa.punto == "requerimientos"
+    assert avance.fase is Fase.ELICITACION
+    enmienda = avance.pausa.datos["enmienda"]
+    assert (enmienda["texto"], enmienda["revisor"]) == (REGLA_NUEVA, "Revisor simulado")
+    assert enmienda["requerimientos"] == {"RF-01": "0.2"}
+    rf_01 = avance.pausa.datos["requerimientos"][0]
+    assert rf_01["version"] == "0.2"
+    assert REGLA_NUEVA in rf_01["descripcion"]["regla_negocio"]
+    assert [e["id"] for e in rf_01["criterios_aceptacion"]] == ["ESC-01", "ESC-02", "ESC-03"]
+
+    # N6 → N16 → N10 … N17, sin N7 a N9: el diseño no cambia.
+    avance = avanzar(app, id_sesion, aprobar("Analista"))
+    assert avance.nodos == (
+        Nodo.N6,
+        Nodo.N16,
+        Nodo.N10,
+        Nodo.N11,
+        Nodo.N12,
+        Nodo.N13,
+        Nodo.N14,
+        Nodo.N15,
+    )
+    assert avance.pausa.punto == "final"
+    assert avance.pausa.datos["version"] == 2
+    # La devolución abrió un ciclo de corrección nuevo.
+    assert avance.pausa.datos["iteracion"] == 1
+    assert simulacion.llamadas["disenar"] == 1
+    assert simulacion.llamadas["sintetizar"] == simulacion.llamadas["enmendar"] == 1
+
+    estado = app.get_state(configuracion_hilo(id_sesion)).values
+    assert [c.id for c in estado["validacion"].plan_pruebas] == [
+        "CP-RF-01-ESC-01",
+        "CP-RF-01-ESC-02",
+        "CP-RF-01-ESC-03",
+    ]
+    requerimientos = estado["requerimientos"]
+    assert requerimientos.enmienda is None
+    (aplicada,) = requerimientos.enmiendas
+    assert (aplicada.texto, aplicada.requerimientos) == (REGLA_NUEVA, {"RF-01": "0.2"})
+    # El desarrollador corrige la versión 1 con la misma especificación y recibe la enmienda
+    # como retroalimentación, antes que los hallazgos del tester.
+    (_, _, especificacion_1), (previa, retroalimentacion, especificacion_2) = (
+        simulacion.generaciones
+    )
+    assert previa.numero == 1 and especificacion_1 == especificacion_2
+    assert retroalimentacion == (REGLA_NUEVA,)
+    assert simulacion.redisenos == [None, None]
+
+    final = avanzar(app, id_sesion, aprobar())
+    assert final.fase is Fase.VALIDADO
+
+
+def test_un_rechazo_del_analista_durante_la_enmienda_vuelve_a_n5_con_sus_observaciones():
+    simulacion = ServiciosSimulados(fallos_veredicto=0)
+    app = compilar(simulacion)
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
+    avanzar(app, id_sesion, enmendar())
+    dialogos = simulacion.llamadas["dialogar"]
+
+    avance = avanzar(app, id_sesion, rechazar("Falta el escenario del año inválido", "Analista"))
+    # Vuelve a N5 sin pasar por el diálogo con el cliente.
+    assert avance.nodos == (Nodo.N6, Nodo.N5)
+    assert avance.pausa.punto == "requerimientos"
+    enmienda = avance.pausa.datos["enmienda"]
+    assert enmienda["observaciones_analista"] == ["Falta el escenario del año inválido"]
+    assert enmienda["requerimientos"] == {"RF-01": "0.3"}
+    assert simulacion.llamadas["enmendar"] == 2
+    assert simulacion.llamadas["dialogar"] == dialogos
+    estado = app.get_state(configuracion_hilo(id_sesion)).values
+    assert estado["conversacion"].registro.resumen_confirmado
+    assert estado["conversacion"].observaciones_revisor == ()
+
+    avance = avanzar(app, id_sesion, aprobar("Analista"))
+    assert avance.pausa.punto == "final"
+    requerimientos = app.get_state(configuracion_hilo(id_sesion)).values["requerimientos"]
+    assert requerimientos.enmiendas[0].observaciones_analista == (
+        "Falta el escenario del año inválido",
+    )
+
+
+def test_los_defectos_de_la_enmienda_vuelven_a_n5_sin_humano():
+    simulacion = ServiciosSimulados(fallos_veredicto=0)
+    app = compilar(simulacion)
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
+    # La primera verificación de la enmienda encuentra un defecto que N5 puede corregir.
+    simulacion.defectos_calidad = simulacion.llamadas["verificar_calidad"] + 1
+
+    avance = avanzar(app, id_sesion, enmendar())
+    assert avance.nodos == (Nodo.N17, Nodo.N5, Nodo.N6, Nodo.N5)
+    assert simulacion.defectos_recibidos[-2:] == [(), (DEFECTO_SIMULADO,)]
+    assert avance.pausa.punto == "requerimientos"
+    assert avance.pausa.datos["defectos"] == []
+
+
+def test_una_sesion_escalada_tambien_puede_enmendarse():
+    simulacion = ServiciosSimulados(fallos_veredicto=99)
+    app = compilar(simulacion, iteraciones=2)
+    id_sesion, avance = avanzar_hasta(app, guion_directo(), "final")
+    assert avance.pausa.datos["escalado"] is True
+    assert "enmienda de los requerimientos" in avance.pausa.datos["bloqueo"]
+
+    simulacion.fallos_veredicto = 0
+    avance = avanzar(app, id_sesion, enmendar())
+    assert avance.pausa.punto == "requerimientos"
+    avance = avanzar(app, id_sesion, aprobar("Analista"))
+    assert avance.pausa.punto == "final"
+    assert avance.pausa.datos["escalado"] is False
+    assert avance.pausa.datos["iteracion"] == 1
+
+
+def test_la_enmienda_solo_se_pide_en_la_aprobacion_final():
+    app = compilar(ServiciosSimulados(fallos_veredicto=0))
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "requerimientos")
+    avance = avanzar(app, id_sesion, enmendar())
+    assert avance.pausa.punto == "requerimientos"
+    assert "solo se elige en la aprobación final" in avance.pausa.datos["aviso"]
+    assert avance.pausa.datos["enmienda"] is None

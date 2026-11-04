@@ -16,6 +16,7 @@ from langgraph.types import interrupt
 from pydantic import ValidationError
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
+from multiagente.core.esquemas.requerimiento import RequerimientoFormal
 from multiagente.llm.cliente import ErrorRespuestaModelo
 from multiagente.llm.invocador import ErrorValidacionSalida
 from multiagente.orquestador.estado import (
@@ -30,6 +31,7 @@ from multiagente.orquestador.estado import (
     Decision,
     Destino,
     Emisor,
+    Enmienda,
     EntradaSesion,
     EstadoGrafo,
     Fase,
@@ -161,6 +163,25 @@ def _con_aprobacion(sesion: Sesion, aprobacion: AprobacionHumana, fase: Fase | N
     return sesion.model_copy(update=actualizacion)
 
 
+def _con_enmendados(
+    enmienda: Enmienda,
+    previos: tuple[RequerimientoFormal, ...],
+    nuevos: tuple[RequerimientoFormal, ...],
+) -> Enmienda:
+    """Anota en la enmienda los requerimientos que cambiaron, con la versión a la que llegaron.
+
+    Acumula los de las vueltas anteriores de la misma enmienda: una corrección de N6 o un
+    rechazo del analista puede cambiar otros requerimientos.
+    """
+    anteriores = {requerimiento.id_requerimiento: requerimiento for requerimiento in previos}
+    cambiados = {
+        requerimiento.id_requerimiento: requerimiento.version
+        for requerimiento in nuevos
+        if anteriores.get(requerimiento.id_requerimiento) != requerimiento
+    }
+    return enmienda.model_copy(update={"requerimientos": {**enmienda.requerimientos, **cambiados}})
+
+
 def _con_reserva_de_turnos(conversacion: Conversacion, limite: int) -> Conversacion:
     """Va directo al resumen si ya no quedan turnos para los casos límite y para confirmar.
 
@@ -199,15 +220,18 @@ def ruta_tras_requerimientos(estado: EstadoGrafo) -> Nodo | list[Nodo]:
         estado: Estado tras N6.
 
     Returns:
-        N5 si hay defectos de calidad por corregir (RF-07); N3 si la persona rechazó; N7 y N16
-        en paralelo si aprobó.
+        N5 si hay defectos de calidad por corregir (RF-07). Si la persona rechazó, N3, o N5 si
+        hay una enmienda en curso. Si aprobó, N7 y N16 en paralelo, o solo N16 tras una
+        enmienda, porque el diseño no cambia (ADR-0015).
     """
-    if estado["requerimientos"].defectos:
+    requerimientos = estado["requerimientos"]
+    if requerimientos.defectos:
         return Nodo.N5
+    enmienda = requerimientos.enmienda is not None
     aprobacion = estado["sesion"].ultima_aprobacion(PuntoControl.REQUERIMIENTOS)
     if aprobacion is None or aprobacion.decision is Decision.RECHAZADO:
-        return Nodo.N3
-    return [Nodo.N7, Nodo.N16]
+        return Nodo.N5 if enmienda else Nodo.N3
+    return Nodo.N16 if enmienda else [Nodo.N7, Nodo.N16]
 
 
 def ruta_tras_especificacion(estado: EstadoGrafo) -> Nodo:
@@ -239,6 +263,20 @@ def ruta_tras_generacion(estado: EstadoGrafo) -> Nodo:
     return Nodo.N15 if estado["codigo"].fallo_generacion else Nodo.N11
 
 
+def ruta_tras_plan_pruebas(estado: EstadoGrafo) -> str:
+    """Enruta después de N16.
+
+    Args:
+        estado: Estado tras N16.
+
+    Returns:
+        N10 si el plan se rehízo por una enmienda aprobada, que pasa la fase a desarrollo: el
+        módulo se corrige con el mismo diseño. Si no, FIN de esta rama: el flujo sigue por N7,
+        que corrió en paralelo.
+    """
+    return Nodo.N10 if estado["sesion"].fase is Fase.DESARROLLO else END
+
+
 def ruta_tras_decision(estado: EstadoGrafo) -> str:
     """Enruta después de N15 (RF-27).
 
@@ -263,13 +301,15 @@ def ruta_tras_aprobacion_final(estado: EstadoGrafo) -> str:
 
     Returns:
         FIN si la persona aprobó el módulo o cerró la sesión; N8 si lo devolvió al arquitecto;
-        si no, N10.
+        N5 si pidió enmendar los requerimientos; si no, N10.
     """
     fase = estado["sesion"].fase
     if fase in (Fase.VALIDADO, Fase.CERRADA):
         return END
     if fase is Fase.DISENO:
         return Nodo.N8
+    if fase is Fase.ELICITACION:
+        return Nodo.N5
     return Nodo.N10
 
 
@@ -385,14 +425,22 @@ class NodosGrafo:
     def n5_sintesis(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Sintetiza historias y requerimientos formales, corrigiendo los defectos previos.
 
-        Si el modelo no da una síntesis válida, conserva los requerimientos previos y deja el
-        motivo en `fallo_sintesis`, que N6 trata como un defecto.
+        Con una enmienda en curso desde N17, enmienda los requerimientos vigentes en lugar de
+        sintetizarlos de nuevo, y anota en ella los que cambiaron (ADR-0015). Si el modelo no da
+        una síntesis válida, conserva los requerimientos previos y deja el motivo en
+        `fallo_sintesis`, que N6 trata como un defecto.
         """
         previos = estado["requerimientos"]
+        proyecto = estado["sesion"].proyecto
         try:
-            sintesis = self.servicios.elicitador.sintetizar(
-                estado["conversacion"], estado["contexto"], previos, estado["sesion"].proyecto
-            )
+            if previos.enmienda is not None:
+                sintesis = self.servicios.elicitador.enmendar(
+                    estado["conversacion"], previos, proyecto
+                )
+            else:
+                sintesis = self.servicios.elicitador.sintetizar(
+                    estado["conversacion"], estado["contexto"], previos, proyecto
+                )
         except FALLAS_DEL_MODELO as error:
             # Sin síntesis válida, N6 lo trata como un defecto: la corrige o escala a la persona.
             _log.warning("N5 no obtuvo una síntesis válida: %s", error)
@@ -404,6 +452,9 @@ class NodosGrafo:
                     }
                 )
             }
+        enmienda = previos.enmienda
+        if enmienda is not None:
+            enmienda = _con_enmendados(enmienda, previos.requerimientos, sintesis.requerimientos)
         return {
             "requerimientos": Requerimientos(
                 historias=sintesis.historias,
@@ -411,6 +462,8 @@ class NodosGrafo:
                 referencias=sintesis.referencias,
                 sintesis=previos.sintesis + 1,
                 correcciones=previos.correcciones,
+                enmienda=enmienda,
+                enmiendas=previos.enmiendas,
             )
         }
 
@@ -423,8 +476,13 @@ class NodosGrafo:
         demás (ADR-0015). Al agotar el límite, o sin nada que N5 pueda corregir, escala a la
         persona con los defectos a la vista. Un rechazo devuelve el flujo al diálogo con las
         observaciones y exige confirmar un nuevo resumen.
+
+        Con una enmienda en curso desde N17, la pausa la muestra. Un rechazo suma sus
+        observaciones a la enmienda y vuelve a N5, sin pasar por el diálogo, y la aprobación
+        pasa la sesión a desarrollo: el diseño no cambia.
         """
         requerimientos = estado["requerimientos"]
+        enmienda = requerimientos.enmienda
         if requerimientos.requerimientos:
             verificacion = self.servicios.elicitador.verificar_calidad(requerimientos)
         else:
@@ -456,6 +514,7 @@ class NodosGrafo:
                     for id_requerimiento, referencias in requerimientos.referencias.items()
                 },
                 "defectos": list(defectos),
+                "enmienda": enmienda.model_dump(mode="json") if enmienda else None,
             },
             bloqueo=(
                 None
@@ -466,13 +525,26 @@ class NodosGrafo:
         )
         sesion = estado["sesion"]
         aprobado = aprobacion.decision is Decision.APROBADO
-        cambios: dict[str, Any] = {
-            "sesion": _con_aprobacion(sesion, aprobacion, Fase.DISENO if aprobado else None),
-            "requerimientos": requerimientos.model_copy(
-                update={"defectos": (), "correcciones": 0, "defectos_escalados": defectos}
-            ),
+        fase = (Fase.DESARROLLO if enmienda else Fase.DISENO) if aprobado else None
+        actualizacion: dict[str, Any] = {
+            "defectos": (),
+            "correcciones": 0,
+            "defectos_escalados": defectos,
         }
-        if not aprobado:
+        if enmienda is not None and not aprobado:
+            actualizacion["enmienda"] = enmienda.model_copy(
+                update={
+                    "observaciones_analista": (
+                        *enmienda.observaciones_analista,
+                        aprobacion.observaciones,
+                    )
+                }
+            )
+        cambios: dict[str, Any] = {
+            "sesion": _con_aprobacion(sesion, aprobacion, fase),
+            "requerimientos": requerimientos.model_copy(update=actualizacion),
+        }
+        if not aprobado and enmienda is None:
             conversacion = estado["conversacion"]
             cambios["conversacion"] = conversacion.model_copy(
                 update={
@@ -730,7 +802,12 @@ class NodosGrafo:
         }
 
     def n16_plan_pruebas(self, estado: EstadoGrafo) -> dict[str, Any]:
-        """Deriva un caso de prueba de aceptación por cada escenario aprobado."""
+        """Deriva un caso de prueba de aceptación por cada escenario aprobado.
+
+        El plan se deriva sobre la validación vigente: tras una enmienda aprobada, conserva la
+        retroalimentación de N17 para el desarrollador, y la enmienda pasa a las ya aplicadas.
+        """
+        requerimientos = estado["requerimientos"]
         plan = tuple(
             CasoPrueba(
                 id=f"CP-{requerimiento.id_requerimiento}-{escenario.id}",
@@ -740,10 +817,20 @@ class NodosGrafo:
                 cuando=escenario.cuando,
                 entonces=escenario.entonces,
             )
-            for requerimiento in estado["requerimientos"].requerimientos
+            for requerimiento in requerimientos.requerimientos
             for escenario in requerimiento.criterios_aceptacion
         )
-        return {"validacion": Validacion(plan_pruebas=plan)}
+        cambios: dict[str, Any] = {
+            "validacion": estado["validacion"].model_copy(update={"plan_pruebas": plan})
+        }
+        if requerimientos.enmienda is not None:
+            cambios["requerimientos"] = requerimientos.model_copy(
+                update={
+                    "enmienda": None,
+                    "enmiendas": (*requerimientos.enmiendas, requerimientos.enmienda),
+                }
+            )
+        return cambios
 
     def n17_aprobacion_final(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Somete el módulo validado por el tester a la aprobación humana final.
@@ -751,7 +838,10 @@ class NodosGrafo:
         La persona revisa el código, el veredicto por caso, los hallazgos, la conformidad por
         módulo y el reporte de validación, y puede registrar con su decisión las pruebas propias
         que ejecutó (RF-38). Si rechaza, devuelve el módulo al desarrollador, que corrige con sus
-        observaciones y los hallazgos del tester, o al arquitecto, que rediseña.
+        observaciones y los hallazgos del tester, o al arquitecto, que rediseña. Si descubrió una
+        regla que los requerimientos no tienen, pide una enmienda: sus observaciones van al
+        elicitador (N5), el analista la aprueba en N6 y el desarrollador corrige con ellas
+        (ADR-0015).
 
         También recibe las sesiones escaladas por agotar el ciclo de corrección (RF-27): la
         aprobación queda bloqueada, porque el tester no aprobó la versión, y la persona decide
@@ -778,8 +868,9 @@ class NodosGrafo:
                 "reporte": validacion.reporte,
             },
             bloqueo=(
-                "El tester no aprobó el módulo y no puede aprobarse: devuélvalo al "
-                "desarrollador o al arquitecto con observaciones, o cierre la sesión."
+                "El tester no aprobó el módulo y no puede aprobarse: devuélvalo con observaciones "
+                "al desarrollador o al arquitecto, pida una enmienda de los requerimientos, o "
+                "cierre la sesión."
                 if escalado
                 else None
             ),
@@ -806,6 +897,16 @@ class NodosGrafo:
                 }
             )
             cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.DISENO)
+        elif aprobacion.destino is Destino.REQUERIMIENTOS:
+            enmienda = Enmienda(
+                texto=aprobacion.observaciones,
+                revisor=aprobacion.revisor,
+                fecha=aprobacion.fecha,
+            )
+            cambios["requerimientos"] = estado["requerimientos"].model_copy(
+                update={"enmienda": enmienda}
+            )
+            cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.ELICITACION)
         else:
             cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.DESARROLLO)
         return cambios
@@ -850,5 +951,8 @@ def construir_grafo(
     grafo.add_conditional_edges(Nodo.N9, ruta_tras_especificacion, [Nodo.N8, Nodo.N10])
     grafo.add_conditional_edges(Nodo.N10, ruta_tras_generacion, [Nodo.N11, Nodo.N15])
     grafo.add_conditional_edges(Nodo.N15, ruta_tras_decision, [Nodo.N10, Nodo.N17])
-    grafo.add_conditional_edges(Nodo.N17, ruta_tras_aprobacion_final, [Nodo.N8, Nodo.N10, END])
+    grafo.add_conditional_edges(Nodo.N16, ruta_tras_plan_pruebas, [Nodo.N10, END])
+    grafo.add_conditional_edges(
+        Nodo.N17, ruta_tras_aprobacion_final, [Nodo.N5, Nodo.N8, Nodo.N10, END]
+    )
     return grafo

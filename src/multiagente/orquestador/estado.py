@@ -65,10 +65,15 @@ class Decision(StrEnum):
 
 
 class Destino(StrEnum):
-    """A quién devuelve la persona el módulo cuando lo rechaza en la aprobación final (N17)."""
+    """A quién devuelve la persona el módulo cuando lo rechaza en la aprobación final (N17).
+
+    El desarrollador lo corrige, el arquitecto lo rediseña o, si la persona descubrió una regla
+    que los requerimientos no tienen, el elicitador los enmienda (ADR-0015).
+    """
 
     DESARROLLADOR = "desarrollador"
     ARQUITECTO = "arquitecto"
+    REQUERIMIENTOS = "requerimientos"
 
 
 class RespuestaHumana(ModeloEstricto):
@@ -77,8 +82,8 @@ class RespuestaHumana(ModeloEstricto):
     Attributes:
         pruebas_propias: Pruebas que la persona ejecutó antes de decidir en N17 (RF-38); quedan
             con la decisión como evidencia (RF-33).
-        destino: Solo en un rechazo en N17: el desarrollador corrige el módulo (por defecto) o
-            el arquitecto lo rediseña.
+        destino: Solo en un rechazo en N17: el desarrollador corrige el módulo (por defecto), el
+            arquitecto lo rediseña o el elicitador enmienda los requerimientos.
     """
 
     decision: Decision
@@ -339,17 +344,46 @@ class Conversacion(Particion):
         return clientes[-1] if clientes else None
 
 
+class Enmienda(ModeloEstricto):
+    """Regla nueva que una persona descubre en N17 y que entra a los requerimientos (ADR-0015).
+
+    La persona devuelve el módulo con destino `requerimientos`: N5 enmienda los requerimientos
+    vigentes, N6 los verifica y el analista los aprueba, N16 rehace el plan de pruebas y N10
+    corrige el módulo. El diseño no cambia.
+
+    Attributes:
+        texto: Las observaciones de la persona en N17: la regla nueva y lo que la acompaña.
+        revisor: Quién la pidió.
+        fecha: Cuándo la pidió.
+        observaciones_analista: Observaciones de cada rechazo del analista en N6 durante la
+            enmienda, en orden.
+        requerimientos: Requerimientos que N5 enmendó, con la versión a la que llegó cada uno.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    texto: TextoObligatorio
+    revisor: TextoObligatorio
+    fecha: datetime
+    observaciones_analista: tuple[TextoObligatorio, ...] = ()
+    requerimientos: dict[IdRequerimiento, Version] = Field(default_factory=dict)
+
+
 class Requerimientos(Particion):
     """Historias y requerimientos formales producidos por el elicitador.
 
     Attributes:
         referencias: Fragmentos de contexto que sustentan cada requerimiento (RF-04).
         defectos: Defectos de calidad que N5 debe corregir (RF-07).
-        sintesis: Síntesis producidas en la sesión; da la versión de los requerimientos.
+        sintesis: Síntesis producidas en la sesión, incluidas las enmiendas; da la versión de
+            los requerimientos.
         correcciones: Retornos automáticos de N6 a N5 desde la última decisión humana.
         defectos_escalados: Defectos que seguían sin corregir cuando la persona decidió.
         fallo_sintesis: Por qué falló la última síntesis, si el modelo no dio una válida; los
             requerimientos son entonces los de la síntesis anterior, si la hubo.
+        enmienda: La enmienda en curso desde N17, si la hay: mientras exista, N5 enmienda en
+            lugar de sintetizar y la aprobación de N6 lleva a N16 y a N10.
+        enmiendas: Las enmiendas ya aprobadas por el analista, en orden, para la trazabilidad.
     """
 
     historias: tuple[HistoriaUsuario, ...] = ()
@@ -360,6 +394,8 @@ class Requerimientos(Particion):
     correcciones: NonNegativeInt = 0
     defectos_escalados: tuple[TextoObligatorio, ...] = ()
     fallo_sintesis: TextoObligatorio | None = None
+    enmienda: Enmienda | None = None
+    enmiendas: tuple[Enmienda, ...] = ()
 
 
 class RecorridoEscenario(ModeloEstricto):

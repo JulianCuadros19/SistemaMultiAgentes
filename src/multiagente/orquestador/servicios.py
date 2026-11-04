@@ -143,7 +143,7 @@ class Dictamen(ModeloEstricto):
 
 
 class ServiciosElicitador(Protocol):
-    """Trabajo del agente elicitador en N2, N3, N5 y N6."""
+    """Trabajo del agente elicitador en N2, N3, N5 y N6, también al enmendar desde N17."""
 
     def recuperar_contexto(self, conversacion: Conversacion) -> Contexto:
         """Recupera contexto de elicitación y de dominio de negocio (N2)."""
@@ -165,6 +165,18 @@ class ServiciosElicitador(Protocol):
         proyecto: str,
     ) -> Sintesis:
         """Sintetiza historias y requerimientos formales; corrige los defectos previos (N5)."""
+        ...
+
+    def enmendar(
+        self, conversacion: Conversacion, requerimientos: Requerimientos, proyecto: str
+    ) -> Sintesis:
+        """Incorpora a los requerimientos vigentes la enmienda en curso desde N17 (N5).
+
+        Atiende también las observaciones del analista y los defectos de N6. Solo cambia la
+        regla y los escenarios de los requerimientos afectados, que suben de versión: no agrega,
+        quita ni renumera requerimientos, no elimina escenarios, y conserva la historia, los
+        títulos y las referencias (ADR-0015).
+        """
         ...
 
     def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:

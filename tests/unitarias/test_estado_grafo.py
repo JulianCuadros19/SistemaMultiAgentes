@@ -27,8 +27,10 @@ from multiagente.orquestador.estado import (
     Control,
     Conversacion,
     Decision,
+    Destino,
     EjecucionPruebas,
     Emisor,
+    Enmienda,
     Fase,
     FragmentoContexto,
     Hallazgo,
@@ -301,6 +303,14 @@ def estado_completo() -> list:
                 ),
                 AprobacionHumana(
                     punto=PuntoControl.FINAL,
+                    decision=Decision.RECHAZADO,
+                    revisor="Revisor",
+                    observaciones="Los avalúos se redondean al múltiplo de mil",
+                    destino=Destino.REQUERIMIENTOS,
+                    fecha=AHORA,
+                ),
+                AprobacionHumana(
+                    punto=PuntoControl.FINAL,
                     decision=Decision.APROBADO,
                     revisor="Revisor",
                     pruebas_propias=pruebas_propias(),
@@ -320,6 +330,21 @@ def estado_completo() -> list:
             sintesis=2,
             correcciones=1,
             defectos_escalados=("RF-27 · C9 Conforme",),
+            enmienda=Enmienda(
+                texto="El abono reversado no vuelve a reversarse",
+                revisor="Revisor",
+                fecha=AHORA,
+                observaciones_analista=("Falta el escenario del abono ya reversado",),
+                requerimientos={"RF-27": "0.4"},
+            ),
+            enmiendas=(
+                Enmienda(
+                    texto="Los avalúos se redondean al múltiplo de mil",
+                    revisor="Revisor",
+                    fecha=AHORA,
+                    requerimientos={"RF-27": "0.3"},
+                ),
+            ),
         ),
         Arquitectura(
             registro_decision="# ADR",
@@ -388,9 +413,17 @@ def test_particiones_sobreviven_al_serializador(caplog):
 
 def test_lista_blanca_incluye_particiones_y_enumeraciones():
     permitidos = set(tipos_permitidos())
-    enumeraciones = (Fase, PuntoControl, Decision, Emisor, TipoInterfaz)
+    enumeraciones = (Fase, PuntoControl, Decision, Destino, Emisor, TipoInterfaz)
     for clase in (*PARTICIONES, *enumeraciones, Severidad, Veredicto, ResultadoPrueba):
         assert (clase.__module__, clase.__name__) in permitidos
+
+
+def test_requerimientos_de_puntos_de_control_anteriores_se_leen_sin_enmiendas():
+    # Las sesiones guardadas antes de las enmiendas (ADR-0015) no traen los campos nuevos.
+    guardados = Requerimientos(sintesis=1).model_dump(exclude={"enmienda", "enmiendas"})
+    leidos = Requerimientos.model_validate(guardados)
+    assert leidos.enmienda is None
+    assert leidos.enmiendas == ()
 
 
 def test_version_de_codigo_conserva_el_contenido_tal_cual():

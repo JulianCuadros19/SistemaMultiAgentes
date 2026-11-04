@@ -101,6 +101,47 @@ def _asignar(registro: RegistroCaptura, respuesta: str) -> RegistroCaptura:
     return registro.model_copy(update={atributo: respuesta})
 
 
+def enmienda_simulada(requerimientos: Requerimientos) -> Sintesis:
+    """Enmienda determinista: agrega a RF-01 la regla de la enmienda en curso y un escenario.
+
+    El RF-01 sube a la versión siguiente; los demás requerimientos, la historia y las
+    referencias no cambian. Sirve para recorrer el flujo de las enmiendas sin modelo.
+
+    Args:
+        requerimientos: Requerimientos vigentes, con la enmienda en curso.
+
+    Returns:
+        Los requerimientos enmendados.
+    """
+    primero, *demas = requerimientos.requerimientos
+    texto = requerimientos.enmienda.texto if requerimientos.enmienda else "Regla enmendada"
+    regla = primero.descripcion.regla_negocio
+    if texto not in regla:
+        regla = f"{regla.rstrip('. ')}. {texto.rstrip('.')}."
+    escenarios = primero.criterios_aceptacion
+    siguiente = max(int(escenario.id.removeprefix("ESC-")) for escenario in escenarios) + 1
+    nuevo = EscenarioAceptacion(
+        id=f"ESC-{siguiente:02d}",
+        nombre="Regla enmendada",
+        dado_que="un dato que cumple la regla enmendada",
+        cuando="se ejecuta la funcionalidad",
+        entonces="el resultado aplica la regla enmendada",
+    )
+    enmendado = RequerimientoFormal.model_validate(
+        {
+            **primero.model_dump(),
+            "version": f"0.{requerimientos.sintesis + 1}",
+            "descripcion": {**primero.descripcion.model_dump(), "regla_negocio": regla},
+            "criterios_aceptacion": [e.model_dump() for e in (*escenarios, nuevo)],
+        }
+    )
+    return Sintesis(
+        historias=requerimientos.historias,
+        requerimientos=(enmendado, *demas),
+        referencias=requerimientos.referencias,
+    )
+
+
 DEFECTO_SIMULADO = "Defecto simulado: la regla de negocio es ambigua"
 """Defecto de calidad que N5 puede corregir sin el cliente."""
 
@@ -246,6 +287,14 @@ class ServiciosSimulados:
             requerimientos=(requerimiento,),
             referencias={"RF-01": referencias},
         )
+
+    def enmendar(
+        self, conversacion: Conversacion, requerimientos: Requerimientos, proyecto: str
+    ) -> Sintesis:
+        """Agrega a RF-01 la regla de la enmienda y un escenario, en la versión siguiente (N5)."""
+        self._contar("enmendar")
+        self.defectos_recibidos.append(requerimientos.defectos)
+        return enmienda_simulada(requerimientos)
 
     def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
         """Reporta un defecto en las primeras verificaciones configuradas (N6).
@@ -444,6 +493,12 @@ class ElicitadorFijo:
     ) -> Sintesis:
         """Devuelve la síntesis dada (N5)."""
         return self.sintesis
+
+    def enmendar(
+        self, conversacion: Conversacion, requerimientos: Requerimientos, proyecto: str
+    ) -> Sintesis:
+        """Enmienda sin modelo, como la simulación: agrega la regla y un escenario a RF-01 (N5)."""
+        return enmienda_simulada(requerimientos)
 
     def verificar_calidad(self, requerimientos: Requerimientos) -> VerificacionCalidad:
         """No reporta defectos: los requerimientos dados se suponen verificados (N6)."""
