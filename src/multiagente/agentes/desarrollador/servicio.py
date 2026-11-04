@@ -4,7 +4,7 @@ No recibe recuperador ni conexión con la base de conocimiento: su entrada, requ
 especificación, ya es una definición completa (decisión 1 de `CLAUDE.md`, RF-29).
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
@@ -36,15 +36,23 @@ from multiagente.orquestador.servicios import Rediseno
 class AgenteDesarrollador:
     """Implementa `ServiciosDesarrollador`: genera el módulo a partir de la especificación."""
 
-    def __init__(self, generacion: InvocadorNodo, estilo: EstiloGenerado | None = None) -> None:
+    def __init__(
+        self,
+        generacion: InvocadorNodo,
+        estilo: EstiloGenerado | None = None,
+        estilo_bloqueante: Callable[[str], str | None] | None = None,
+    ) -> None:
         """Crea el agente con su invocador ya configurado.
 
         Args:
             generacion: Invocador de la generación de N10.
             estilo: Configuración de estilo; si se omite, se lee de `config/estilo_generado/`.
+            estilo_bloqueante: Criterio de estilo del tester; si se da, la verificación rechaza
+                las infracciones de Ruff que rechazarían la versión, y el reintento las corrige.
         """
         self.generacion = generacion
         self.estilo = estilo or cargar_estilo()
+        self.estilo_bloqueante = estilo_bloqueante
 
     def generar(
         self,
@@ -76,7 +84,14 @@ class AgenteDesarrollador:
 
         def validar(salida: SalidaGeneracion) -> VersionCodigo:
             return version_desde_salida(
-                salida, requerimientos, especificacion, validacion, previa, self.estilo, base
+                salida,
+                requerimientos,
+                especificacion,
+                validacion,
+                previa,
+                self.estilo,
+                base,
+                self.estilo_bloqueante,
             )
 
         def reintento(
@@ -97,7 +112,9 @@ class AgenteDesarrollador:
 
 
 def crear_agente_desarrollador(
-    registrador: RegistradorLlamadas, cliente: OpenAI | None = None
+    registrador: RegistradorLlamadas,
+    cliente: OpenAI | None = None,
+    estilo_bloqueante: Callable[[str], str | None] | None = None,
 ) -> AgenteDesarrollador:
     """Crea el agente desarrollador con la configuración del entorno.
 
@@ -108,6 +125,8 @@ def crear_agente_desarrollador(
     Args:
         registrador: Destino de la traza de cada llamada al modelo.
         cliente: Cliente de la API OpenAI v1; si se omite, se crea con AZURE_OPENAI_*.
+        estilo_bloqueante: Criterio de estilo del tester (`tester.reglas.estilo_bloqueante`);
+            lo pasa quien arma los servicios, para no acoplar los agentes.
 
     Returns:
         Agente listo para inyectarse en el grafo.
@@ -127,4 +146,4 @@ def crear_agente_desarrollador(
         registrador,
         cargar_tarifas(),
     )
-    return AgenteDesarrollador(generacion)
+    return AgenteDesarrollador(generacion, estilo_bloqueante=estilo_bloqueante)

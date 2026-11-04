@@ -19,7 +19,8 @@ from multiagente.agentes.desarrollador.servicio import (
     AgenteDesarrollador,
     crear_agente_desarrollador,
 )
-from multiagente.agentes.desarrollador.verificacion import SECCIONES_USO
+from multiagente.agentes.desarrollador.verificacion import SECCIONES_USO, verificar_version
+from multiagente.agentes.tester.reglas import cargar_reglas_calidad, estilo_bloqueante
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.core.esquemas.comunes import Enunciado, Impacto, Prioridad
 from multiagente.core.esquemas.requerimiento import (
@@ -203,9 +204,11 @@ def test_correccion_lleva_la_version_previa_y_los_defectos_etiquetados():
 
 def test_el_desarrollador_no_tiene_recuperacion():
     # Decisión 1: la fábrica no recibe conexión ni vectorizador, y nada del agente importa RAG.
+    # El criterio de estilo del tester llega como una función, no como contexto.
     assert list(inspect.signature(crear_agente_desarrollador).parameters) == [
         "registrador",
         "cliente",
+        "estilo_bloqueante",
     ]
     codigo = (
         "import sys, multiagente.agentes.desarrollador.servicio; "
@@ -465,3 +468,25 @@ def test_tras_un_rediseno_se_conserva_lo_que_sigue_valiendo(cliente_falso, compl
     assert "src/retirado/modulo.py" not in version.archivos
     assert version.defectos_atendidos == ("Separa la persistencia",)
     assert "revision_del_diseno" not in datos_de(cliente.llamadas[0], 2)["rediseno"]
+
+
+# Estilo bloqueante (ADR-0015) --------------------------------------------------------------------
+
+
+def test_la_verificacion_aplica_el_criterio_de_estilo_del_tester():
+    reglas = cargar_reglas_calidad()
+    criterio = estilo_bloqueante(reglas, umbral_media=0)
+    assert criterio("D103") == "CAL-MT-001"
+    assert criterio("C901") == "CAL-MT-003"
+    assert criterio("N802") is None
+    assert criterio("E501") is None
+    sin_docstring = MODULO + "\n\ndef auxiliar(dato: str) -> str:\n    return dato\n"
+    archivos = primera_version().archivos | {RUTA_MODULO: sin_docstring}
+    problemas = verificar_version(archivos, ESPECIFICACION, REQUERIMIENTOS, criterio)
+    assert any(p.startswith("RF-16 · estilo: ") and "(CAL-MT-001)" in p for p in problemas)
+    # Sin el criterio, el estilo lo dictamina solo el tester.
+    assert not any(
+        p.startswith("RF-16") for p in verificar_version(archivos, ESPECIFICACION, REQUERIMIENTOS)
+    )
+    # Con un umbral de hallazgos medios mayor que cero, la complejidad ya no bloquea.
+    assert estilo_bloqueante(reglas, umbral_media=1)("C901") is None

@@ -48,11 +48,13 @@ from multiagente.agentes.desarrollador import servicio as servicio_desarrollador
 from multiagente.agentes.desarrollador.generacion import mensaje_intento_rechazado
 from multiagente.agentes.desarrollador.servicio import crear_agente_desarrollador
 from multiagente.agentes.desarrollador.verificacion import verificar_version
+from multiagente.agentes.tester.reglas import cargar_reglas_calidad, estilo_bloqueante
 from multiagente.agentes.tester.servicio import crear_agente_tester
 from multiagente.core.configuracion import (
     ConfiguracionAzureOpenAI,
     ConfiguracionBaseDatos,
     ConfiguracionOrquestador,
+    ConfiguracionTester,
 )
 from multiagente.interfaces.casos import CasoDesarrollo, cargar_caso_desarrollo
 from multiagente.llm.cliente import crear_cliente
@@ -146,7 +148,13 @@ def correr(
     servicios = Servicios(
         elicitador=ElicitadorFijo(caso.sintesis),
         arquitecto=ArquitectoFijo(caso.diseno),
-        desarrollador=crear_agente_desarrollador(registro, cliente),
+        desarrollador=crear_agente_desarrollador(
+            registro,
+            cliente,
+            estilo_bloqueante(
+                cargar_reglas_calidad(), ConfiguracionTester().umbral_hallazgos_media
+            ),
+        ),
         tester=crear_agente_tester(
             conexion, registro, cliente, VectorizadorTEI(), EntornoAislado()
         ),

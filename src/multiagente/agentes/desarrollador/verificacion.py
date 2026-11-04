@@ -14,12 +14,16 @@ verificarse leyendo el árbol sintáctico (arquitectura, §11):
   escenario de cada requerimiento cubierto, nombrada `test_rf_01_esc_01_…`, y un `USO.md` con
   las secciones que necesita quien lo pone en marcha (`SECCIONES_USO`).
 
-El análisis es el de `multiagente.core.conformidad`, el mismo que aplica el tester en N12. El
-estilo (RF-16), la ejecución y la severidad los dictamina el tester (N11 a N14). Los problemas se
-redactan para que el modelo los corrija en su reintento.
+El análisis es el de `multiagente.core.conformidad`, el mismo que aplica el tester en N12.
+
+- RF-16: con el criterio de estilo bloqueante del tester, las infracciones de Ruff que
+  rechazarían la versión también son problemas aquí, para que el reintento las corrija
+  (ADR-0015). El tester sigue dictaminando el estilo, la ejecución y la severidad (N11 a N14).
+
+Los problemas se redactan para que el modelo los corrija en su reintento.
 """
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from multiagente.agentes.desarrollador.uso import SECCIONES_USO, secciones_faltantes
 from multiagente.core.conformidad import (
@@ -30,6 +34,7 @@ from multiagente.core.conformidad import (
     nombre_de_prueba,
 )
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
+from multiagente.core.estilo import hallazgos_de_estilo
 from multiagente.orquestador.estado import Requerimientos
 
 __all__ = [
@@ -46,6 +51,7 @@ INTERFACES = "RF-15 · interfaces"
 DEPENDENCIAS = "RF-17 · dependencias"
 DOCUMENTACION = "RF-18 · documentación"
 PRUEBAS = "RF-18 · pruebas"
+ESTILO = "RF-16 · estilo"
 
 CRITERIO_POR_TIPO: dict[TipoProblema, str] = {
     TipoProblema.RUTA_INSEGURA: ARCHIVOS,
@@ -73,6 +79,7 @@ def verificar_version(
     archivos: Mapping[str, str],
     especificacion: EspecificacionDiseno,
     requerimientos: Requerimientos,
+    estilo_bloqueante: Callable[[str], str | None] | None = None,
 ) -> list[str]:
     """Verifica la estructura de una versión del módulo contra su especificación.
 
@@ -80,6 +87,8 @@ def verificar_version(
         archivos: Contenido de cada archivo de la versión por su ruta.
         especificacion: Especificación de diseño aprobada en N9.
         requerimientos: Requerimientos aprobados en N6, con sus escenarios.
+        estilo_bloqueante: Regla con que un código de Ruff rechaza la versión, o None si no la
+            rechaza; si se omite, el estilo no se verifica aquí.
 
     Returns:
         Problemas encontrados, cada uno con el criterio que incumple; vacía si la versión puede
@@ -94,4 +103,13 @@ def verificar_version(
     if (uso := archivos.get(RUTA_USO)) is not None and (faltan := secciones_faltantes(uso)):
         lista = ", ".join(f"«## {seccion}»" for seccion in faltan)
         problemas.append(f"{DOCUMENTACION}: a {RUTA_USO} le faltan las secciones {lista}")
+    if estilo_bloqueante is not None:
+        problemas.extend(
+            f"{ESTILO}: {infraccion.archivo}:{infraccion.linea} {infraccion.codigo} "
+            f"{infraccion.mensaje} ({regla})"
+            for infraccion in hallazgos_de_estilo(dict(archivos))
+            # La sintaxis ya la reporta la conformidad.
+            if infraccion.codigo != "sintaxis"
+            and (regla := estilo_bloqueante(infraccion.codigo)) is not None
+        )
     return problemas

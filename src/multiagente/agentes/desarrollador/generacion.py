@@ -14,7 +14,7 @@ intento. Así un reintento parcial no deja la versión incompleta.
 """
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict
@@ -206,6 +206,7 @@ def version_desde_salida(
     previa: VersionCodigo | None,
     estilo: EstiloGenerado,
     base: Mapping[str, str] | None = None,
+    estilo_bloqueante: Callable[[str], str | None] | None = None,
 ) -> VersionCodigo:
     """Combina la salida sobre su base y verifica la estructura del resultado.
 
@@ -218,6 +219,8 @@ def version_desde_salida(
         estilo: Configuración de estilo que rigió la generación.
         base: Archivos sobre los que se combina la salida; si se omite, los de la versión
             previa. En el reintento, los del intento rechazado.
+        estilo_bloqueante: Criterio de estilo del tester; si se da, las infracciones que
+            rechazarían la versión también la rechazan aquí.
 
     Returns:
         La versión nueva, con el número siguiente.
@@ -247,7 +250,7 @@ def version_desde_salida(
             ],
             archivos,
         )
-    if problemas := verificar_version(archivos, especificacion, requerimientos):
+    if problemas := verificar_version(archivos, especificacion, requerimientos, estilo_bloqueante):
         raise IntentoRechazado(problemas, archivos)
     return VersionCodigo(
         numero=previa.numero + 1 if previa is not None else 1,

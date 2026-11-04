@@ -9,6 +9,7 @@ de Ruff y la sugerencia de corrección de cada regla. Las reglas sin comprobaci�
 declaran como no evaluadas (cal-sv, conducta 5).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -161,3 +162,30 @@ def regla_de_ruff(codigo: str) -> str:
     if not candidatos:
         return REGLA_ESTILO
     return max(candidatos, key=lambda candidato: len(candidato[0]))[1]
+
+
+def estilo_bloqueante(
+    reglas: dict[str, ReglaCalidad], umbral_media: int
+) -> Callable[[str], str | None]:
+    """Criterio con que un código de Ruff rechaza la versión, según la regla de cal-sv.
+
+    Una regla de severidad alta rechaza siempre; una media, si el umbral de hallazgos medios es
+    cero. N10 lo recibe para que su reintento corrija esas infracciones antes del tester, que
+    sigue siendo quien dictamina (ADR-0015).
+
+    Args:
+        reglas: Reglas de calidad leídas de la base.
+        umbral_media: Hallazgos de severidad media que admite el veredicto.
+
+    Returns:
+        Función que da la regla de un código de Ruff si su infracción rechaza la versión, o None.
+    """
+
+    def regla(codigo: str) -> str | None:
+        id_regla = regla_de_ruff(codigo)
+        severidad = reglas[id_regla].severidad
+        if severidad is Severidad.ALTA or (severidad is Severidad.MEDIA and umbral_media == 0):
+            return id_regla
+        return None
+
+    return regla

@@ -24,7 +24,12 @@ from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.agentes.desarrollador.servicio import crear_agente_desarrollador
 from multiagente.agentes.desarrollador.verificacion import verificar_version
-from multiagente.core.configuracion import ConfiguracionAzureOpenAI, ConfiguracionOrquestador
+from multiagente.agentes.tester.reglas import cargar_reglas_calidad, estilo_bloqueante
+from multiagente.core.configuracion import (
+    ConfiguracionAzureOpenAI,
+    ConfiguracionOrquestador,
+    ConfiguracionTester,
+)
 from multiagente.core.estilo import hallazgos_de_estilo
 from multiagente.interfaces.casos import cargar_caso_desarrollo
 from multiagente.interfaces.cliente_simulado import RAIZ_EVALUACION
@@ -56,7 +61,11 @@ def test_el_codigo_generado_se_importa_y_cubre_las_interfaces(entorno_aislado, a
         elicitador=ElicitadorFijo(caso.sintesis),
         arquitecto=ArquitectoFijo(caso.diseno),
         desarrollador=crear_agente_desarrollador(
-            registro, crear_cliente(ConfiguracionAzureOpenAI())
+            registro,
+            crear_cliente(ConfiguracionAzureOpenAI()),
+            estilo_bloqueante(
+                cargar_reglas_calidad(), ConfiguracionTester().umbral_hallazgos_media
+            ),
         ),
         tester=simulados,
     )

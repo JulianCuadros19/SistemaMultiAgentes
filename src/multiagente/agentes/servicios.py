@@ -10,8 +10,9 @@ from openai import OpenAI
 from multiagente.agentes.arquitecto.servicio import crear_agente_arquitecto
 from multiagente.agentes.desarrollador.servicio import crear_agente_desarrollador
 from multiagente.agentes.elicitador.servicio import crear_agente_elicitador
+from multiagente.agentes.tester.reglas import cargar_reglas_calidad, estilo_bloqueante
 from multiagente.agentes.tester.servicio import crear_agente_tester
-from multiagente.core.configuracion import ConfiguracionAzureOpenAI
+from multiagente.core.configuracion import ConfiguracionAzureOpenAI, ConfiguracionTester
 from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistradorLlamadas
 from multiagente.orquestador.servicios import Servicios
@@ -44,7 +45,15 @@ def crear_servicios(
     return Servicios(
         elicitador=crear_agente_elicitador(conexion, registrador, cliente, vectorizador),
         arquitecto=crear_agente_arquitecto(conexion, registrador, cliente, vectorizador),
-        desarrollador=crear_agente_desarrollador(registrador, cliente),
+        # El desarrollador aplica el criterio de estilo del tester antes de entregarle la
+        # versión, sin importarlo (ADR-0015).
+        desarrollador=crear_agente_desarrollador(
+            registrador,
+            cliente,
+            estilo_bloqueante(
+                cargar_reglas_calidad(), ConfiguracionTester().umbral_hallazgos_media
+            ),
+        ),
         tester=crear_agente_tester(
             conexion, registrador, cliente, vectorizador, entorno or EntornoAislado()
         ),
