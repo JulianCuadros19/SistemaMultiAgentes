@@ -87,6 +87,7 @@ class DatoSalidaModelo(BaseModel):
 class ListaDelRegistro(StrEnum):
     """Listas del registro de las que la respuesta del cliente puede retirar entradas."""
 
+    USUARIOS = "usuarios"
     REGLAS_NEGOCIO = "reglas_negocio"
     DATOS_ENTRADA = "datos_entrada"
     DATOS_SALIDA = "datos_salida"
@@ -116,6 +117,7 @@ class SalidaExtraccion(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     rol: str | None
+    usuarios: list[str] | None
     funcionalidad: str | None
     beneficio: str | None
     reglas_negocio: list[str] | None
@@ -322,6 +324,7 @@ def registro_desde_salida(
             previo.rol,
             previo.funcionalidad,
             previo.beneficio,
+            *previo.usuarios,
             *previo.reglas_negocio,
             *previo.excepciones,
             *previo.condiciones,
@@ -407,6 +410,7 @@ def registro_desde_salida(
     )
     return RegistroCaptura(
         rol=escalar(salida.rol) or previo.rol,
+        usuarios=lista(salida.usuarios, previo.usuarios),
         funcionalidad=escalar(salida.funcionalidad) or previo.funcionalidad,
         beneficio=escalar(salida.beneficio) or previo.beneficio,
         reglas_negocio=lista(salida.reglas_negocio, previo.reglas_negocio),
@@ -568,9 +572,17 @@ def resumen_para_confirmar(registro: RegistroCaptura, fuente: set[str] | None = 
 
     entradas = "; ".join(map(entrada, registro.datos_entrada))
     salidas = "; ".join(map(salida, registro.datos_salida))
-    # El rol es quién obtiene el valor (eli-001); los sistemas o procesos que lo usan son
-    # condiciones, pero el cliente los busca junto al rol (caso 14, ADR-0015).
-    usos = [c for c in registro.condiciones if USO_DE_LO_PEDIDO.search(normalizar(c))]
+    # El rol es a quien le sirve (eli-001); quien más lo usa u opera va aparte, y el cliente lo
+    # busca junto al rol (casos 02, 06 y 14, ADR-0015). Las condiciones sobre quién o qué lo usa,
+    # de registros anteriores a `usuarios`, van en la misma línea.
+    usos = [
+        *registro.usuarios,
+        *(
+            c
+            for c in registro.condiciones
+            if USO_DE_LO_PEDIDO.search(normalizar(c)) and c not in registro.usuarios
+        ),
+    ]
     condiciones = [c for c in registro.condiciones if c not in usos]
     lineas = [
         ENCABEZADO_RESUMEN,

@@ -31,7 +31,12 @@ from multiagente.agentes.elicitador.dialogo import (
     validar_caso_limite,
     validar_pregunta,
 )
-from multiagente.agentes.elicitador.fidelidad import raices, raices_del_cliente, respaldado
+from multiagente.agentes.elicitador.fidelidad import (
+    dice_no_saber,
+    raices,
+    raices_del_cliente,
+    respaldado,
+)
 from multiagente.agentes.elicitador.servicio import AgenteElicitador
 from multiagente.agentes.elicitador.sintesis import (
     AUTOR,
@@ -257,6 +262,7 @@ def salida_pregunta(
 def salida_extraccion(**cambios) -> SalidaExtraccion:
     base = {
         "rol": None,
+        "usuarios": None,
         "funcionalidad": None,
         "beneficio": None,
         "reglas_negocio": None,
@@ -718,6 +724,43 @@ def test_el_resumen_muestra_junto_al_rol_quien_lo_usa():
         f"- Quién lo usa y cómo: {uso}",
     ]
     assert f"- Condiciones ya definidas: {prueba}" in lineas
+
+
+def test_quien_lo_usa_queda_aparte_del_rol_y_junto_a_el_en_el_resumen():
+    # Casos 02, 05 y 06: el cliente distingue a quien lo usa de a quien le sirve.
+    respuesta = "Lo usa el jefe de bodega al preparar cada pedido; a operaciones le sirve"
+    previo = registro_completo(casos_limite_cerrados=False)
+    conversacion = con_respuesta(previo, "¿Quién lo usa?", respuesta)
+    usuario = "el jefe de bodega, al preparar cada pedido"
+    registro = aplicar_extraccion(salida_extraccion(usuarios=[usuario]), conversacion)
+    assert registro.usuarios == (usuario,)
+    assert registro.rol == previo.rol
+    lineas = resumen_para_confirmar(registro).splitlines()
+    assert lineas[2] == f"- Quién lo usa y cómo: {usuario}"
+
+
+@pytest.mark.parametrize(
+    "respuesta",
+    [
+        "Eso no me lo especificaron.",
+        "No está definido qué debe pasar en ese caso.",
+        "No me han dicho qué mensaje debe mostrar.",
+        "No tengo una regla para cuando los ítems no coinciden.",
+        "Eso no lo tengo definido.",
+        "Los mensajes exactos de error no los conozco.",
+    ],
+)
+def test_reconoce_las_formas_de_no_saber(respuesta):
+    # Caso 18: sin reconocerlas, N3 preguntaba lo mismo hasta agotar los turnos.
+    assert dice_no_saber(respuesta)
+
+
+@pytest.mark.parametrize(
+    "respuesta",
+    ["Si el predio no existe, no se acepta", "El documento no está vencido", "Ya me lo dijeron"],
+)
+def test_no_confunde_otras_negaciones_con_no_saber(respuesta):
+    assert not dice_no_saber(respuesta)
 
 
 def test_el_resumen_muestra_solo_los_tipos_que_dijo_el_cliente():

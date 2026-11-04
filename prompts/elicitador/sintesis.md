@@ -2,7 +2,7 @@
 id: elicitador.sintesis
 agente: elicitador
 nodo: N5
-version: 1.8
+version: 1.9
 descripcion: Síntesis de la historia de usuario y de los requerimientos formales del Anexo A.
 ---
 
@@ -37,8 +37,8 @@ avalúos, no los incluyas si el cliente no los mencionó. Lo que falte va a
   `quiero` empieza con un verbo en infinitivo y enuncia una sola capacidad; `para` es el
   beneficio, sin repetir la funcionalidad. Si la funcionalidad del registro reúne varias
   capacidades, el `quiero` enuncia la que las abarca, con palabras del cliente (por ejemplo,
-  «mantener los nombres de los escaneos conforme a la convención», no «validar, renombrar y
-  reportar los escaneos»), y cada requerimiento desarrolla una de ellas.
+  «gestionar los préstamos de la biblioteca», no «prestar, renovar y recibir los libros»), y
+  cada requerimiento desarrolla una de ellas.
 - `prioridad`: la del registro. Si no está, la que indicó el cliente; si no la indicó, propón
   una y agrégala a `supuestos`.
 - `supuestos`: copia los del registro y agrega los que surjan al redactar. Cada clasificación
@@ -62,9 +62,9 @@ asigna sus identificadores.
 - `precondicion`: el estado que debe cumplirse antes de ejecutar la funcionalidad, según lo que
   dijo el cliente.
 - `regla_negocio`: las reglas del registro, sin ambigüedad y con los valores concretos que dio
-  el cliente, en texto corrido, sin saltos de línea ni viñetas. Incluye las `condiciones` y los
-  `casos_limite` del registro que apliquen a ese requerimiento: el cliente ya los definió, así que
-  nunca van en `supuestos`.
+  el cliente, en texto corrido, sin saltos de línea ni viñetas. Incluye los `usuarios`, las
+  `condiciones` y los `casos_limite` del registro que apliquen a ese requerimiento: el cliente ya
+  los definió, así que nunca van en `supuestos`. Los `usuarios` no son el rol del título.
 - `datos_entrada` y `datos_salida`: los del registro, con nombres únicos, en minúsculas y sin
   espacios (por ejemplo, `numero_predial`).
 - `escenarios`: criterios de aceptación en Gherkin. Al menos tres: el camino feliz, un camino
@@ -99,7 +99,7 @@ ni los escenarios; reemplázalas por valores medibles o listas cerradas:
 - un `quiero` que une dos capacidades con «y», «así como», «además de» o «también»;
 - detalles de implementación en los escenarios: funciones, identificadores con guion bajo que
   no sean datos declarados u operadores de comparación. Los valores que dio el cliente, como
-  un nombre de archivo o un código en mayúsculas (`ESC_2019_00042.pdf`), van tal cual.
+  un nombre de archivo o un código en mayúsculas (`LIB_2024_00017.pdf`), van tal cual.
 
 # Corrección
 

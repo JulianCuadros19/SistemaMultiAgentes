@@ -161,12 +161,18 @@ def respaldado(texto: str, fuente: set[str]) -> bool:
 
 MARCAS_DESCONOCIMIENTO = re.compile(
     r"\b(?:no (?:lo )?sé|no lo se|desconozco|no estoy segur[oa]|no sabr[ií]a"
-    r"|no tengo (?:esa |ese |ningún |ninguna )?(?:informaci[oó]n|dato)"
+    r"|no tengo (?:esa |ese |ningún |ninguna |una )?(?:informaci[oó]n|dato|regla)"
+    r"|no (?:lo |la |los |las )?conozco|no me consta"
+    r"|no me (?:lo |la |los |las )?(?:han )?(?:dicho|dijeron|indicado|indicaron|especificado"
+    r"|especificaron|detallado|detallaron|definido|definieron)"
+    r"|no (?:está|están) definid[oa]s?|no (?:lo |la |los |las )?tengo definid[oa]s?"
     r"|habr[ií]a que (?:consultar|verificar|confirmar))\b"
 )
 """Expresiones con que el cliente dice no saber algo: lo único que crea una pregunta abierta.
 
-Se buscan en el texto con tildes, porque sin ellas «no sé» se confunde con «no se acepta».
+Incluye las formas de decirlo sin «no sé», como «eso no me lo especificaron» o «no está
+definido»: sin reconocerlas, N3 preguntaba lo mismo hasta agotar los turnos (ADR-0015). Se
+buscan en el texto con tildes, porque sin ellas «no sé» se confunde con «no se acepta».
 """
 
 
