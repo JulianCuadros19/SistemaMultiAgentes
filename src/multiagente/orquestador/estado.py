@@ -358,6 +358,9 @@ class Enmienda(ModeloEstricto):
         observaciones_analista: Observaciones de cada rechazo del analista en N6 durante la
             enmienda, en orden.
         requerimientos: Requerimientos que N5 enmendó, con la versión a la que llegó cada uno.
+        defectos_aceptados: Defectos que el analista aceptó al aprobar los requerimientos que se
+            enmiendan. No los causó la enmienda: N6 los sigue mostrando, pero no se los devuelve
+            a N5, que en modo enmienda solo cambia la regla y los escenarios.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -367,6 +370,7 @@ class Enmienda(ModeloEstricto):
     fecha: datetime
     observaciones_analista: tuple[TextoObligatorio, ...] = ()
     requerimientos: dict[IdRequerimiento, Version] = Field(default_factory=dict)
+    defectos_aceptados: tuple[TextoObligatorio, ...] = ()
 
 
 class Requerimientos(Particion):

@@ -644,6 +644,20 @@ def test_los_defectos_de_la_enmienda_vuelven_a_n5_sin_humano():
     assert avance.pausa.datos["defectos"] == []
 
 
+def test_los_defectos_que_el_analista_ya_acepto_no_vuelven_a_n5_durante_la_enmienda():
+    # Un defecto persistente escala al analista, que aprueba con él a la vista.
+    simulacion = ServiciosSimulados(fallos_veredicto=0, defectos_calidad=99)
+    app = compilar(simulacion)
+    id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
+
+    # La enmienda no lo causó: N6 lo muestra, pero no lo devuelve a N5.
+    avance = avanzar(app, id_sesion, enmendar())
+    assert avance.nodos == (Nodo.N17, Nodo.N5)
+    assert simulacion.llamadas["enmendar"] == 1
+    assert avance.pausa.datos["defectos"] == [DEFECTO_SIMULADO]
+    assert avance.pausa.datos["enmienda"]["defectos_aceptados"] == [DEFECTO_SIMULADO]
+
+
 def test_una_sesion_escalada_tambien_puede_enmendarse():
     simulacion = ServiciosSimulados(fallos_veredicto=99)
     app = compilar(simulacion, iteraciones=2)

@@ -477,7 +477,8 @@ class NodosGrafo:
         persona con los defectos a la vista. Un rechazo devuelve el flujo al diálogo con las
         observaciones y exige confirmar un nuevo resumen.
 
-        Con una enmienda en curso desde N17, la pausa la muestra. Un rechazo suma sus
+        Con una enmienda en curso desde N17, la pausa la muestra. Los defectos que el analista
+        ya había aceptado no vuelven a N5, porque no los causó la enmienda. Un rechazo suma sus
         observaciones a la enmienda y vuelve a N5, sin pasar por el diálogo, y la aprobación
         pasa la sesión a desarrollo: el diseño no cambia.
         """
@@ -489,6 +490,8 @@ class NodosGrafo:
             verificacion = VerificacionCalidad(defectos=("No hay requerimientos sintetizados.",))
         defectos = verificacion.defectos
         corregibles = verificacion.corregibles
+        if enmienda is not None:
+            corregibles = tuple(d for d in corregibles if d not in enmienda.defectos_aceptados)
         if requerimientos.fallo_sintesis:
             fallo = f"La síntesis falló: {requerimientos.fallo_sintesis}"
             defectos = (fallo, *defectos)
@@ -898,14 +901,16 @@ class NodosGrafo:
             )
             cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.DISENO)
         elif aprobacion.destino is Destino.REQUERIMIENTOS:
+            requerimientos = estado["requerimientos"]
+            # Lo que el analista aceptó al aprobar los requerimientos vigentes no lo causa la
+            # enmienda: N6 lo mostrará, pero no lo devolverá a N5.
             enmienda = Enmienda(
                 texto=aprobacion.observaciones,
                 revisor=aprobacion.revisor,
                 fecha=aprobacion.fecha,
+                defectos_aceptados=requerimientos.defectos_escalados,
             )
-            cambios["requerimientos"] = estado["requerimientos"].model_copy(
-                update={"enmienda": enmienda}
-            )
+            cambios["requerimientos"] = requerimientos.model_copy(update={"enmienda": enmienda})
             cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.ELICITACION)
         else:
             cambios["sesion"] = _con_aprobacion(sesion, aprobacion, Fase.DESARROLLO)

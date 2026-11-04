@@ -336,6 +336,7 @@ def estado_completo() -> list:
                 fecha=AHORA,
                 observaciones_analista=("Falta el escenario del abono ya reversado",),
                 requerimientos={"RF-27": "0.4"},
+                defectos_aceptados=("RF-27 · C9 Conforme",),
             ),
             enmiendas=(
                 Enmienda(
