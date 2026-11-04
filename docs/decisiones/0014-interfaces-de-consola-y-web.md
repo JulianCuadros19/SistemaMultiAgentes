@@ -831,6 +831,22 @@ prompt del desarrollador, sin relajarlas.
   qué punto.
 - Entre las cuatro destaparon los defectos que corrigen las decisiones 32 a 35.
 
+**Cierre del paso 12** (2026-11-04).
+- **Correcciones:** las fases 1 a 6 del ADR-0015 corrigieron los defectos de las interfaces
+  (decisiones 32 a 35) y la calidad de la primera salida de los cuatro agentes. Además, N17 ganó
+  un tercer destino: la enmienda de los requerimientos por el elicitador.
+- **Corrida ampliada final:** se registra en el ADR-0015 (fase 7), con los mismos 20 casos y la
+  misma política del analista que la de este ADR:
+  - 20 de 20 módulos validados, 18 en la v1, y ninguno escalado;
+  - 0,342 USD de media por módulo y 5,3 min de media de tiempo del sistema;
+  - frente a 18 validados (10 en la v1), 1 escalado y 1 en pausa en N6.
+- **Pendientes de «Convergencia de la elicitación»:**
+  - las listas parciales y la pregunta específica las atendió la decisión 23 del ADR-0015;
+  - el planteamiento de las necesidades de eventos sigue abierto: los casos 17 y 18 se plantean
+    como «publicar un aviso», aunque salen validados.
+- **Consecuencia desfavorable:** reiniciar la cuenta de iteraciones en cada devolución desde N17
+  vale también para las enmiendas de los requerimientos (decisión 32 del ADR-0015).
+
 ### Consecuencias
 
 - **Favorable:** el equipo opera el flujo completo sin tocar código, por consola o por web, con

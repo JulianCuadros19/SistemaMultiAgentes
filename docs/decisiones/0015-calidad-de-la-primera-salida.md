@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-11-03
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (enmiendas desde N17, límite de turnos y registro de información capturada), ADR-0008 (casos límite, síntesis, verificación y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos, versión previa tras un rediseño y estilo en N10), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos), ADR-0013 (rediseño desde N17) y ADR-0014 (convergencia del resumen y enmiendas en las interfaces)
+modifica: ADR-0006 (enmiendas desde N17, límite de turnos y registro de información capturada), ADR-0008 (casos límite, síntesis, verificación y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos, funciones sin self y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos, versión previa tras un rediseño y estilo en N10), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos), ADR-0013 (rediseño desde N17) y ADR-0014 (convergencia del resumen y enmiendas en las interfaces)
 ---
 
 # ADR-0015 · Calidad de la primera salida y enmiendas de los requerimientos desde N17
@@ -807,18 +807,144 @@ una corrida por caso):
 - **Costo de la fase:** 0,20 USD, frente a 0,3 del plan. Incluye la generación de la versión 1; de
   la enmienda en adelante fueron 0,109 USD (N5 0,004, N10 0,104 y N14 0,001).
 
+#### Fase 7 · Medición de extremo a extremo y cierre
+
+**Corrida ampliada final** (2026-11-04, `scripts/evaluar_extremo_a_extremo.py`).
+- **Método:**
+  - los mismos 20 casos de `evaluacion/casos/ampliada/` y la misma política del analista que la
+    línea base del ADR-0014, con un tope de 8,5 USD;
+  - prompts vigentes: diálogo 1.10, extracción 1.7, síntesis 1.9, `arquitecto.parametrizacion`
+    1.6, `desarrollador.generacion` 1.9 y `tester.veredicto` 1.2;
+  - el script ganó la convergencia del diálogo en la primera pausa de N6, las generaciones de N10
+    con sus primeros intentos rechazados y la opción `--traza`. Sobre la línea base reproduce lo
+    registrado en el ADR-0014: 249 turnos, 13 resúmenes confirmados y 7 de 29 primeros intentos
+    rechazados;
+  - la traza, `docs/mediciones/paso-12-corrida-ampliada-2.jsonl`, guarda las 866 llamadas solo con
+    sus métricas.
+- **Gasto:** 7,59 USD, 0,75 de ellos del cliente simulado, en 2 h 1 min de reloj, frente a los 7,5
+  del plan.
+
+| Caso | Tema | Esperada | Elegida | Desenlace | Bloqueantes de la v1 | Turnos (sin exploración) | Resumen | Min | USD |
+|---|---|---|---|---|---|---|---|---|---|
+| 01 | Comisiones de corretaje | ARQ-01 | ARQ-05 | validado en la v1 | — | 13 (10) | confirmado | 2,95 | 0,18 |
+| 02 | Reajuste del canon | ARQ-01 | ARQ-01 | validado en la v2 | CAL-FS-001 | 13 (9) | confirmado | 4,11 | 0,24 |
+| 03 | Mantenimientos preventivos | ARQ-01 | ARQ-01 | validado en la v1 | — | 14 (10) | confirmado | 3,57 | 0,24 |
+| 04 | Contratos de arrendamiento | ARQ-02 | ARQ-02 | validado en la v1 | — | 11 (7) | confirmado | 5,74 | 0,36 |
+| 05 | Cupo de crédito rotativo | ARQ-02 | ARQ-02 | validado en la v1 | — | 13 (9) | confirmado | 3,08 | 0,19 |
+| 06 | Despacho por lotes | ARQ-02 | ARQ-02 | validado en la v1 | — | 10 (7) | confirmado | 3,52 | 0,21 |
+| 07 | Conciliación del recaudo | ARQ-03 | ARQ-03 | validado en la v1 | — | 13 (9) | confirmado | 5,69 | 0,36 |
+| 08 | Depuración de predios | ARQ-03 | ARQ-03 | validado en la v1 | — | 9 (5) | confirmado | 4,45 | 0,28 |
+| 09 | Indicadores desde Excel | ARQ-03 | ARQ-03 | validado en la v1 | — | 11 (8) | confirmado | 4,59 | 0,27 |
+| 10 | Tarifa predial por HTTP | ARQ-04 | ARQ-04 | validado en la v1 | — | 18 (17) | sin confirmar | 3,42 | 0,19 |
+| 11 | Inmuebles en arriendo | ARQ-04 | ARQ-04 | validado en la v1 | — | 18 (14) | confirmado en el límite | 5,71 | 0,38 |
+| 12 | Dígito de verificación del NIT | ARQ-04 | ARQ-04 | validado en la v1 | — | 18 (14) | sin confirmar | 4,02 | 0,29 |
+| 13 | Reservas de parqueadero | ARQ-04 | ARQ-04 | validado en la v1 | — | 16 (12) | confirmado | 6,60 | 0,41 |
+| 14 | Escaneos de expedientes | ARQ-05 | ARQ-05 | validado en la v1 | — | 13 (9) | confirmado | 4,60 | 0,30 |
+| 15 | Rotación de registros | ARQ-05 | ARQ-05 | validado en la v1 | — | 12 (10) | confirmado | 5,66 | 0,37 |
+| 16 | Amortización de crédito | ARQ-05 | ARQ-05 | validado en la v1 | — | 12 (9) | confirmado | 4,82 | 0,34 |
+| 17 | Trámites catastrales | ARQ-06 | ARQ-06 | validado en la v1 | — | 18 (15) | sin confirmar | 7,80 | 0,54 |
+| 18 | Ventas de la caja | ARQ-06 | ARQ-06 | validado en la v2 | CAL-FS-001 | 18 (14) | sin confirmar | 13,16 | 0,87 |
+| 19 | Pagos de pensiones | ARQ-06 | ARQ-06 | validado en la v1 | — | 14 (10) | confirmado | 7,15 | 0,50 |
+| 20 | Sensores del cuarto frío | ARQ-06 | ARQ-06 | validado en la v1 | — | 16 (12) | confirmado | 5,05 | 0,33 |
+
+- **Desenlaces:** los 20 casos salen validados, 18 en la v1 y 2 en la v2, por CAL-FS-001. Ninguno
+  escaló ni se detuvo. En la línea base, 18 validados (10 en la v1), 1 escalado y 1 en pausa en N6.
+- **Arquitectura:** N8 eligió la esperada en 19 de 20. En el caso 01 eligió ARQ-05 en lugar de
+  ARQ-01, y su registro lo justifica: el cliente dijo que solo lo usa la auxiliar de pagos al cierre
+  de mes y que ningún otro sistema lo consulta, y arq-003 clasifica eso como herramienta. Se validó
+  en la v1, por 0,18 USD.
+- **Tiempo del sistema:** media de 5,3 min y máximo de 13,2 min, en el caso 18, frente a los 20 min
+  del RNF-01. El turno de diálogo más largo midió 9,4 s; el cierre de la elicitación pasó de 30 s
+  en 3 casos, con un máximo de 51 s.
+- **Costo:** 0,342 USD de media por módulo validado, de 0,18 a 0,87. Del costo del sistema, 6,85
+  USD, N10 lleva el 41 %, N8 el 27 %, N3 el 21 %, N5 el 11 % y N14 menos del 1 %.
+- **Diálogo:** 290 turnos del cliente, 70 de ellos respuestas a la exploración. En la primera pausa
+  de N6: 280 turnos, 210 sin exploración; 16 resúmenes confirmados y 5 sesiones en el límite de 18.
+- **Analista simulado:** devolvió los requerimientos al diálogo en 9 casos, y en 7 aprobó después
+  con defectos sin corregir, como prevé su política.
+
+**Causas de los criterios sin cumplir.**
+- **Primeros intentos de N10 rechazados: 7 de 23.** El reintento corrigió 6. En el caso 18, la
+  primera generación falló sus dos intentos y gastó una iteración; la v2 se aprobó en la tercera y
+  última.
+  - **Respuesta incompleta, en 3 (casos 07, 15 y 18):** el modelo devolvió un archivo de pruebas de
+    relleno (`@pytest.fixture` seguido de ` def_placeholder = None`), sin `USO.md` y sin las pruebas
+    de los escenarios. No fue un corte: todas las llamadas de N10 terminaron con `stop`.
+  - **Funciones con `self` declaradas por el arquitecto, en 2 (casos 18 y 19):** los consumidores
+    de ARQ-06 se declararon como funciones de módulo con `self`, que Ruff exige anotar (ANN001). El
+    desarrollador solo cumplía silenciando el estilo, y N9 no lo objetaba. Lo corrige la decisión
+    37.
+  - **Estilo que antes atrapaba el tester, en 2 (casos 04 y 17):** un import sin usar (F401),
+    `__init__` sin docstring (D107) y `except Exception` (BLE001). Desde la decisión 29, N10 los
+    detecta antes de entregar: cuestan un reintento, no un ciclo del tester.
+  - Ya no aparecen el `self` anotado con su clase ni las excepciones sin importar de la línea base.
+- **Resúmenes confirmados: 16 de 20.** Las cuatro sesiones sin confirmar llegaron al límite:
+  - **casos 17 y 18:** el resumen ponía «obligatorio» u «opcional» en cada dato, y el cliente
+    objetaba que eso no quedó definido. Lo corrige la decisión 38;
+  - **caso 10:** el cliente respondió once veces «No aplica; no tengo identificado un cargo…», y
+    N3 preguntó el rol hasta el límite. Lo corrige la decisión 39;
+  - **caso 12:** el cliente pedía que «devolver el dígito esperado» figurara en los resultados, y
+    la extracción lo dejaba en las reglas. Queda pendiente.
+
+**Decisiones del equipo sobre la fase 7 (2026-11-04).** Corregir antes de cerrar el paso 12 las
+tres causas deterministas, sin costo de modelo y sin una corrida nueva. La medición queda como
+está, y los dos criterios, registrados como no cumplidos.
+
+37. **N9 rechaza `self` y `cls` en las funciones de módulo** (modifica el ADR-0010).
+    - Solo un método `Clase.metodo` los lleva. La firma de una clase sigue admitiendo `self`, porque
+      es la de su `__init__`.
+    - El diseño histórico de pagos (`evaluacion/casos/desarrollo-pagos.json`), base del corpus de
+      defectos del tester, reproduce la v6 de `5f5d2739`. Esa versión es anterior a los métodos
+      `Clase.metodo` y declara cuatro funciones del bus con `self`. Se conserva tal cual para no
+      invalidar la medición de la fase 2, y su prueba exige que N9 marque exactamente esas cuatro.
+38. **El resumen muestra la obligatoriedad de un dato solo si el cliente la dijo sin negarla**
+    (modifica la decisión 23).
+    - Como los tipos, pero con negación. Una oración del cliente cuenta si nombra la obligatoriedad
+      («obligatorio», «opcional», «requerido»…) sin una negación antes en su misma cláusula.
+    - Vale para los datos de que habla la oración o, si no nombra ninguno, para todos.
+    - Hace falta la negación porque el cliente objetaba con esas mismas palabras: «no quedó definido
+      que los datos sean obligatorios».
+    - Sobre las 20 sesiones de la corrida, la quita en las dos que objetaban (17 y 18) y la
+      conserva en las seis que la afirmaban.
+39. **«No aplica» al comienzo de una respuesta y «no tengo identificado» cuentan como no saber**
+    (modifica la decisión 23).
+    - «No aplica» solo cuenta al comienzo, porque más adentro suele ser una regla: «el descuento no
+      aplica a los predios rurales».
+    - Sobre las 20 sesiones, solo cambian las respuestas sobre el rol de los casos 10 y 12.
+- **Sin medir:** las decisiones 37 a 39 se aplicaron después de la corrida y solo las verifican las
+  pruebas sin costo y su aplicación, sin modelo, a las sesiones guardadas de la corrida.
+
+**Pendientes del paso 12.**
+- **La respuesta incompleta de N10** (3 de 23 primeros intentos): el archivo de pruebas de relleno.
+  El reintento la corrige, pero duplica el costo de la generación.
+- **La ubicación de lo que el cliente pide en los resultados** (caso 12): la extracción lo deja en
+  las reglas, y el cliente lo repite hasta el límite.
+- **Las necesidades de eventos** (pendiente del ADR-0014): los casos 17 y 18 siguen planteándose
+  como «publicar un aviso», aunque salen validados.
+- **El costo por módulo** queda en 0,342 USD, al borde del criterio de 0,35. Lo empujan los casos
+  de ARQ-06 (de 0,33 a 0,87 USD); el presupuesto que detiene la ejecución llega en el paso 13.
+
 ## Verificación
 
-_Pendiente._ Criterios, fijados antes de medir:
-- validados en la v1: al menos 15 de 19 (hoy 10);
-- primeros intentos de N10 rechazados: como máximo 2 de 29 (hoy 7);
-- ninguna sesión escalada (hoy 1);
-- costo medio por módulo: como máximo 0,35 USD (hoy 0,28);
-- ningún falso positivo del patrón «prueba que simula» en el corpus de defectos;
-- la elicitación no retrocede: como máximo 211 turnos sin contar la exploración y al menos 17 de
-  20 resúmenes confirmados (redefinido en la fase 5);
-- la elicitación captura al menos 2 de 3 reglas ocultas. En la fase 5 el equipo aceptó una media
-  de 1,33 por caso.
+Criterios, fijados antes de medir, frente a la corrida ampliada final de la fase 7:
+
+| Criterio | Meta | Línea base (ADR-0014) | Fase 7 | ¿Cumple? |
+|---|---|---|---|---|
+| Validados en la v1 | al menos 15 de 19 | 10 de 19 | 18 de 20 | sí |
+| Primeros intentos de N10 rechazados | como máximo 2 de 29 | 7 de 29 | 7 de 23 | no |
+| Sesiones escaladas | 0 | 1 | 0 | sí |
+| Costo medio por módulo validado | como máximo 0,35 USD | 0,28 | 0,342 | sí, al límite |
+| Falsos positivos de «prueba que simula» en el corpus | 0 | — | 0 | sí |
+| Turnos sin exploración, en la primera pausa de N6 | como máximo 211 | 211 | 210 | sí, al límite |
+| Resúmenes confirmados | al menos 17 de 20 | 17 | 16 | no |
+| Reglas ocultas capturadas | al menos 2 de 3 | — | 1,33 de media | aceptado en la fase 5 |
+
+- **Falsos positivos:** los midió la fase 2 sobre el corpus, con el juez que sigue vigente (prompt
+  1.2). Los cambios posteriores de N12, de la fase 4, los cubren las pruebas sin costo del corpus.
+  En la corrida final, N12 no marcó CAL-FS-006 en ninguna versión.
+- **Reglas ocultas:** los casos ampliados no las traen, así que no se volvieron a medir.
+- **Decisión del equipo:** el paso 12 se cierra con los dos criterios sin cumplir y sus causas
+  registradas. Las decisiones 37 a 39 atienden tres de ellas, sin medir.
 
 ## Cambios para el documento de tesis
 
@@ -864,3 +990,10 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
     enmiendas de los requerimientos desde la validación final. Total: 39 RF.
   - RNF-09: desde la validación final, la enmienda regresa al elicitador.
   - Estado: la partición `requerimientos` guarda la enmienda en curso y las aplicadas.
+- **Fase 7:**
+  - Tabla 1, N9: además rechaza `self` y `cls` en las funciones de módulo; solo los lleva un método.
+  - Registro de información capturada: el resumen muestra la obligatoriedad de un dato solo si el
+    cliente la dijo, como el tipo.
+  - Tabla 1, N3: reconoce más formas de no saber, como «no aplica» al comienzo de una respuesta.
+  - Evaluación: la corrida ampliada final (20 de 20 validados, 18 en la v1) va al capítulo de
+    resultados, frente a la línea base del ADR-0014.
