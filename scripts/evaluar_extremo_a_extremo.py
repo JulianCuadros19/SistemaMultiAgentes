@@ -18,14 +18,22 @@ nodo. El código y el reporte de cada versión van en `<salida>/<sesión>/v<n>/`
 resultado se salta, así que la corrida se retoma donde quedó. Antes de cada caso se suma el costo
 de la traza, cliente simulado incluido, y la corrida se detiene al llegar al presupuesto.
 
-Cada llamada al modelo se agrega a docs/mediciones/paso-12-corrida-ampliada.jsonl con su sesión,
-sin el contenido de los mensajes. Requiere `docker compose up -d --wait`, el corpus ingerido, la
-imagen del entorno aislado y el archivo .env. Tiene costo.
+Además de lo anterior, cada resultado mide lo que comparan los criterios del ADR-0015:
+- la convergencia del diálogo en la primera pausa de N6, como `scripts/evaluar_elicitador.py`:
+  turnos del cliente, cuántos fueron respuestas a la exploración (casos límite y pregunta por algo
+  más), si llegó al límite y si el cliente confirmó el resumen;
+- las generaciones de N10 y sus primeros intentos rechazados por la verificación.
+
+Cada llamada al modelo se agrega a la traza (por defecto
+docs/mediciones/paso-12-corrida-ampliada.jsonl; otra con `--traza`) con su sesión, sin el contenido
+de los mensajes. Requiere `docker compose up -d --wait`, el corpus ingerido, la imagen del entorno
+aislado y el archivo .env. Tiene costo.
 
 Uso:
     python scripts/evaluar_extremo_a_extremo.py --solo caso-ampliada-16
     python scripts/evaluar_extremo_a_extremo.py --presupuesto 15
     python scripts/evaluar_extremo_a_extremo.py --resumen
+    python scripts/evaluar_extremo_a_extremo.py --salida DIR --traza TRAZA --presupuesto 9
 """
 
 import argparse
@@ -59,7 +67,9 @@ from multiagente.interfaces.consola import (
 from multiagente.interfaces.operacion import Operador, VistaSesion, abrir_operador
 from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistroPorSesion
+from multiagente.orquestador.ejecucion import configuracion_hilo
 from multiagente.orquestador.estado import Decision, Fase, Severidad
+from multiagente.orquestador.grafo import Nodo
 
 RAIZ = Path(__file__).resolve().parents[1]
 ARCHIVO_MEDICIONES = RAIZ / "docs" / "mediciones" / "paso-12-corrida-ampliada.jsonl"
@@ -149,16 +159,48 @@ def reanudar_una_vez(bitacora: Bitacora) -> AtiendeDetenida:
     return atender
 
 
-def leer_traza() -> list[dict[str, Any]]:
+def leer_traza(traza: Path) -> list[dict[str, Any]]:
     """Llamadas de la corrida ampliada, de todos los procesos."""
-    if not ARCHIVO_MEDICIONES.exists():
+    if not traza.exists():
         return []
-    return [json.loads(linea) for linea in ARCHIVO_MEDICIONES.read_text("utf-8").splitlines()]
+    return [json.loads(linea) for linea in traza.read_text("utf-8").splitlines()]
 
 
-def costo_acumulado() -> Decimal:
+def costo_acumulado(traza: Path) -> Decimal:
     """Costo de todas las llamadas de la corrida, con el cliente simulado."""
-    return sum((Decimal(llamada["costo_usd"]) for llamada in leer_traza()), Decimal(0))
+    return sum((Decimal(llamada["costo_usd"]) for llamada in leer_traza(traza)), Decimal(0))
+
+
+def medir_elicitacion(operador: Operador, id_sesion: str) -> dict[str, Any] | None:
+    """Convergencia del diálogo en la primera pausa de N6, como `evaluar_elicitador.py`.
+
+    La conversación no cambia entre la primera síntesis y la primera pausa de N6, así que se lee
+    del punto de control más antiguo que espera a N6.
+    """
+    primera = None
+    for punto in operador.app.get_state_history(configuracion_hilo(id_sesion)):
+        if punto.next == (Nodo.N6.value,):
+            primera = punto.values
+    if primera is None:
+        return None
+    conversacion = primera["conversacion"]
+    registro = conversacion.registro
+    exploracion = len(registro.categorias_casos_limite) + int(registro.algo_mas_preguntado)
+    return {
+        "turnos": conversacion.turnos_cliente,
+        "exploracion": exploracion,
+        "sin_exploracion": conversacion.turnos_cliente - exploracion,
+        "en_limite": conversacion.turnos_cliente >= primera["control"].limite_turnos,
+        "confirmado": registro.resumen_confirmado,
+    }
+
+
+def generaciones_n10(operador: Operador, id_sesion: str) -> int:
+    """Veces que corrió N10: cada una lleva a N15, por el tester o directo si falló."""
+    return sum(
+        punto.next == (Nodo.N15.value,)
+        for punto in operador.app.get_state_history(configuracion_hilo(id_sesion))
+    )
 
 
 def desenlace(vista: VistaSesion | None) -> str:
@@ -183,6 +225,7 @@ def resultado_del_caso(
     vista: VistaSesion | None,
     tiempos: Tiempos,
     salida: Path,
+    traza: Path,
 ) -> dict[str, Any]:
     """Reúne lo que se mide de una sesión: diseño, versiones, desenlace, tiempo y costo."""
     id_sesion = bitacora.id_sesion
@@ -205,10 +248,12 @@ def resultado_del_caso(
             }
         )
     por_nodo: dict[str, Decimal] = defaultdict(Decimal)
-    llamadas = [llamada for llamada in leer_traza() if llamada.get("sesion") == id_sesion]
+    llamadas = [llamada for llamada in leer_traza(traza) if llamada.get("sesion") == id_sesion]
     for llamada in llamadas:
         por_nodo[llamada["nodo"]] += Decimal(llamada["costo_usd"])
     sistema = sum((c for nodo, c in por_nodo.items() if nodo != "cliente_simulado"), Decimal(0))
+    llamadas_n10 = sum(llamada["nodo"] == "N10" for llamada in llamadas)
+    generaciones = generaciones_n10(operador, id_sesion)
     return {
         "caso": caso.id,
         "titulo": caso.titulo,
@@ -230,7 +275,11 @@ def resultado_del_caso(
         "reanudaciones": bitacora.reanudaciones,
         "versiones": versiones,
         "iteracion": estado["control"].iteracion,
-        "llamadas_n10": sum(llamada["nodo"] == "N10" for llamada in llamadas),
+        "elicitacion": medir_elicitacion(operador, id_sesion),
+        "turnos_cliente": estado["conversacion"].turnos_cliente,
+        "llamadas_n10": llamadas_n10,
+        "generaciones_n10": generaciones,
+        "primeros_intentos_rechazados_n10": llamadas_n10 - generaciones,
         "llamadas_con_error": sum(bool(llamada.get("error")) for llamada in llamadas),
         "tiempo_sistema_min": round(tiempos.sistema / 60, 2),
         "turno_maximo_s": round(max(tiempos.turnos), 1) if tiempos.turnos else None,
@@ -242,7 +291,7 @@ def resultado_del_caso(
 
 
 def correr_caso(
-    operador: Operador, caso: CasoElicitacion, salida: Path, bitacora: Bitacora
+    operador: Operador, caso: CasoElicitacion, salida: Path, bitacora: Bitacora, traza: Path
 ) -> dict[str, Any]:
     """Recorre el flujo completo de un caso con el cliente y el analista simulados."""
     simulado = ClienteSimulado(
@@ -264,27 +313,25 @@ def correr_caso(
         reanudar_una_vez(bitacora),
         tiempos,
     )
-    return resultado_del_caso(operador, caso, bitacora, vista, tiempos, salida)
+    return resultado_del_caso(operador, caso, bitacora, vista, tiempos, salida, traza)
 
 
-def correr(casos: list[CasoElicitacion], salida: Path, presupuesto: Decimal) -> None:
+def correr(casos: list[CasoElicitacion], salida: Path, presupuesto: Decimal, traza: Path) -> None:
     """Corre los casos sin resultado, uno a la vez, mientras alcance el presupuesto."""
-    configuracion = ConfiguracionInterfaces(
-        traza_llamadas=ARCHIVO_MEDICIONES, carpeta_trabajo=salida
-    )
+    configuracion = ConfiguracionInterfaces(traza_llamadas=traza, carpeta_trabajo=salida)
     with abrir_operador(configuracion) as operador:
         for caso in casos:
             archivo = salida / f"{caso.id}.json"
             if archivo.exists():
                 print(f"{caso.id}: ya tiene resultado; se salta.")
                 continue
-            if (gastado := costo_acumulado()) >= presupuesto:
+            if (gastado := costo_acumulado(traza)) >= presupuesto:
                 print(f"Presupuesto alcanzado: USD {gastado:.4f} de {presupuesto}. Se detiene.")
                 return
             print(f"\n=== {caso.id} · {caso.titulo} · gastado USD {gastado:.4f} ===")
             bitacora = Bitacora()
             try:
-                resultado = correr_caso(operador, caso, salida, bitacora)
+                resultado = correr_caso(operador, caso, salida, bitacora, traza)
             except Exception as error:  # noqa: BLE001 - la corrida sigue con el siguiente caso
                 resultado = {
                     "caso": caso.id,
@@ -302,7 +349,57 @@ def correr(casos: list[CasoElicitacion], salida: Path, presupuesto: Decimal) -> 
             )
 
 
-def resumir(salida: Path) -> None:
+def criterios(resultados: list[dict[str, Any]]) -> list[str]:
+    """Lo que comparan los criterios del ADR-0015, en Markdown.
+
+    Args:
+        resultados: Resultado de cada caso.
+
+    Returns:
+        Una línea por criterio; los que el resultado no mide se omiten.
+    """
+    con_modulo = [r for r in resultados if r["desenlace"] in ("validado", "escalado")]
+    validados = [r for r in resultados if r["desenlace"] == "validado"]
+    # La versión validada es la última dictaminada, también en los resultados anteriores.
+    en_v1 = sum(r["versiones"][-1]["numero"] == 1 for r in validados if r.get("versiones"))
+    lineas = [
+        f"- Validados en la v1: {en_v1} de {len(con_modulo)} que llegaron a N17 "
+        f"({len(validados)} validados en total).",
+        f"- Sesiones escaladas: {sum(r['desenlace'] == 'escalado' for r in resultados)}.",
+    ]
+    if validados:
+        costos = [Decimal(r["costo_sistema"]) for r in validados]
+        media = sum(costos, Decimal(0)) / len(costos)
+        lineas.append(
+            f"- Costo por módulo validado: media USD {media:.3f}, de {min(costos):.3f} a "
+            f"{max(costos):.3f}."
+        )
+    medidos = [r for r in resultados if "generaciones_n10" in r]
+    if medidos:
+        rechazados = sum(r["primeros_intentos_rechazados_n10"] for r in medidos)
+        generaciones = sum(r["generaciones_n10"] for r in medidos)
+        llamadas = sum(r["llamadas_n10"] for r in medidos)
+        lineas.append(
+            f"- Primeros intentos de N10 rechazados: {rechazados} de {generaciones} generaciones "
+            f"({llamadas} llamadas)."
+        )
+    dialogos = [r["elicitacion"] for r in resultados if r.get("elicitacion")]
+    if dialogos:
+        lineas.append(
+            f"- Diálogo en la primera pausa de N6 ({len(dialogos)} sesiones): "
+            f"{sum(d['turnos'] for d in dialogos)} turnos, "
+            f"{sum(d['sin_exploracion'] for d in dialogos)} sin exploración; "
+            f"{sum(d['confirmado'] for d in dialogos)} resúmenes confirmados y "
+            f"{sum(d['en_limite'] for d in dialogos)} sesiones en el límite."
+        )
+    simulan = sum(
+        v["bloqueantes"].get("CAL-FS-006", 0) for r in resultados for v in r.get("versiones", [])
+    )
+    lineas.append(f"- Hallazgos CAL-FS-006 (pruebas que simulan el efecto): {simulan}.")
+    return lineas
+
+
+def resumir(salida: Path, traza: Path) -> None:
     """Imprime en Markdown la tabla por caso, la cobertura por arquitectura y los totales."""
     resultados = [
         json.loads(archivo.read_text("utf-8")) for archivo in sorted(salida.glob("*.json"))
@@ -329,12 +426,14 @@ def resumir(salida: Path) -> None:
             f"{elegidas[arquitectura]}, coincide en {coinciden[arquitectura]}"
         )
     print(f"\n**Desenlaces:** {dict(Counter(r['desenlace'] for r in resultados))}")
+    print("\n**Criterios del ADR-0015:**")
+    print("\n".join(criterios(resultados)))
     sistema = sum((Decimal(r.get("costo_sistema", "0")) for r in resultados), Decimal(0))
     cliente = sum((Decimal(r.get("costo_cliente_simulado", "0")) for r in resultados), Decimal(0))
     minutos = [r["tiempo_sistema_min"] for r in resultados if "tiempo_sistema_min" in r]
     print(
         f"**Costo:** sistema USD {sistema:.4f}, cliente simulado USD {cliente:.4f}; traza completa "
-        f"USD {costo_acumulado():.4f}"
+        f"USD {costo_acumulado(traza):.4f}"
     )
     if minutos:
         print(
@@ -352,11 +451,14 @@ def main() -> None:
         "--presupuesto", type=Decimal, default=Decimal(15), help="Tope en USD de la traza."
     )
     parser.add_argument("--salida", type=Path, default=SALIDA, help="Carpeta de resultados.")
+    parser.add_argument(
+        "--traza", type=Path, default=ARCHIVO_MEDICIONES, help="Traza de las llamadas (JSONL)."
+    )
     parser.add_argument("--resumen", action="store_true", help="Solo imprime el resumen.")
     argumentos = parser.parse_args()
     argumentos.salida.mkdir(parents=True, exist_ok=True)
     if argumentos.resumen:
-        resumir(argumentos.salida)
+        resumir(argumentos.salida, argumentos.traza)
         return
     logging.basicConfig(level=logging.WARNING, format="(aviso) %(message)s")
     casos = [cargar_caso(archivo) for archivo in sorted(argumentos.casos.glob("*.md"))]
@@ -364,8 +466,8 @@ def main() -> None:
         if desconocidos := sorted(set(argumentos.solo) - {caso.id for caso in casos}):
             parser.error(f"Casos desconocidos: {desconocidos}")
         casos = [caso for caso in casos if caso.id in argumentos.solo]
-    correr(casos, argumentos.salida, argumentos.presupuesto)
-    resumir(argumentos.salida)
+    correr(casos, argumentos.salida, argumentos.presupuesto, argumentos.traza)
+    resumir(argumentos.salida, argumentos.traza)
 
 
 if __name__ == "__main__":
