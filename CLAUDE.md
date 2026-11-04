@@ -313,8 +313,8 @@ Mantener esta sección actualizada al cerrar cada paso.
     importar y sangría rota). El reintento lo corrige, pero duplica su costo;
   - el paso 12 debe mostrar cuántas iteraciones quedan antes de decidir en N17, porque un rechazo
     allí consume el ciclo de corrección.
-- **Paso actual: 12, implementado; falta la verificación del equipo.** Interfaces de consola y
-  web (ADR-0014; `docs/arquitectura.md` 1.2):
+- **Paso actual: 12, implementado y en pulido antes de cerrarlo (ADR-0015).** Interfaces de
+  consola y web (ADR-0014; `docs/arquitectura.md` 1.3):
   - comando `multiagente` (nueva, continuar, cerrar, sesiones, ver, exportar, web) y web local
     en `http://127.0.0.1:8000/`, con panel del equipo y vista del cliente; ambas usan el
     `Operador` de `interfaces/operacion.py`;
@@ -333,16 +333,30 @@ Mantener esta sección actualizada al cerrar cada paso.
   - extremo a extremo, 3 de 3 casos validados;
   - la web se reconecta tras reiniciar el contenedor `db`.
 
-  Pendiente para cerrar el paso (sección «Verificación con el equipo» del ADR-0014):
-  - el equipo opera una sesión tipo NotionSync por la web, en la que N9 debe declarar
-    `openpyxl`, y una por consola que rechace en N17; si alguna escala, ejercita devolver y
-    cerrar; exporta y revisa `USO.md` y `requirements.txt`;
-  - con los identificadores, Claude analiza cada sesión con `abrir_operador` (estado, historial
-    de versiones y traza en `data/local/traza-llamadas.jsonl`), registra el resultado en el
-    ADR-0014 y cierra el paso aquí;
-  - decisión abierta del equipo: 4 de 5 primeros intentos rechazados de N10 fueron por una
-    excepción declarada que el módulo solo propaga; relajar esa regla de `core/conformidad.py`
-    cambiaría una regla de calidad de los pasos 9 y 10.
+  Verificación con el equipo: hecha el 2026-11-03 (sesiones `61e1e121`, `5f5d2739` y
+  `b271c343`) y registrada en el ADR-0014. Se mantiene la regla de excepciones declaradas.
+
+  Pulido antes de cerrar el paso (ADR-0015), con el plan aprobado en
+  `~/.claude/plans/lee-claude-md-y-continuemos-fluttering-shamir.md`:
+  - **fases 1 a 5, cerradas el 2026-11-04:**
+    - defectos de las interfaces;
+    - el tester reconoce las pruebas que simulan el efecto (CAL-FS-006);
+    - el arquitecto declara recorridos ejecutables y métodos `Clase.metodo`;
+    - el desarrollador sigue los recorridos, parte de la versión previa tras un rediseño y se
+      adelanta al estilo del tester;
+    - el elicitador pregunta por casos límite, con un límite de 18 turnos, y N6 corrige lo
+      corregible aunque haya preguntas abiertas;
+    - los ejemplos de los prompts ya no salen de los casos de evaluación;
+  - **criterio sin cumplir de la fase 5,** por decisión del equipo: 15 de 20 resúmenes
+    confirmados (criterio 17) y 224 turnos sin exploración (criterio 211). Se mide de nuevo en la
+    fase 7;
+  - **siguiente: fase 6,** enmiendas desde N17 por el elicitador (N17 → N5 → N6 → N16 → N10).
+    El plan está aprobado; para retomar basta «continúa con la fase 6 siguiendo el plan». La
+    sección «Para retomar» del plan dice qué leer primero;
+  - **después: fase 7,** medición de extremo a extremo con los 20 casos ampliados y cierre del
+    paso aquí;
+  - **verificado al cerrar la fase 5:** 690 pruebas unitarias, 31 de integración y 19 de
+    embeddings.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
