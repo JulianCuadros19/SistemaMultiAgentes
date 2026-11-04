@@ -67,11 +67,11 @@ class SimulacionConFallas(ServiciosSimulados):
         self._quizas_fallar("disenar")
         return super().disenar(requerimientos, contexto, previa)
 
-    def generar(self, requerimientos, especificacion, validacion, previa):
+    def generar(self, requerimientos, especificacion, validacion, previa, rediseno=None):
         self._quizas_fallar("generar")
         if previa is not None:
             self._quizas_fallar("corregir")
-        return super().generar(requerimientos, especificacion, validacion, previa)
+        return super().generar(requerimientos, especificacion, validacion, previa, rediseno)
 
     def ejecutar(self, version, especificacion):
         self._quizas_fallar("ejecutar")

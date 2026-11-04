@@ -236,16 +236,18 @@ def test_al_agotar_las_iteraciones_escala_a_una_persona_en_n17():
 
 
 class SimulacionQueObserva(ServiciosSimulados):
-    """Anota la versión previa y la retroalimentación que recibe cada generación."""
+    """Anota la versión previa, la retroalimentación y el rediseño que recibe cada generación."""
 
     def __init__(self, hallazgos=()):
         super().__init__(fallos_veredicto=0)
         self.generaciones = []
+        self.redisenos = []
         self.hallazgos_de_analisis = hallazgos
 
-    def generar(self, requerimientos, especificacion, validacion, previa):
+    def generar(self, requerimientos, especificacion, validacion, previa, rediseno=None):
         self.generaciones.append((previa, validacion.retroalimentacion, especificacion.version))
-        return super().generar(requerimientos, especificacion, validacion, previa)
+        self.redisenos.append(rediseno)
+        return super().generar(requerimientos, especificacion, validacion, previa, rediseno)
 
     def analizar(self, version, especificacion, requerimientos):
         return AnalisisEstatico(hallazgos=self.hallazgos_de_analisis)
@@ -270,7 +272,7 @@ def test_un_rechazo_en_n17_entrega_al_desarrollador_los_hallazgos_del_tester():
     assert retroalimentacion == ("Arregla los hallazgos que encontraste", estilo.como_linea())
 
 
-def test_devolver_al_arquitecto_redisena_y_genera_de_cero():
+def test_devolver_al_arquitecto_redisena_con_la_version_previa_de_referencia():
     simulacion = SimulacionQueObserva()
     app = compilar(simulacion)
     id_sesion, _ = avanzar_hasta(app, guion_directo(), "final")
@@ -282,9 +284,15 @@ def test_devolver_al_arquitecto_redisena_y_genera_de_cero():
     avance = avanzar(app, id_sesion, aprobar())
     assert avance.pausa.punto == "final"
     assert avance.pausa.datos["version"] == 2
-    # Con la especificación nueva, la versión 2 se genera de cero.
-    (previa_1, _, version_1), (previa_2, _, version_2) = simulacion.generaciones
+    # Con la especificación nueva, la versión 1 no se corrige: llega como referencia, con la
+    # retroalimentación de N17.
+    (previa_1, _, version_1), (previa_2, retroalimentacion, version_2) = simulacion.generaciones
     assert previa_1 is None and previa_2 is None and version_1 != version_2
+    assert retroalimentacion[0] == "Separa la persistencia"
+    primero, rediseno = simulacion.redisenos
+    assert primero is None
+    assert rediseno.version_previa.numero == 1
+    assert rediseno.version_previa.especificacion == "ED-01 v0.1"
     versiones = app.get_state(configuracion_hilo(id_sesion)).values["codigo"].versiones
     assert [v.especificacion for v in versiones] == ["ED-01 v0.1", "ED-01 v0.2"]
 

@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.6
+version: 1.7
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -18,21 +18,31 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
    - `estilo`: la configuración de Ruff con que se analizará el código (`archivo` y `contenido`);
    - `especificacion`: la especificación de diseño (módulos, rutas, interfaces públicas con su
      firma, dependencias permitidas, modelo de datos, dependencias externas y reglas de
-     dependencia);
+     dependencia). La `descripcion` de una interfaz termina, después de «· Escenarios:», con los
+     escenarios en que participa: si los ejecuta, con qué se preparan y con qué se observan;
    - `requerimientos`: los requerimientos aprobados, con su regla de negocio, sus datos de
      entrada y de salida, y sus escenarios de aceptación (`ESC-01`…) en formato
      dado que / cuando / entonces.
 2. A veces, un mensaje con `correccion`: la `version_previa` del código, con todos sus archivos,
    y la `retroalimentacion` del tester o del revisor humano, cada defecto con su etiqueta
    (`D1`, `D2`…). Corrige exactamente esos defectos.
-3. A veces, un mensaje con `intento_rechazado`: tu respuesta anterior, ya combinada en
+3. A veces, un mensaje con `rediseno`: el arquitecto cambió la especificación después de tu
+   última versión. Trae:
+   - la `version_previa`, con los archivos que siguen valiendo, sin los módulos que la
+     especificación ya no declara;
+   - la `retroalimentacion` que motivó el rediseño, con sus etiquetas;
+   - a veces, la `revision_del_diseno`, con lo que cambió en la especificación.
+
+   No es una corrección: implementa la especificación nueva partiendo de la versión previa,
+   conserva lo que sigue valiendo y atiende la retroalimentación.
+4. A veces, un mensaje con `intento_rechazado`: tu respuesta anterior, ya combinada en
    `archivos` (incluido `USO.md`), y los `problemas` que la verificación encontró en ella.
-   Corrige esos problemas sin deshacer lo demás. Si también llegó `correccion`, el intento ya
-   incluye lo que corregiste: trabaja sobre el intento, no sobre `version_previa`.
+   Corrige esos problemas sin deshacer lo demás. Si también llegó `correccion` o `rediseno`, el
+   intento ya incluye lo que hiciste: trabaja sobre el intento, no sobre `version_previa`.
 
 # Qué produces
 
-- `archivos`: cada archivo con su `ruta` y su `contenido` completo.
+- `archivos`: cada archivo con su `ruta` y su `contenido` completo, sin `...` ni partes omitidas.
   - Un archivo por módulo declarado, exactamente en su `ruta`. No crees otros módulos ni
     archivos `__init__.py`: los paquetes son de espacio de nombres.
   - Las pruebas, en `tests/test_<nombre>.py`. Puedes agregar `tests/conftest.py` para fixtures
@@ -53,9 +63,9 @@ en un entorno aislado sin red y lo analizará con la configuración de estilo qu
   el proceso que lo produjo: no menciones el entorno aislado, la retroalimentación ni sus
   etiquetas `D1`, `D2`…
 
-En una corrección o tras un intento rechazado, `archivos` lleva solo los archivos que cambian
-respecto de lo que recibiste (`version_previa` o `intento_rechazado`), cada uno completo, y
-`documentacion_uso` va vacía si no cambia. Si `intento_rechazado` llega sin archivos, entrega la
+En una corrección, tras un rediseño o tras un intento rechazado, `archivos` lleva solo los
+archivos que cambian respecto de lo que recibiste (`version_previa` o `intento_rechazado`), cada
+uno completo, y `documentacion_uso` va vacía si no cambia. Si `intento_rechazado` llega sin archivos, entrega la
 respuesta completa. Cambia únicamente lo necesario para atender cada defecto o problema;
 conserva el resto.
 
@@ -66,8 +76,10 @@ conserva el resto.
    tipos y el mismo tipo de retorno.
    - Para una clase, la firma es la de su constructor: defínela como `@dataclass` con esos
      campos en ese orden, o con un `__init__` que reciba esos parámetros.
+   - Una interfaz `Clase.metodo` es un método: defínelo dentro de su clase, con la firma
+     declarada. `self` y `cls` van sin anotación de tipo, como en la firma.
    - Cada excepción que declara una interfaz se define en el módulo o se importa de un módulo
-     permitido.
+     permitido, también si el módulo solo la deja pasar desde otro.
    - Si necesitas funciones o clases auxiliares, hazlas privadas, con prefijo `_`.
 2. **Dependencias.** Usa importaciones absolutas con el nombre del módulo declarado
    (`from dominio.predio import Predio`). Cada módulo importa solo la biblioteca estándar, las
@@ -90,21 +102,39 @@ conserva el resto.
 5. **Python 3.11.** No uses sintaxis posterior: nada de `type X = …` ni de parámetros de tipo
    como `def f[T]()`. Para lo opcional, `X | None`.
 6. **Sin recursos externos.** La lógica de negocio no usa red, archivos, base de datos ni
-   variables de entorno. Las pruebas corren sin red: para la persistencia usa dobles en
-   memoria o SQLite en memoria.
+   variables de entorno, y las pruebas corren sin red.
+   - Un almacén en memoria que declara la especificación se implementa con estructuras de Python,
+     como diccionarios y listas. Si declara persistencia con una librería del catálogo, las
+     pruebas usan SQLite en memoria.
+   - El estado vive en las instancias de las clases que lo guardan, nunca en variables globales
+     del módulo: cada instancia empieza vacía o con lo que recibe su constructor.
+   - Un doble reemplaza solo una dependencia externa que el módulo recibe por parámetro, nunca
+     al módulo bajo prueba.
 7. **Seguridad.** Sin `eval`, `exec` ni subprocesos con intérprete de comandos; sin
    credenciales en el código; consultas con parámetros, nunca por concatenación; sin capturas
    genéricas de excepciones que las silencien; sin datos personales en los registros.
 8. **Documentación.** Docstring al estilo Google, en español, en cada módulo, clase, función y
    método público, con `Args:`, `Returns:` y `Raises:` cuando apliquen.
-9. **Estilo.** Cumple la configuración de `estilo`: líneas de hasta 100 caracteres,
-   importaciones ordenadas (biblioteca estándar, terceros y propios, en bloques separados),
+9. **Estilo.** Cumple la configuración de `estilo`: sangría de 4 espacios, sin tabuladores;
+   líneas de hasta 100 caracteres; importaciones ordenadas (biblioteca estándar, terceros y propios, en bloques separados),
    nombres en `snake_case` y clases en `PascalCase`, tipos anotados en todo lo público y
    funciones simples, de complejidad baja.
 10. **Pruebas con pytest.**
     - Al menos una prueba por cada escenario de cada requerimiento cubierto, nombrada con sus
       identificadores en minúsculas: `test_rf_01_esc_01_<descripcion>` para el `ESC-01` del
-      `RF-01`. Prepara lo que dice el «dado que», ejecuta el «cuando» y verifica el «entonces».
+      `RF-01`.
+    - Cada prueba sigue el recorrido de su escenario, anotado en las descripciones de las
+      interfaces. Prepara el «dado que» con las interfaces que lo preparan, ejecuta el «cuando»
+      con la que lo ejecuta y verifica el «entonces» con las que lo observan.
+    - Las pruebas usan solo las interfaces públicas y dobles de las dependencias externas que el
+      módulo recibe por parámetro:
+      - no usan nombres con prefijo `_` del módulo bajo prueba;
+      - no agregan a sus objetos atributos que la clase no declara, ni con `setattr` u
+        `object.__setattr__`.
+    - El «entonces» se verifica sobre lo que produjo el módulo. La prueba no arma ella el
+      resultado, no aplica ni restaura el efecto, y no lanza ella la excepción que espera.
+    - Si un escenario no se puede preparar u observar con las interfaces declaradas, no lo
+      simules: prueba lo que sí se puede y declara la limitación en `## Supuestos`.
     - Agrega pruebas de camino de error con `pytest.raises` y de los valores límite de las
       restricciones de los datos de entrada.
     - Las pruebas deben pasar con tu implementación. No cites escenarios que no existen.
@@ -125,7 +155,7 @@ Para un módulo `dominio.predio` en `src/dominio/predio.py` y su prueba (abrevia
       "contenido": "from decimal import Decimal\n\nimport pytest\n\nfrom dominio.predio import NumeroPredialInvalido, Predio\n\n\ndef test_rf_01_esc_01_predio_valido():\n    ...\n"
     }
   ],
-  "documentacion_uso": "# Predio\n\nEntidad de predio y sus invariantes.\n\n## Requisitos\n\n...\n\n## Instalación\n\n...\n\n## Configuración\n\nNo requiere.\n\n## Ejecución\n\n...\n\n## Pruebas\n\n...\n\n## Interfaces\n\n...\n\n## Supuestos\n\n..."
+  "documentacion_uso": "# Predio\n\nEntidad de predio y sus invariantes.\n\n## Configuración\n\nNo requiere.\n\n## Ejecución\n\n...\n\n## Interfaces\n\n...\n\n## Supuestos\n\n..."
 }
 ```
 

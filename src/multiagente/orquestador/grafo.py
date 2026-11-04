@@ -40,7 +40,7 @@ from multiagente.orquestador.estado import (
     Validacion,
     Veredicto,
 )
-from multiagente.orquestador.servicios import Servicios, VerificacionCalidad
+from multiagente.orquestador.servicios import Rediseno, Servicios, VerificacionCalidad
 
 _log = logging.getLogger(__name__)
 
@@ -573,8 +573,9 @@ class NodosGrafo:
     def n10_generacion(self, estado: EstadoGrafo) -> dict[str, Any]:
         """Genera una nueva versión del módulo sin recuperación de contexto.
 
-        Recibe la versión vigente, si la hay, para corregirla en lugar de reescribirla (RF-19);
-        tras un rediseño, la especificación cambió y el módulo se genera de cero. Si el modelo no
+        Recibe la versión vigente, si la hay, para corregirla en lugar de reescribirla (RF-19).
+        Tras un rediseño, la especificación cambió: la versión vigente ya no se corrige, pero llega
+        como referencia, con la última revisión del diseño. Si el modelo no
         da una versión válida, deja el motivo en `fallo_generacion` y una validación rechazada con
         los problemas: el flujo salta a N15, que cuenta la iteración.
         """
@@ -583,11 +584,16 @@ class NodosGrafo:
         especificacion = estado["arquitectura"].especificacion
         clave = f"{especificacion.id_especificacion} v{especificacion.version}"
         previa = codigo.vigente
+        rediseno = None
         if previa is not None and previa.especificacion not in (None, clave):
+            revisiones = estado["arquitectura"].revisiones
+            rediseno = Rediseno(
+                version_previa=previa, revision=revisiones[-1] if revisiones else None
+            )
             previa = None
         try:
             version = self.servicios.desarrollador.generar(
-                estado["requerimientos"], especificacion, validacion, previa
+                estado["requerimientos"], especificacion, validacion, previa, rediseno
             )
         except FALLAS_DEL_MODELO as error:
             # Sin versión válida, la iteración cuenta como fallida: N15 la registra y decide.

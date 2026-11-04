@@ -3,8 +3,10 @@
 El modelo recibe solo los requerimientos aprobados, la especificación de diseño y la
 configuración de estilo (decisiones 1 y 2 de `CLAUDE.md`). En una corrección recibe además la
 versión previa y la retroalimentación, y devuelve solo los archivos que cambian; el código los
-combina sobre la versión previa (RF-19). La versión resultante se verifica en código antes de
-pasar al tester (`verificacion.py`).
+combina sobre la versión previa (RF-19). Tras un rediseño, la versión anterior llega como
+referencia, sin los módulos que la especificación ya no declara, junto con la retroalimentación
+y la revisión del diseño; la salida se combina sobre esos archivos. La versión resultante se
+verifica en código antes de pasar al tester (`verificacion.py`).
 
 Si no pasa la verificación, el reintento sigue la misma vía: el modelo recibe su intento ya
 combinado con los problemas y devuelve solo lo que cambia, que el código combina sobre el
@@ -23,6 +25,7 @@ from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.estilo import EstiloGenerado
 from multiagente.llm.invocador import ErrorValidacionSalida
 from multiagente.orquestador.estado import Requerimientos, Validacion, VersionCodigo
+from multiagente.orquestador.servicios import Rediseno
 
 
 class IntentoRechazado(ErrorValidacionSalida):
@@ -81,12 +84,36 @@ def etiquetar_defectos(retroalimentacion: tuple[str, ...]) -> list[dict[str, str
     ]
 
 
+def archivos_de_referencia(
+    version: VersionCodigo, especificacion: EspecificacionDiseno
+) -> dict[str, str]:
+    """Archivos de una versión anterior que siguen valiendo con una especificación nueva.
+
+    Se conservan los módulos que la especificación sigue declarando en la misma ruta, las pruebas
+    y el documento de uso; los demás módulos ya no existen en el diseño.
+
+    Args:
+        version: Versión generada con la especificación anterior.
+        especificacion: Especificación nueva, aprobada tras el rediseño.
+
+    Returns:
+        Contenido de cada archivo que se conserva, por su ruta.
+    """
+    rutas = {modulo.ruta for modulo in especificacion.modulos}
+    return {
+        ruta: contenido
+        for ruta, contenido in version.archivos.items()
+        if ruta in rutas or ruta.startswith("tests/") or ruta == RUTA_USO
+    }
+
+
 def mensajes_generacion(
     requerimientos: Requerimientos,
     especificacion: EspecificacionDiseno,
     estilo: EstiloGenerado,
     validacion: Validacion,
     previa: VersionCodigo | None,
+    rediseno: Rediseno | None = None,
 ) -> list[ChatCompletionMessageParam]:
     """Arma los mensajes de datos de la generación.
 
@@ -99,6 +126,8 @@ def mensajes_generacion(
         estilo: Configuración de estilo del código generado.
         validacion: Validación vigente, con la retroalimentación a atender.
         previa: Versión anterior del módulo, o None en la primera generación.
+        rediseno: Versión anterior y revisión del diseño, si la especificación cambió desde
+            ella; la versión no se corrige, se toma como referencia.
 
     Returns:
         Uno o dos mensajes de datos que acompañan al prompt de generación.
@@ -121,6 +150,21 @@ def mensajes_generacion(
             "retroalimentacion": etiquetar_defectos(validacion.retroalimentacion),
         }
         mensajes.append({"role": "user", "content": _json({"correccion": correccion})})
+    elif rediseno is not None:
+        referencia = archivos_de_referencia(rediseno.version_previa, especificacion)
+        datos_rediseno: dict[str, object] = {
+            "version_previa": {
+                "numero": rediseno.version_previa.numero,
+                "archivos": [
+                    {"ruta": ruta, "contenido": contenido}
+                    for ruta, contenido in sorted(referencia.items())
+                ],
+            },
+            "retroalimentacion": etiquetar_defectos(validacion.retroalimentacion),
+        }
+        if rediseno.revision:
+            datos_rediseno["revision_del_diseno"] = rediseno.revision
+        mensajes.append({"role": "user", "content": _json({"rediseno": datos_rediseno})})
     return mensajes
 
 

@@ -178,6 +178,23 @@ class ServiciosArquitecto(Protocol):
         ...
 
 
+class Rediseno(ModeloEstricto):
+    """Lo que recibe el desarrollador cuando la especificación cambió tras su última versión.
+
+    La versión previa ya no se corrige, porque su especificación es otra: sirve de referencia
+    para conservar lo que sigue valiendo y atender la retroalimentación que motivó el rediseño
+    (ADR-0015).
+
+    Attributes:
+        version_previa: Versión vigente antes del rediseño.
+        revision: Última revisión del registro de decisión, con las observaciones, la respuesta
+            del arquitecto y los cambios de la especificación; None si el rediseño no dejó una.
+    """
+
+    version_previa: VersionCodigo
+    revision: TextoObligatorio | None = None
+
+
 class ServiciosDesarrollador(Protocol):
     """Trabajo del agente desarrollador en N10. No recibe contexto recuperado."""
 
@@ -187,11 +204,14 @@ class ServiciosDesarrollador(Protocol):
         especificacion: EspecificacionDiseno,
         validacion: Validacion,
         previa: VersionCodigo | None,
+        rediseno: Rediseno | None = None,
     ) -> VersionCodigo:
         """Genera una versión del módulo atendiendo la retroalimentación vigente (N10).
 
         Sin versión previa genera el módulo completo; con ella, corrige solo lo necesario para
-        atender la retroalimentación (RF-19). La versión nueva lleva el número siguiente.
+        atender la retroalimentación (RF-19). Tras un rediseño no hay versión previa que
+        corregir, pero la anterior llega como referencia. La versión nueva lleva el número
+        siguiente.
         """
         ...
 

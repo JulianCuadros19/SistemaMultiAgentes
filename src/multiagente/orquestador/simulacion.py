@@ -47,6 +47,7 @@ from multiagente.orquestador.servicios import (
     Dialogo,
     Dictamen,
     Diseno,
+    Rediseno,
     Servicios,
     Sintesis,
     VerificacionCalidad,
@@ -313,6 +314,7 @@ class ServiciosSimulados:
         especificacion: EspecificacionDiseno,
         validacion: Validacion,
         previa: VersionCodigo | None,
+        rediseno: Rediseno | None = None,
     ) -> VersionCodigo:
         """Genera una versión que declara los defectos que atiende (N10)."""
         self._contar("generar")
@@ -478,6 +480,7 @@ class DesarrolladorFijo:
         especificacion: EspecificacionDiseno,
         validacion: Validacion,
         previa: VersionCodigo | None,
+        rediseno: Rediseno | None = None,
     ) -> VersionCodigo:
         """Entrega la versión siguiente y declara atendida la retroalimentación (N10)."""
         numero = previa.numero + 1 if previa is not None else 1

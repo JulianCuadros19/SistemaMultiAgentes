@@ -46,7 +46,7 @@ from multiagente.orquestador.estado import (
     VersionCodigo,
 )
 from multiagente.orquestador.grafo import construir_grafo
-from multiagente.orquestador.servicios import Servicios, Sintesis
+from multiagente.orquestador.servicios import Rediseno, Servicios, Sintesis
 from multiagente.orquestador.simulacion import (
     RUTA_MODULO,
     ElicitadorFijo,
@@ -240,7 +240,7 @@ def test_genera_la_primera_version(cliente_falso, completar_respuesta):
     assert argumentos["response_format"]["json_schema"]["name"] == "SalidaGeneracion"
     assert cliente.opciones == {"timeout": 600}
     (llamada,) = registro.llamadas
-    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.6")
+    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.7")
     assert llamada.costo_usd == Decimal("0.091")
 
 
@@ -415,3 +415,53 @@ def test_n10_en_el_grafo_genera_y_corrige_tras_el_rechazo_final(cliente_falso, c
     assert [version.numero for version in codigo.versiones] == [1, 2]
     assert codigo.vigente.defectos_atendidos == (observacion,)
     assert codigo.vigente.archivos[RUTA_MODULO] == corregido
+
+
+# Rediseño ---------------------------------------------------------------------------------------
+
+
+def version_de_otro_diseno() -> VersionCodigo:
+    """La versión 1, generada con un diseño que además declaraba un módulo que ya no existe."""
+    previa = primera_version()
+    return previa.model_copy(
+        update={
+            "archivos": previa.archivos | {"src/retirado/modulo.py": '"""Ya no se declara."""\n'},
+            "especificacion": "ED-01 v0.1",
+        }
+    )
+
+
+def test_tras_un_rediseno_la_version_previa_llega_como_referencia():
+    rediseno = Rediseno(
+        version_previa=version_de_otro_diseno(), revision="### Revisión 1 · especificación 0.2"
+    )
+    validacion = Validacion(retroalimentacion=("Separa la persistencia",))
+    mensajes = mensajes_generacion(
+        REQUERIMIENTOS, ESPECIFICACION, ESTILO, validacion, None, rediseno
+    )
+    assert len(mensajes) == 2
+    datos = json.loads(mensajes[1]["content"])["rediseno"]
+    assert [a["ruta"] for a in datos["version_previa"]["archivos"]] == [
+        "USO.md",
+        RUTA_MODULO,
+        "tests/test_modulo.py",
+    ]
+    assert datos["retroalimentacion"] == [{"etiqueta": "D1", "defecto": "Separa la persistencia"}]
+    assert datos["revision_del_diseno"] == "### Revisión 1 · especificación 0.2"
+
+
+def test_tras_un_rediseno_se_conserva_lo_que_sigue_valiendo(cliente_falso, completar_respuesta):
+    anterior = version_de_otro_diseno()
+    corregido = MODULO.replace("if not dato:", "if not dato.strip():")
+    cliente = cliente_falso(
+        completar_respuesta(salida({RUTA_MODULO: corregido}, uso=""), modelo=MODELO)
+    )
+    validacion = Validacion(retroalimentacion=("Separa la persistencia",))
+    version = agente(cliente).generar(
+        REQUERIMIENTOS, ESPECIFICACION, validacion, None, Rediseno(version_previa=anterior)
+    )
+    assert version.archivos[RUTA_MODULO] == corregido
+    assert version.archivos["tests/test_modulo.py"] == anterior.archivos["tests/test_modulo.py"]
+    assert "src/retirado/modulo.py" not in version.archivos
+    assert version.defectos_atendidos == ("Separa la persistencia",)
+    assert "revision_del_diseno" not in datos_de(cliente.llamadas[0], 2)["rediseno"]

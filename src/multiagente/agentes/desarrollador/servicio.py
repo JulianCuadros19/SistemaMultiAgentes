@@ -12,6 +12,7 @@ from openai.types.chat import ChatCompletionMessageParam
 from multiagente.agentes.desarrollador.generacion import (
     IntentoRechazado,
     SalidaGeneracion,
+    archivos_de_referencia,
     mensaje_intento_rechazado,
     mensajes_generacion,
     version_desde_salida,
@@ -29,6 +30,7 @@ from multiagente.llm.invocador import ErrorValidacionSalida, InvocadorNodo, Para
 from multiagente.llm.prompts import cargar_prompt
 from multiagente.llm.traza import RegistradorLlamadas
 from multiagente.orquestador.estado import Requerimientos, Validacion, VersionCodigo
+from multiagente.orquestador.servicios import Rediseno
 
 
 class AgenteDesarrollador:
@@ -50,8 +52,13 @@ class AgenteDesarrollador:
         especificacion: EspecificacionDiseno,
         validacion: Validacion,
         previa: VersionCodigo | None,
+        rediseno: Rediseno | None = None,
     ) -> VersionCodigo:
         """Genera el módulo o corrige la versión previa con la retroalimentación (N10).
+
+        Tras un rediseño, la salida se combina sobre los archivos de la versión anterior que
+        siguen valiendo con la especificación nueva, y la versión atiende la retroalimentación
+        que motivó el rediseño.
 
         Una salida que no pasa la verificación estructural se reintenta una vez sobre el intento
         rechazado: el modelo lo recibe con los problemas y devuelve solo lo que cambia, que se
@@ -59,9 +66,13 @@ class AgenteDesarrollador:
         iteración como rechazada.
         """
         mensajes = mensajes_generacion(
-            requerimientos, especificacion, self.estilo, validacion, previa
+            requerimientos, especificacion, self.estilo, validacion, previa, rediseno
         )
-        base: Mapping[str, str] = previa.archivos if previa is not None else {}
+        base: Mapping[str, str] = {}
+        if previa is not None:
+            base = previa.archivos
+        elif rediseno is not None:
+            base = archivos_de_referencia(rediseno.version_previa, especificacion)
 
         def validar(salida: SalidaGeneracion) -> VersionCodigo:
             return version_desde_salida(
@@ -77,7 +88,12 @@ class AgenteDesarrollador:
                 base = error.archivos
             return [*mensajes, mensaje_intento_rechazado(base, problemas)]
 
-        return self.generacion.invocar_validado(mensajes, SalidaGeneracion, validar, reintento)
+        version = self.generacion.invocar_validado(mensajes, SalidaGeneracion, validar, reintento)
+        if rediseno is not None:
+            version = version.model_copy(
+                update={"defectos_atendidos": validacion.retroalimentacion}
+            )
+        return version
 
 
 def crear_agente_desarrollador(
