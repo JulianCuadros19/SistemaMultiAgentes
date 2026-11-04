@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-11-03
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0006 (enmiendas desde N17), ADR-0008 (casos límite y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos y versión previa tras un rediseño), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos) y ADR-0013 (rediseño desde N17)
+modifica: ADR-0006 (enmiendas desde N17, límite de turnos y registro de información capturada), ADR-0008 (casos límite, síntesis, verificación y enmiendas de los requerimientos), ADR-0010 (escenarios ejecutables, métodos y revisiones del registro de decisión), ADR-0011 (pruebas por interfaces públicas, métodos, versión previa tras un rediseño y estilo en N10), ADR-0012 (pruebas que simulan el efecto y conformidad de métodos), ADR-0013 (rediseño desde N17) y ADR-0014 (convergencia del resumen)
 ---
 
 # ADR-0015 · Calidad de la primera salida y enmiendas de los requerimientos desde N17
@@ -416,7 +416,191 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
     CAL-MT-002 y CAL-MT-003), para que el reintento las corrija antes del tester.
   - Evitaría las dos v1 rechazadas de esta medición.
   - Cambia el reparto de los pasos 9 y 10, en el que el estilo solo lo dictamina el tester.
+  - El equipo la aprobó el 2026-11-04: decisión 29.
 - **Sintaxis rota:** sigue causando reintentos, 3 de 11.
+
+#### Fase 5 · El elicitador pregunta por casos límite
+
+20. **Casos límite acotados antes del resumen** (modifica el ADR-0008 y la invariante del
+    registro del ADR-0006).
+    - **Cuándo pregunta:** con los atributos capturados (salvo lo que el cliente no supo), N3
+      pregunta por situaciones especiales de las reglas registradas antes del resumen.
+    - **Cuánto:**
+      - hasta tres preguntas (`MAX_PREGUNTAS_CASOS_LIMITE`) y al menos una;
+      - cada una de un patrón de dom-007 distinto (`CategoriaCasoLimite`), sin repetirlo.
+    - **Registro:**
+      - lo que el cliente define queda en `RegistroCaptura.casos_limite`, con la misma fidelidad
+        que las reglas;
+      - el resumen lo muestra como «Casos especiales acordados»;
+      - lo que el cliente no sabe de una situación especial no se vuelve pregunta abierta, porque
+        no bloquea los requerimientos.
+    - **Sin cambiar la suficiencia de eli-006:** `pendientes` declara `casos_limite` antes de
+      `confirmacion`, y el resumen solo se confirma con la fase cerrada.
+    - **Cuándo se cierra:**
+      - al agotar las preguntas;
+      - cuando el modelo indica, después de la primera, que no queda una categoría que aplique;
+      - o cuando al cliente le quedan tres turnos o menos frente al límite
+        (`RESERVA_TURNOS_CONFIRMACION`, en N3).
+    - **Contexto:** N2 consulta aparte los patrones de dom-007: su introducción y sus ocho
+      patrones.
+    - **Simulación:** la simulación del grafo no explora casos límite.
+21. **Una pregunta por algo más** (eli-006, fase 6). Cerrados los casos límite, N3 pregunta una
+    sola vez, con un texto fijo, si falta algo importante: la prioridad, los mensajes de error, el
+    formato de los valores o un ejemplo con cifras. Su respuesta tampoco abre preguntas.
+22. **El límite de turnos pasa de 15 a 18** (decisión del equipo del 2026-11-04; modifica el
+    ADR-0006). La fase de casos límite y la pregunta por algo más agregan hasta cuatro turnos.
+    `MAX_TURNOS_ELICITACION` vale 18 por defecto y en `.env.example`.
+23. **El resumen converge** (modifica la decisión 21 del ADR-0014 y atiende dos de sus
+    pendientes). Con las decisiones 20 a 22, la corrida ampliada retrocedió (verificación de la
+    fase 5): el 43 % de las preguntas repetía el resumen. Había cuatro causas:
+    - **Listas parciales.** La extracción devolvía solo lo que mencionaba la respuesta, y lo demás
+      se perdía. En el caso 15, la condición «se ejecuta cada noche» salía y volvía en cada
+      resumen.
+      - Ahora los datos se combinan por nombre.
+      - En las listas de texto, una entrada que el modelo no devuelve sigue vigente. Sale si una
+        entrada nueva la reformula, que la reemplaza en su lugar, o si la respuesta habla de ella.
+      - «Hablar de» una entrada es repetir dos tercios de sus raíces, y al menos dos
+        (`_habla_de`). Una raíz en común no basta: «falta que el tipo solo puede ser ESC, CER o
+        PAZ» borraba «el tipo en minúsculas se corrige a mayúsculas» (caso 14). Con la mitad,
+        dos palabras frecuentes del dominio todavía bastaban (casos 06 y 15).
+      - Lo que el cliente rechaza sin reemplazo sigue saliendo por `retirar`.
+    - **Ejemplos sin lugar.** El cliente daba un ejemplo con cifras que el registro no tenía dónde
+      guardar, así que el resumen nunca lo mostraba.
+      - `RegistroCaptura.ejemplos` los guarda, y el resumen los muestra como «Ejemplos para
+        verificar».
+      - La síntesis los usa como datos de los escenarios.
+    - **Tipos invisibles.** El cliente pedía que un dato fuera decimal y el resumen no mostraba el
+      tipo. Ahora muestra el tipo de cada dato.
+    - **«Falta algo» sin el dato.** La pregunta fija «¿Qué falta o qué debo corregir del
+      resumen?» se repetía (caso 06). Ahora el modelo pregunta específicamente por lo que el
+      cliente señaló (`resumen_incompleto`), sin repetir el resumen.
+    - **Sistemas en «A quién le sirve».** El cliente pedía la tarea programada que usa la
+      herramienta en esa línea, y el rol no la admite (decisión 29 del ADR-0014), así que el
+      reclamo se repetía hasta el límite (caso 14).
+      - Con condiciones registradas, el resumen avisa junto al rol que los sistemas o procesos
+        que lo usan aparecen en «Condiciones ya definidas».
+      - Si el cliente insiste, N3 le explica dónde quedó.
+24. **La síntesis y la verificación ante la exploración** (modifica el ADR-0008).
+    - **Preguntas abiertas.** En la corrida ampliada, 14 de 20 historias llegaron a N6 con
+      preguntas abiertas. En 4 de ellas, el registro no tenía preguntas abiertas ni atributos sin
+      respuesta: N5 las sacaba de los «no sé» de la transcripción. En la repetición de los cinco
+      casos que no convergían, pasó en 3 de 5.
+      - Como una pregunta abierta requiere al cliente, N6 escalaba el conjunto sin intentar la
+        corrección automática de los demás defectos (decisión 10 del ADR-0008).
+      - Pedírselo al prompt no bastó: en 3 de 11 corridas posteriores N5 siguió agregándolas.
+      - Ahora, con el resumen confirmado y nada pendiente, las preguntas abiertas de la historia
+        son exactamente las del registro, y lo decide el código. Si el registro quedó sin
+        confirmar o con atributos sin respuesta, N5 puede agregar lo que falte.
+    - **Historias con varias capacidades.** Los requerimientos reproducen la historia como
+      título, así que una historia que une capacidades deja un defecto C5 en cada uno. Si la
+      funcionalidad reúne varias, la historia enuncia la que las abarca y cada requerimiento
+      desarrolla una.
+    - **Códigos del cliente.** C9 ya no marca como detalle de implementación un código en
+      mayúsculas con guion bajo, como `ESC_2019_00042`: es un valor que dio el cliente. Los
+      ejemplos lo llevaban a los escenarios.
+25. **Prompts.**
+    - `elicitador.dialogo` 1.9:
+      - categorías de casos límite, prioridad entre ellas, pregunta abierta y salida de la fase;
+      - la pregunta específica ante un resumen incompleto;
+      - dónde quedan los sistemas que el cliente pide en «A quién le sirve»;
+      - la pregunta de cierre pide todas las correcciones de una vez.
+      - Hasta la 1.8, el ejemplo de pregunta por un caso límite («¿Qué debe pasar si el pago
+        llega con una fecha anterior al inicio de la vigencia?») era la regla oculta R1 del caso
+        del predial. La 1.9 usa un ejemplo de otro proceso, y la medición final es con ella.
+    - `elicitador.extraccion` 1.6:
+      - registra los casos límite y los ejemplos;
+      - una entrada omitida se conserva;
+      - la situación actual no es una condición, y no registra como regla lo que repite la
+        funcionalidad.
+    - `elicitador.sintesis` 1.8:
+      - cada caso especial entra en la regla de su requerimiento con un escenario que lo
+        verifica, y los ejemplos dan los datos de los escenarios;
+      - las preguntas abiertas y la historia con varias capacidades de la decisión 24;
+      - un defecto en el título de un requerimiento se corrige en la historia, porque el sistema
+        la copia como título. En el caso 14 de la medición final, N5 corregía el título y el C5
+        seguía tras dos correcciones. La 1.8 no se midió.
+    - Las corridas intermedias usaron borradores sin cambiar la versión. La traza los distingue
+      por `huella_prompt`.
+26. **RF-07 de N6 alineado con eli-004:** al menos tres escenarios por requerimiento: el camino
+    feliz, el alterno y el de error.
+27. **Base de conocimiento:** eli-006 1.2 agrega la fase de casos límite, con reingesta.
+28. **Casos con reglas ocultas y juez de evaluación.**
+    - Los casos de `evaluacion/casos/casos-limite/` traen reglas que el cliente simulado solo dice
+      si le preguntan por esa situación (`ReglaOculta`; cliente simulado 1.2):
+      - el descuento del predial: la fecha anterior a la vigencia, el cuadre de los redondeos y
+        las deudas de vigencias anteriores;
+      - los abonos de pensiones: el reverso de un abono con abonos posteriores, el abono ya
+        reversado y el historial.
+    - `scripts/evaluar_elicitador.py` las busca en el registro y en los requerimientos, por
+      términos y con un juez semántico (`evaluacion/juez_reglas_ocultas.md`). Guarda también la
+      historia de cada sesión.
+    - El juez es solo de evaluación: no es parte del sistema.
+29. **N10 se adelanta al estilo que rechazaría el tester** (decisión del equipo del 2026-11-04;
+    atiende el pendiente de la fase 4; modifica el ADR-0011).
+    - `estilo_bloqueante` deriva el criterio de las reglas del tester: con
+      `UMBRAL_HALLAZGOS_MEDIA=0`, rechazan las infracciones de severidad alta y media.
+    - La verificación de N10 las reporta como «RF-16 · estilo», y el reintento las corrige.
+    - El tester sigue dictaminando el estilo, la ejecución y la severidad.
+
+**Verificación de la fase 5.**
+- **Sin costo:** 677 pruebas unitarias, 31 de integración y 19 de embeddings.
+- **Prueba `nube` del paso 7:** pasa con diálogo 1.9, extracción 1.6 y síntesis 1.7.
+- **Reglas ocultas.** Los dos casos de `evaluacion/casos/casos-limite/`, con tres corridas por
+  caso. El juez semántico cuenta las reglas que llegan a los requerimientos:
+
+| Medición | Predial | Abonos | Total, de 18 |
+|---|---|---|---|
+| Línea base, sin casos límite | 0, 1, 0 | 0, 0, 0 | 1 |
+| Límite de 15 turnos, tres iteraciones de los prompts | — | — | 7, 6 y 5 |
+| Límite de 18 y decisión 23 | 2, 1, 1 | 2, 2, 2 | 10 |
+| Final: decisión 24 y diálogo 1.9 | 1, 1, 2 | 2, 0, 2 | 8 |
+
+- **Convergencia.** Los cinco casos de la corrida ampliada que no convergían (04, 06, 09, 14 y
+  15), una corrida por caso:
+
+| Medición | Cambios | Turnos | Resúmenes confirmados | En el límite | Defectos en N6 | USD, sistema y cliente |
+|---|---|---|---|---|---|---|
+| Corrida ampliada | decisiones 20 a 22 | 76 | 4 | 2 | 11 | 0,42 y 0,18 |
+| 2 | ejemplos, tipos y datos por nombre | 76 | 4 | 2 | 7 | 0,45 y 0,20 |
+| 3 | listas de texto y pregunta específica | 65 | 5 | 0 | 26 | 0,34 y 0,17 |
+| 4 | dos tercios, síntesis 1.7 y C9 | 70 | 4 | 1 | 6 | 0,40 y 0,16 |
+| Final | aviso de sistemas, preguntas abiertas del registro y diálogo 1.9 | 73 | 5 | 1 | 6 | 0,51 y 0,20 |
+
+- **Lectura de la convergencia:**
+  - la medición 3 llegó a 26 defectos porque las preguntas abiertas sacadas de la exploración
+    impedían la corrección automática (decisión 24);
+  - de los 6 defectos de la final, 3 son C5 del caso 14, que motivan la síntesis 1.8;
+  - los otros 3 son del caso 09, que escaló por una pregunta abierta legítima del registro.
+- **Corrida ampliada de 20 casos,** con las decisiones 20 a 22 y antes de la 23:
+  - 306 turnos, 13 de 20 resúmenes confirmados y 8 sesiones en el límite;
+  - 53 preguntas por casos límite;
+  - 2,50 USD;
+  - en la medición 2 del ADR-0014 eran 211 turnos, 17 de 20 y 3 en el límite;
+  - no se repitió con las decisiones 23 y 24.
+- **Criterios de terminado:**
+  - Al menos 2 de 3 reglas ocultas por caso: no se cumple de forma estable. La captura pasó de 1
+    a 8 y 10 de 18. En la medición final, la media es 1,33 por caso, y 3 de 6 corridas llegan a
+    2.
+  - La corrida ampliada no retrocede: no se midió con las decisiones 23 y 24. El tope de 211
+    turnos no es alcanzable por diseño: la exploración agrega de 2 a 4 turnos por sesión, y en la
+    medición final de los cinco casos sumó 19.
+  - La prueba `nube` del paso 7 pasa.
+- **Costo de la fase:**
+  - 8,55 USD en `docs/mediciones/paso-12-elicitacion-3.jsonl`, frente a 2,3 del plan;
+  - reparto: N3 4,51, N5 1,42, cliente simulado 2,53 y juez 0,10;
+  - aparte, las dos corridas de la prueba `nube`, de unos 0,08 USD cada una.
+
+**Pendientes de la fase 5** (para el equipo).
+- **Corrida ampliada de 20 casos** con las decisiones 23 y 24, de unos 2,7 USD. La alternativa es
+  dejarla a la fase 7, cuya corrida de extremo a extremo incluye la elicitación.
+- **Criterio de turnos:** revisarlo, por ejemplo 211 turnos sin contar la exploración.
+- **Captura de reglas ocultas:** aceptarla así o ampliar la exploración, por ejemplo a cuatro
+  preguntas.
+- **Propuesta:** que N6 corrija los defectos que N5 puede resolver aunque haya preguntas
+  abiertas, y que después escale solo lo que requiere al cliente.
+  - En 9 de las 20 sesiones de la corrida ampliada, N6 escaló sin corregir defectos C5, C7 o C9
+    porque había al menos una pregunta abierta.
+  - Cambia la implementación de la decisión 10 del ADR-0008.
 
 ## Verificación
 
@@ -452,3 +636,11 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
   - Tabla 1, N12: la conformidad cubre los métodos.
   - Flujo: la devolución de N17 al arquitecto conserva la versión anterior como referencia para
     N10.
+- **Fase 5:**
+  - Tabla 1, N3: antes del resumen, pregunta por los casos límite de las reglas capturadas, hasta
+    tres y cada uno de un patrón distinto, y una vez por algo más. El límite de turnos pasa a 18.
+  - Registro de información capturada: casos especiales acordados y ejemplos con cifras.
+  - Tabla 1, N5: con el resumen confirmado, las preguntas abiertas de la historia son las del
+    registro.
+  - RF-07 en N6: al menos tres escenarios por requerimiento.
+  - Tabla 1, N10: antes de entregar, verifica también el estilo que rechazaría el tester.

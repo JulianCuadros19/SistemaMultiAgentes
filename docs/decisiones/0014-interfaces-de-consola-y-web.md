@@ -546,9 +546,9 @@ parciales queda para otro plan.
 - El planteamiento de las necesidades de eventos: el caso 18 todavía sale como «publicar un aviso»
   en 2 de 3.
 - Las listas parciales que borran lo capturado: en el caso 04, las reglas pasaron de 15 a 2 en un
-  turno, y también pasa en los casos 08, 09, 13 y 15.
+  turno, y también pasa en los casos 08, 09, 13 y 15. Lo atiende la decisión 23 del ADR-0015.
 - Una pregunta específica, en lugar de la fija «¿Qué falta…?», cuando el cliente señala lo que
-  falta sin darlo.
+  falta sin darlo. Lo atiende la decisión 23 del ADR-0015.
 
 ### Correcciones tras la verificación con el equipo por consola
 
