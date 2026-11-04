@@ -21,6 +21,7 @@ from multiagente.orquestador.estado import (
     Conversacion,
     EjecucionPruebas,
     Hallazgo,
+    RecorridoEscenario,
     RegistroCaptura,
     Requerimientos,
     Validacion,
@@ -85,11 +86,16 @@ class Diseno(ModeloEstricto):
     Attributes:
         capacidades_no_cubiertas: Lo que piden los requerimientos y el catálogo tecnológico no
             permite (regla 4 de arq-004): el diseño las omite y la persona decide en N9.
+        recorridos: Cómo se ejecuta cada escenario aprobado con las interfaces del diseño.
+        revisiones: Revisiones del registro de decisión, la última incluida si este diseño
+            atendió observaciones del revisor.
     """
 
     registro_decision: TextoObligatorio
     especificacion: EspecificacionDiseno
     capacidades_no_cubiertas: tuple[TextoObligatorio, ...] = ()
+    recorridos: tuple[RecorridoEscenario, ...] = ()
+    revisiones: tuple[TextoObligatorio, ...] = ()
 
 
 class AnalisisEstatico(ModeloEstricto):
@@ -163,9 +169,12 @@ class ServiciosArquitecto(Protocol):
         ...
 
     def validar(
-        self, especificacion: EspecificacionDiseno, requerimientos: Requerimientos
+        self,
+        especificacion: EspecificacionDiseno,
+        requerimientos: Requerimientos,
+        recorridos: tuple[RecorridoEscenario, ...] = (),
     ) -> list[str]:
-        """Devuelve los errores de cobertura y de catálogo de la especificación (N9)."""
+        """Devuelve los errores de la especificación y de los recorridos de sus escenarios (N9)."""
         ...
 
 

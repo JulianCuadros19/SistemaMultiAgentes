@@ -125,6 +125,7 @@ def main() -> None:
                     diseno = Diseno(
                         registro_decision=arquitectura.registro_decision,
                         especificacion=arquitectura.especificacion,
+                        recorridos=arquitectura.recorridos,
                     )
                     exportado = exportar_caso_desarrollo(caso, diseno, argumentos.exportar)
                     print(f"Caso de desarrollo guardado: {argumentos.exportar} ({exportado.id})")

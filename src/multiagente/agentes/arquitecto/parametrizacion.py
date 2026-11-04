@@ -1,15 +1,16 @@
 """Parametrización de la arquitectura elegida: especificación de diseño (N8, segunda llamada).
 
-El modelo declara módulos, interfaces, dependencias y modelo de datos. El código asigna los
-campos deterministas (identificador, versión, arquitectura base y requerimientos cubiertos) y
-valida contra el esquema del Anexo B, que incluye la ausencia de ciclos (validación 1). Las
-validaciones de cobertura y de catálogo son de N9.
+El modelo declara módulos, interfaces, dependencias y modelo de datos, y el recorrido de cada
+escenario aprobado. El código asigna los campos deterministas (identificador, versión,
+arquitectura base y requerimientos cubiertos) y valida contra el esquema del Anexo B, que incluye
+la ausencia de ciclos (validación 1). Las validaciones de cobertura y de catálogo son de N9.
 """
 
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from multiagente.agentes.arquitecto.contexto import mensaje_contexto
+from multiagente.agentes.arquitecto.recorridos import RecorridoModelo, sin_anotaciones
 from multiagente.agentes.contexto import json_texto
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno, TipoInterfaz
 from multiagente.llm.invocador import ErrorValidacionSalida
@@ -84,6 +85,7 @@ class SalidaEspecificacion(BaseModel):
     dependencias_externas: list[DependenciaModelo]
     reglas_de_dependencia: list[str]
     capacidades_no_cubiertas: list[str]
+    recorridos: list[RecorridoModelo]
 
 
 def mensajes_parametrizacion(
@@ -95,8 +97,9 @@ def mensajes_parametrizacion(
 ) -> list[ChatCompletionMessageParam]:
     """Arma los mensajes de datos de la parametrización.
 
-    En una corrección incluye la especificación anterior, los errores de validación de N9 y las
-    observaciones del revisor.
+    Las observaciones del revisor van todas y, aparte, las nuevas: las que ningún diseño atendió
+    todavía. En una corrección incluye los errores de validación de N9 y, si la hubo, la
+    especificación anterior sin la anotación de escenarios, con sus recorridos.
 
     Args:
         requerimientos: Requerimientos aprobados en N6.
@@ -113,14 +116,22 @@ def mensajes_parametrizacion(
         "registro_decision": registro,
         "requerimientos": [r.model_dump(mode="json") for r in requerimientos.requerimientos],
         "observaciones_revisor": list(previa.observaciones_revisor),
+        "observaciones_nuevas": list(
+            previa.observaciones_revisor[previa.observaciones_atendidas :]
+        ),
     }
-    if previa.especificacion is not None and (
-        previa.errores_validacion or previa.observaciones_revisor
+    if previa.errores_validacion or (
+        previa.especificacion is not None and previa.observaciones_revisor
     ):
-        datos["correccion"] = {
-            "especificacion_previa": previa.especificacion.model_dump(mode="json"),
-            "errores_validacion": list(previa.errores_validacion),
-        }
+        correccion: dict[str, object] = {"errores_validacion": list(previa.errores_validacion)}
+        if previa.especificacion is not None:
+            correccion["especificacion_previa"] = sin_anotaciones(previa.especificacion).model_dump(
+                mode="json"
+            )
+            correccion["recorridos_previos"] = [
+                recorrido.model_dump(mode="json") for recorrido in previa.recorridos
+            ]
+        datos["correccion"] = correccion
     return [mensaje_contexto(contexto), {"role": "user", "content": json_texto(datos)}]
 
 
@@ -152,8 +163,9 @@ def especificacion_desde_salida(
     Raises:
         ErrorValidacionSalida: Si incumple el esquema o tiene dependencias circulares.
     """
-    # Las capacidades no cubiertas son un aviso para N9, no un campo del Anexo B.
-    datos = salida.model_dump(mode="json", exclude={"capacidades_no_cubiertas"})
+    # Las capacidades no cubiertas y los recorridos acompañan a la especificación, pero no son
+    # campos del Anexo B.
+    datos = salida.model_dump(mode="json", exclude={"capacidades_no_cubiertas", "recorridos"})
     for modulo in datos["modulos"]:
         modulo["requerimientos"] = [rf.strip() for rf in modulo["requerimientos"]]
     for entidad in datos["modelo_datos"]:

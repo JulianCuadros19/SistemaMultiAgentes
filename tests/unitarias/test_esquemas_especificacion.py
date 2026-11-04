@@ -16,6 +16,7 @@ from multiagente.core.esquemas.especificacion_diseno import (
     InterfazPublica,
     TipoInterfaz,
     buscar_ciclo,
+    diferencias,
     firma_como_funcion,
 )
 
@@ -179,3 +180,38 @@ def test_firma_como_funcion_rechaza_texto_que_no_es_firma():
     )
     with pytest.raises(SyntaxError):
         firma_como_funcion(interfaz)
+
+
+def test_diferencias_entre_versiones_de_la_especificacion(especificacion):
+    previa = EspecificacionDiseno.model_validate(especificacion)
+    datos = copy.deepcopy(especificacion)
+    interfaz = datos["modulos"][0]["interfaces_publicas"][0]
+    interfaz["firma"] = "Predio(numero_predial: str, area_terreno: Decimal)"
+    interfaz["descripcion"] = "Otra redacción que no cuenta"
+    interfaz["excepciones"] = []
+    datos["modulos"][0]["interfaces_publicas"].append(
+        {
+            "nombre": "consultar_predio",
+            "tipo": "funcion",
+            "firma": "consultar_predio(numero_predial: str) -> Predio",
+            "descripcion": "Consulta un predio registrado",
+        }
+    )
+    agregar_modulo(datos, "infraestructura.almacen", ["dominio.predio"])
+    datos["modelo_datos"][0]["campos"].append(
+        {"nombre": "avaluo", "tipo": "Decimal", "obligatorio": True}
+    )
+    datos["modelo_datos"][0]["campos"][0]["tipo"] = "int"
+    datos["dependencias_externas"] = []
+    nueva = EspecificacionDiseno.model_validate(datos)
+    assert diferencias(previa, nueva) == [
+        "Interfaz nueva en dominio.predio: `consultar_predio(numero_predial: str) -> Predio`",
+        "Firma de dominio.predio.Predio: `Predio(numero_predial: str, area_terreno: Decimal, "
+        "area_construida: Decimal)` → `Predio(numero_predial: str, area_terreno: Decimal)`",
+        "Excepciones de dominio.predio.Predio: ['NumeroPredialInvalido'] → []",
+        "Módulo nuevo infraestructura.almacen, con Predio, consultar_predio",
+        "Campo nuevo en Predio: avaluo (Decimal)",
+        "Tipo de Predio.numero_predial: str → int",
+        "Dependencia externa retirada: pydantic",
+    ]
+    assert diferencias(previa, previa) == []

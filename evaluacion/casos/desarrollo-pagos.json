@@ -691,14 +691,14 @@
           {
             "nombre": "suscribir_pago_confirmado",
             "tipo": "funcion",
-            "firma": "suscribir_pago_confirmado(self, manejador: callable) -> None",
+            "firma": "suscribir_pago_confirmado(self, manejador: Callable[[AvisoPagoConfirmadoEnriquecido], object]) -> None",
             "descripcion": "Registra un manejador para eventos enriquecidos de pago confirmado",
             "excepciones": []
           },
           {
             "nombre": "suscribir_pago_reversado",
             "tipo": "funcion",
-            "firma": "suscribir_pago_reversado(self, manejador: callable) -> None",
+            "firma": "suscribir_pago_reversado(self, manejador: Callable[[AvisoPagoReversadoEnriquecido], object]) -> None",
             "descripcion": "Registra un manejador para eventos enriquecidos de pago reversado",
             "excepciones": []
           },

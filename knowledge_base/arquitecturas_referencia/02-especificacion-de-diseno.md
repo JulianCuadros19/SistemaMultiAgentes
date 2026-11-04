@@ -4,8 +4,8 @@ titulo: Esquema de la especificación de diseño
 fuente: Formato del Anexo B del documento de tesis
 tipo_fuente: elaboracion_propia
 tags: [especificacion, esquema, diseño, modulos, anexo_b]
-version: 1.1
-fecha: 2026-10-08
+version: 1.2
+fecha: 2026-11-03
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -74,6 +74,7 @@ desarrollador no dispone de ninguna otra fuente de información.
 | Firmas completas | Toda interfaz declara tipos de parámetros y de retorno |
 | Stack autorizado | Toda dependencia externa pertenece al catálogo tecnológico |
 | Rutas coherentes | La ruta del archivo corresponde a la capa declarada |
+| Escenarios ejecutables | Todo escenario aprobado tiene un recorrido que lo prepara, lo ejecuta y lo observa con interfaces declaradas. El recorrido acompaña a la especificación, fuera del Anexo B |
 
 ## Por qué la especificación debe ser estructurada y no prosa
 

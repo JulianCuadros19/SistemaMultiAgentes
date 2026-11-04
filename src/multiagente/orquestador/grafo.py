@@ -501,6 +501,8 @@ class NodosGrafo:
                     "observaciones_atendidas": len(previa.observaciones_revisor),
                     "fallo_diseno": None,
                     "capacidades_no_cubiertas": diseno.capacidades_no_cubiertas,
+                    "recorridos": diseno.recorridos,
+                    "revisiones": diseno.revisiones,
                 }
             )
         }
@@ -522,7 +524,7 @@ class NodosGrafo:
         else:
             errores += tuple(
                 self.servicios.arquitecto.validar(
-                    arquitectura.especificacion, estado["requerimientos"]
+                    arquitectura.especificacion, estado["requerimientos"], arquitectura.recorridos
                 )
             )
         limite = estado["control"].limite_correcciones_diseno
@@ -546,9 +548,10 @@ class NodosGrafo:
                 ),
                 "errores": list(errores),
                 "capacidades_no_cubiertas": list(arquitectura.capacidades_no_cubiertas),
+                "recorridos": [r.model_dump(mode="json") for r in arquitectura.recorridos],
             },
             bloqueo=(
-                "La especificación no pasa las validaciones del Anexo B y no puede aprobarse: "
+                "La especificación no pasa las validaciones de N9 y no puede aprobarse: "
                 "recházela con observaciones para que el arquitecto la corrija, o cierre la sesión."
                 if errores
                 else None

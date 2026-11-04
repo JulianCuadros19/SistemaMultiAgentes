@@ -2,7 +2,9 @@
 
 El modelo elige del catálogo cerrado con los criterios de selección (arq-003) a la vista. El
 código verifica las reglas obligatorias de la plantilla arq-001 y arma el registro en Markdown
-con la estructura MADR, de modo que su forma no depende del modelo.
+con la estructura MADR, de modo que su forma no depende del modelo. Cada rediseño que atiende
+observaciones del revisor agrega una revisión al registro, con la respuesta del modelo y los
+cambios de la especificación, que calcula el código.
 """
 
 import re
@@ -50,6 +52,7 @@ class SalidaSeleccion(BaseModel):
     consecuencias_favorables: list[str]
     consecuencias_desfavorables: list[str]
     confirmacion: str
+    respuesta_observaciones: str
 
 
 def mensajes_seleccion(
@@ -69,6 +72,9 @@ def mensajes_seleccion(
         "historias": [h.model_dump(mode="json") for h in requerimientos.historias],
         "requerimientos": [r.model_dump(mode="json") for r in requerimientos.requerimientos],
         "observaciones_revisor": list(previa.observaciones_revisor),
+        "observaciones_nuevas": list(
+            previa.observaciones_revisor[previa.observaciones_atendidas :]
+        ),
     }
     if previa.registro_decision:
         datos["registro_previo"] = previa.registro_decision
@@ -80,7 +86,10 @@ def _textos(valores: list[str]) -> list[str]:
 
 
 def validar_seleccion(
-    salida: SalidaSeleccion, aprobados: set[str], arquitecturas: frozenset[str]
+    salida: SalidaSeleccion,
+    aprobados: set[str],
+    arquitecturas: frozenset[str],
+    observaciones_nuevas: bool = False,
 ) -> SalidaSeleccion:
     """Verifica las reglas obligatorias del registro de decisión (arq-001 y arq-003).
 
@@ -88,6 +97,8 @@ def validar_seleccion(
         salida: Salida del modelo.
         aprobados: Identificadores de los requerimientos aprobados.
         arquitecturas: Identificadores del catálogo cerrado.
+        observaciones_nuevas: Si el revisor dejó observaciones que ningún diseño atendió; la
+            salida debe responderlas.
 
     Returns:
         La salida con los identificadores normalizados.
@@ -130,6 +141,11 @@ def validar_seleccion(
         problemas.append("Describe una confirmación verificable de la decisión.")
     if not salida.titulo.strip() or not salida.contexto.strip():
         problemas.append("El título y el contexto no pueden ir vacíos.")
+    if observaciones_nuevas and not salida.respuesta_observaciones.strip():
+        problemas.append(
+            "Responde a las observaciones nuevas del revisor: qué cambia en la decisión y en la "
+            "especificación, y por qué."
+        )
     if problemas:
         raise ErrorValidacionSalida(problemas)
     return salida
@@ -208,3 +224,59 @@ def registro_de_decision(
         if opcion.id != salida.elegida and opcion.motivo_descarte:
             lineas.append(f"- Descartada, porque {opcion.motivo_descarte.strip()}")
     return con_fuentes("\n".join(lineas)) + "\n"
+
+
+ENCABEZADO_REVISIONES = "## Revisiones"
+
+
+def entrada_de_revision(
+    numero: int,
+    version: str,
+    observaciones: tuple[str, ...],
+    respuesta: str,
+    cambios: list[str] | None,
+) -> str:
+    """Arma la entrada de una revisión del registro de decisión.
+
+    Args:
+        numero: Número de la revisión en la sesión.
+        version: Versión de la especificación que resulta de la revisión.
+        observaciones: Observaciones del revisor que la motivan.
+        respuesta: Cómo las atiende el arquitecto, según la selección.
+        cambios: Cambios de la especificación respecto de la anterior; None si aún no se conocen
+            o si no había especificación anterior.
+
+    Returns:
+        La entrada en Markdown, con su propio encabezado.
+    """
+    lineas = [
+        f"### Revisión {numero} · especificación {version}",
+        "",
+        "Observaciones del revisor:",
+        "",
+        *(f"- «{observacion.strip()}»" for observacion in observaciones),
+        "",
+        f"Respuesta: {respuesta.strip()}",
+    ]
+    if cambios is not None:
+        lineas += ["", "Cambios en la especificación:", ""]
+        lineas += [f"- {cambio}" for cambio in cambios] or ["- Ninguno."]
+    return "\n".join(lineas)
+
+
+def con_revisiones(registro: str, revisiones: tuple[str, ...]) -> str:
+    """Reemplaza la sección de revisiones del registro por las revisiones dadas.
+
+    Aplicarla dos veces da el mismo resultado: la sección anterior, si la hay, se descarta.
+
+    Args:
+        registro: Registro de decisión, con o sin sección de revisiones.
+        revisiones: Entradas de revisión, en orden.
+
+    Returns:
+        El registro con las revisiones al final, o sin sección si no hay ninguna.
+    """
+    base = registro.split(f"\n{ENCABEZADO_REVISIONES}\n", 1)[0].rstrip("\n") + "\n"
+    if not revisiones:
+        return base
+    return f"{base}\n{ENCABEZADO_REVISIONES}\n\n" + "\n\n".join(revisiones) + "\n"

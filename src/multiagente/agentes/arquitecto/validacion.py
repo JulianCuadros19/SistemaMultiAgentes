@@ -4,9 +4,9 @@ Aplica las tres validaciones del Anexo B, de forma determinística:
 
 1. Conformidad con el esquema y ausencia de dependencias circulares, más las reglas de la
    plantilla arq-002 que el código necesita para verificar la conformidad en N12: firmas
-   completas con tipos, rutas coherentes con la capa y con el nombre del módulo, y paquetes que
-   no tapen un módulo de la biblioteca estándar ni una dependencia (un paquete `io` rompería
-   `import io`).
+   completas con tipos (sin funciones como `callable` en lugar de un tipo), rutas coherentes con
+   la capa y con el nombre del módulo, y paquetes que no tapen un módulo de la biblioteca
+   estándar ni una dependencia (un paquete `io` rompería `import io`).
 2. Cobertura: todo requerimiento aprobado queda asignado al menos a un módulo.
 3. Catálogo tecnológico: toda dependencia externa pertenece al catálogo autorizado (arq-004) y
    la arquitectura base es una del catálogo de referencia.
@@ -34,6 +34,12 @@ COBERTURA = "Validación 2 · cobertura"
 CATALOGO = "Validación 3 · catálogo"
 DINERO = "Dinero en Decimal"
 
+FUNCIONES_COMO_TIPO = {
+    "callable": "Callable[[...], ...] de collections.abc",
+    "any": "Any de typing",
+}
+"""Funciones integradas que el modelo escribe en lugar de un tipo, con el tipo que corresponde."""
+
 
 def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
     ubicacion = f"{modulo}.{interfaz.nombre}"
@@ -52,6 +58,20 @@ def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
         errores.append(f"{ESQUEMA}: la firma de {ubicacion} no declara el tipo de {sin_tipo}")
     if interfaz.tipo is TipoInterfaz.FUNCION and funcion.returns is None:
         errores.append(f"{ESQUEMA}: la firma de {ubicacion} no declara el tipo de retorno")
+    anotaciones = [a.annotation for a in todos if a.annotation is not None]
+    anotaciones += [funcion.returns] if funcion.returns is not None else []
+    for funcion_integrada in sorted(
+        {
+            nodo.id
+            for anotacion in anotaciones
+            for nodo in ast.walk(anotacion)
+            if isinstance(nodo, ast.Name) and nodo.id in FUNCIONES_COMO_TIPO
+        }
+    ):
+        errores.append(
+            f"{ESQUEMA}: la firma de {ubicacion} usa «{funcion_integrada}», que es una función y "
+            f"no un tipo; usa {FUNCIONES_COMO_TIPO[funcion_integrada]} con sus parámetros"
+        )
     for argumento in todos:
         if (
             argumento.annotation is not None

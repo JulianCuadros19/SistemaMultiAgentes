@@ -49,7 +49,9 @@ def test_presenta_cada_punto_de_control_con_los_datos_de_su_pausa(capsys):
     assert "=== Punto de control N6: requerimientos ===" in salida
     assert "=== Punto de control N9: especificación de diseño ===" in salida
     assert "=== Punto de control N17: versión 1 del módulo ===" in salida
-    assert "Validaciones del Anexo B: sin errores." in salida
+    assert "Validaciones del Anexo B y de los escenarios: sin errores." in salida
+    assert "## Recorridos de los escenarios" in salida
+    assert "| RF-01 ESC-01 | — | ejecutar | ejecutar |" in salida
     assert "El tester lo aprobó en la iteración 1 de 3 del ciclo de corrección." in salida
 
 

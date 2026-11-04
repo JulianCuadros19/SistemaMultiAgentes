@@ -195,3 +195,112 @@ def buscar_ciclo(dependencias: dict[str, list[str]]) -> list[str] | None:
         if ciclo := visitar(modulo):
             return ciclo
     return None
+
+
+def _agregados_y_retirados(
+    antes: list[str], despues: list[str], que: str, donde: str = "", genero: str = "o"
+) -> list[str]:
+    sufijo = f" en {donde}" if donde else ""
+    return [
+        *(f"{que} agregad{genero}{sufijo}: {v}" for v in sorted(set(despues) - set(antes))),
+        *(f"{que} retirad{genero}{sufijo}: {v}" for v in sorted(set(antes) - set(despues))),
+    ]
+
+
+def _cambios_de_modulo(antes: Modulo, despues: Modulo) -> list[str]:
+    nombre = despues.nombre
+    cambios = [
+        f"{campo.capitalize()} de {nombre}: {getattr(antes, campo)} → {getattr(despues, campo)}"
+        for campo in ("ruta", "capa")
+        if getattr(antes, campo) != getattr(despues, campo)
+    ]
+    previas = {i.nombre: i for i in antes.interfaces_publicas}
+    nuevas = {i.nombre: i for i in despues.interfaces_publicas}
+    cambios += [
+        f"Interfaz nueva en {nombre}: `{nuevas[i].firma}`" for i in nuevas if i not in previas
+    ]
+    cambios += [f"Interfaz retirada de {nombre}: {i}" for i in previas if i not in nuevas]
+    for interfaz in (i for i in nuevas if i in previas):
+        previa, nueva = previas[interfaz], nuevas[interfaz]
+        if previa.firma != nueva.firma:
+            cambios.append(f"Firma de {nombre}.{interfaz}: `{previa.firma}` → `{nueva.firma}`")
+        if sorted(previa.excepciones) != sorted(nueva.excepciones):
+            cambios.append(
+                f"Excepciones de {nombre}.{interfaz}: {sorted(previa.excepciones)} → "
+                f"{sorted(nueva.excepciones)}"
+            )
+    cambios += _agregados_y_retirados(
+        antes.dependencias_permitidas, despues.dependencias_permitidas, "Dependencia", nombre, "a"
+    )
+    cambios += _agregados_y_retirados(
+        antes.requerimientos, despues.requerimientos, "Requerimiento", nombre
+    )
+    return cambios
+
+
+def _cambios_de_entidad(antes: Entidad, despues: Entidad) -> list[str]:
+    previos = {c.nombre: c for c in antes.campos}
+    nuevos = {c.nombre: c for c in despues.campos}
+    cambios = [
+        f"Campo nuevo en {despues.nombre}: {c} ({nuevos[c].tipo})"
+        for c in nuevos
+        if c not in previos
+    ]
+    cambios += [f"Campo retirado de {despues.nombre}: {c}" for c in previos if c not in nuevos]
+    cambios += [
+        f"Tipo de {despues.nombre}.{c}: {previos[c].tipo} → {nuevos[c].tipo}"
+        for c in nuevos
+        if c in previos and previos[c].tipo != nuevos[c].tipo
+    ]
+    return cambios
+
+
+def diferencias(previa: EspecificacionDiseno, nueva: EspecificacionDiseno) -> list[str]:
+    """Describe los cambios estructurales entre dos versiones de una especificación.
+
+    Compara la arquitectura base, los módulos con sus interfaces, el modelo de datos, las
+    dependencias externas y las reglas de dependencia. Las descripciones y las
+    responsabilidades no cuentan: cambian de redacción sin cambiar el diseño.
+
+    Args:
+        previa: Versión anterior.
+        nueva: Versión nueva.
+
+    Returns:
+        Un cambio por línea, en el orden de la especificación; vacía si no hay cambios.
+    """
+    cambios: list[str] = []
+    if previa.arquitectura_base != nueva.arquitectura_base:
+        cambios.append(f"Arquitectura base: {previa.arquitectura_base} → {nueva.arquitectura_base}")
+    modulos = {m.nombre: m for m in previa.modulos}
+    for modulo in nueva.modulos:
+        if modulo.nombre in modulos:
+            cambios += _cambios_de_modulo(modulos[modulo.nombre], modulo)
+        else:
+            interfaces = ", ".join(i.nombre for i in modulo.interfaces_publicas)
+            cambios.append(f"Módulo nuevo {modulo.nombre}, con {interfaces}")
+    vigentes = {m.nombre for m in nueva.modulos}
+    cambios += [f"Módulo retirado: {m.nombre}" for m in previa.modulos if m.nombre not in vigentes]
+    entidades = {e.nombre: e for e in previa.modelo_datos}
+    for entidad in nueva.modelo_datos:
+        if entidad.nombre in entidades:
+            cambios += _cambios_de_entidad(entidades[entidad.nombre], entidad)
+        else:
+            cambios.append(f"Entidad nueva: {entidad.nombre}")
+    actuales = {e.nombre for e in nueva.modelo_datos}
+    cambios += [
+        f"Entidad retirada: {e.nombre}" for e in previa.modelo_datos if e.nombre not in actuales
+    ]
+    cambios += _agregados_y_retirados(
+        [d.paquete for d in previa.dependencias_externas],
+        [d.paquete for d in nueva.dependencias_externas],
+        "Dependencia externa",
+        genero="a",
+    )
+    cambios += _agregados_y_retirados(
+        previa.reglas_de_dependencia,
+        nueva.reglas_de_dependencia,
+        "Regla de dependencia",
+        genero="a",
+    )
+    return cambios

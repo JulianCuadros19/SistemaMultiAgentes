@@ -370,7 +370,7 @@ def test_errores_de_diseno_persistentes_escalan_sin_poder_aprobarse():
     # Aprobar con errores queda bloqueado (Anexo B): la sesión sigue en la pausa con el aviso.
     avance = avanzar(app, id_sesion, aprobar())
     assert avance.pausa.punto == "especificacion"
-    assert "Anexo B" in avance.pausa.datos["aviso"]
+    assert "validaciones de N9" in avance.pausa.datos["aviso"]
 
     # El rechazo vuelve a N8 con las observaciones y el contador reiniciado.
     avance = avanzar(app, id_sesion, rechazar("Asignar el RF-01 a un módulo"))

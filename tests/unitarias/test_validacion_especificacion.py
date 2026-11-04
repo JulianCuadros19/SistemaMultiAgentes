@@ -239,3 +239,32 @@ def test_pytest_y_las_firmas_con_self_se_admiten():
         }
     )
     assert validar(espec) == []
+
+
+@pytest.mark.parametrize(
+    ("firma", "funcion"),
+    [
+        ("suscribir(self, manejador: callable) -> None", "callable"),
+        ("suscribir(self, manejadores: list[callable]) -> None", "callable"),
+        ("leer(clave: str) -> any", "any"),
+    ],
+)
+def test_una_funcion_integrada_no_es_un_tipo(firma, funcion):
+    espec = especificacion(
+        **{
+            "modulos__0__interfaces_publicas__1__nombre": firma.split("(")[0],
+            "modulos__0__interfaces_publicas__1__firma": firma,
+        }
+    )
+    assert any(f"usa «{funcion}», que es una función y no un tipo" in e for e in validar(espec))
+
+
+def test_callable_de_collections_abc_se_admite():
+    firma = "suscribir(manejador: Callable[[Predio], None]) -> None"
+    espec = especificacion(
+        **{
+            "modulos__0__interfaces_publicas__1__nombre": "suscribir",
+            "modulos__0__interfaces_publicas__1__firma": firma,
+        }
+    )
+    assert validar(espec) == []

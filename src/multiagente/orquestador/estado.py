@@ -298,6 +298,30 @@ class Requerimientos(Particion):
     fallo_sintesis: TextoObligatorio | None = None
 
 
+class RecorridoEscenario(ModeloEstricto):
+    """Cómo se ejecuta un escenario de aceptación con las interfaces públicas del diseño.
+
+    No es un campo del Anexo B: el arquitecto lo declara junto con la especificación, N9 verifica
+    que cada escenario aprobado tenga el suyo con interfaces declaradas, y el código anota en la
+    descripción de cada interfaz los escenarios en que participa (ADR-0015).
+
+    Attributes:
+        id_requerimiento: Requerimiento del escenario.
+        id_escenario: Escenario de aceptación.
+        preparar: Interfaces que crean la situación del «dado que»; vacía si basta con los datos
+            de la llamada.
+        ejecutar: Interfaz que realiza la acción del «cuando».
+        observar: Interfaces con que se verifica el «entonces»; incluye la de `ejecutar` si lo
+            que se verifica es lo que devuelve o la excepción que lanza.
+    """
+
+    id_requerimiento: IdRequerimiento
+    id_escenario: IdEscenario
+    preparar: tuple[TextoObligatorio, ...] = ()
+    ejecutar: TextoObligatorio
+    observar: tuple[TextoObligatorio, ...] = Field(min_length=1)
+
+
 class Arquitectura(Particion):
     """Registro de decisión y especificación de diseño del arquitecto.
 
@@ -310,6 +334,9 @@ class Arquitectura(Particion):
             especificación es entonces la del diseño anterior, si lo hubo.
         capacidades_no_cubiertas: Lo que piden los requerimientos y el catálogo tecnológico no
             permite, según el último diseño; N9 lo muestra a la persona.
+        recorridos: Cómo se ejecuta cada escenario aprobado con las interfaces del último diseño.
+        revisiones: Una entrada por cada rediseño que atendió observaciones del revisor, con la
+            observación y lo que cambió; completan el registro de decisión.
     """
 
     registro_decision: TextoObligatorio | None = None
@@ -321,6 +348,8 @@ class Arquitectura(Particion):
     observaciones_atendidas: NonNegativeInt = 0
     fallo_diseno: TextoObligatorio | None = None
     capacidades_no_cubiertas: tuple[TextoObligatorio, ...] = ()
+    recorridos: tuple[RecorridoEscenario, ...] = ()
+    revisiones: tuple[TextoObligatorio, ...] = ()
 
 
 class VersionCodigo(ModeloEstricto):

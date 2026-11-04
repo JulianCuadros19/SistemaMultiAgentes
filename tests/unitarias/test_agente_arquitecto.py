@@ -15,11 +15,20 @@ from multiagente.agentes.arquitecto.contexto import (
     recuperar_catalogo,
 )
 from multiagente.agentes.arquitecto.parametrizacion import (
+    InterfazModelo,
     SalidaEspecificacion,
     especificacion_desde_salida,
 )
+from multiagente.agentes.arquitecto.recorridos import (
+    anotar_escenarios,
+    errores_de_recorridos,
+    nombre_limpio,
+    recorridos_desde_salida,
+    sin_anotaciones,
+)
 from multiagente.agentes.arquitecto.seleccion import (
     SalidaSeleccion,
+    con_revisiones,
     registro_de_decision,
     validar_seleccion,
 )
@@ -218,6 +227,7 @@ def salida_seleccion(**cambios) -> SalidaSeleccion:
         "consecuencias_favorables": ["separación clara de responsabilidades"],
         "consecuencias_desfavorables": ["el dominio queda acoplado a la infraestructura"],
         "confirmacion": "Verificar que el dominio no importe de aplicación ni infraestructura.",
+        "respuesta_observaciones": "",
     }
     return SalidaSeleccion.model_validate(base | cambios)
 
@@ -246,6 +256,13 @@ def test_seleccion_valida_normaliza_identificadores():
 def test_reglas_de_la_seleccion(cambios, mensaje):
     with pytest.raises(ErrorValidacionSalida, match=re.escape(mensaje)):
         validar_seleccion(salida_seleccion(**cambios), {"RF-01", "RF-02"}, ARQUITECTURAS)
+
+
+def test_con_observaciones_nuevas_la_seleccion_debe_responderlas():
+    with pytest.raises(ErrorValidacionSalida, match="Responde a las observaciones nuevas"):
+        validar_seleccion(salida_seleccion(), {"RF-01", "RF-02"}, ARQUITECTURAS, True)
+    respondida = salida_seleccion(respuesta_observaciones="Se mantiene ARQ-01 porque RF-01…")
+    assert validar_seleccion(respondida, {"RF-01", "RF-02"}, ARQUITECTURAS, True)
 
 
 def test_registro_cambia_las_etiquetas_por_la_referencia_del_fragmento():
@@ -347,8 +364,30 @@ def salida_especificacion(**cambios) -> SalidaEspecificacion:
         "dependencias_externas": [{"paquete": "pydantic", "proposito": "validar datos"}],
         "reglas_de_dependencia": ["La capa de dominio no importa de ninguna otra capa"],
         "capacidades_no_cubiertas": [],
+        "recorridos": [
+            recorrido("RF-01", "ESC-01", "calcular_avaluo"),
+            recorrido("RF-01", "ESC-02", "calcular_avaluo"),
+            recorrido("RF-02", "ESC-01", "liquidar"),
+            recorrido("RF-02", "ESC-02", "liquidar"),
+        ],
     }
     return SalidaEspecificacion.model_validate(base | cambios)
+
+
+def recorrido(
+    rf: str,
+    esc: str,
+    ejecutar: str,
+    observar: list[str] | None = None,
+    preparar: list[str] | None = None,
+) -> dict:
+    return {
+        "id_requerimiento": rf,
+        "id_escenario": esc,
+        "preparar": preparar or [],
+        "ejecutar": ejecutar,
+        "observar": [ejecutar] if observar is None else observar,
+    }
 
 
 def test_parametrizacion_asigna_los_campos_deterministas():
@@ -461,27 +500,97 @@ def test_correccion_por_errores_de_validacion_solo_reparametriza(
 
 def test_observacion_nueva_vuelve_a_seleccionar(cliente_falso, completar_respuesta):
     previa = diseno_previo(observaciones_revisor=("Usar arquitectura hexagonal",))
+    respuesta = "Se mantiene ARQ-01: RF-01 y RF-02 no tienen adaptadores que aislar."
     cliente = cliente_falso(
-        completar_respuesta(salida_seleccion(), modelo="gpt-5-2025-08-07"),
+        completar_respuesta(
+            salida_seleccion(respuesta_observaciones=respuesta), modelo="gpt-5-2025-08-07"
+        ),
         completar_respuesta(salida_especificacion(), modelo="gpt-5-2025-08-07"),
     )
     agente(cliente).disenar(APROBADOS, contexto_recuperado(), previa)
     assert len(cliente.llamadas) == 2
     datos = json.loads(cliente.llamadas[0]["messages"][2]["content"])
     assert datos["observaciones_revisor"] == ["Usar arquitectura hexagonal"]
+    assert datos["observaciones_nuevas"] == ["Usar arquitectura hexagonal"]
     assert datos["registro_previo"] == "# Registro previo"
 
 
-def test_validar_aplica_el_anexo_b(cliente_falso):
-    especificacion = especificacion_desde_salida(
-        salida_especificacion(), APROBADOS, "ARQ-01", "0.1"
+def test_el_rediseno_por_observaciones_registra_la_revision(cliente_falso, completar_respuesta):
+    observacion = "Falta consultar el avalúo ya calculado"
+    previa = diseno_previo(observaciones_revisor=(observacion,))
+    respuesta = "Se mantiene ARQ-01 y el dominio expone la consulta del avalúo."
+    con_consulta = salida_especificacion()
+    con_consulta.modulos[0].interfaces_publicas.append(
+        InterfazModelo(
+            nombre="consultar_avaluo",
+            tipo="funcion",
+            firma="consultar_avaluo(numero_predial: str) -> Decimal",
+            descripcion="Consulta el avalúo calculado",
+            excepciones=[],
+        )
     )
+    cliente = cliente_falso(
+        completar_respuesta(
+            salida_seleccion(respuesta_observaciones=respuesta), modelo="gpt-5-2025-08-07"
+        ),
+        completar_respuesta(con_consulta, modelo="gpt-5-2025-08-07"),
+    )
+    diseno = agente(cliente).disenar(APROBADOS, contexto_recuperado(), previa)
+    (revision,) = diseno.revisiones
+    assert revision.startswith("### Revisión 1 · especificación 0.2\n")
+    assert f"- «{observacion}»" in revision
+    assert f"Respuesta: {respuesta}" in revision
+    assert (
+        "- Interfaz nueva en dominio.avaluo: `consultar_avaluo(numero_predial: str) -> Decimal`"
+        in revision
+    )
+    assert diseno.registro_decision.endswith(f"\n## Revisiones\n\n{revision}")
+    # La parametrización ve la revisión en curso con la respuesta, pero aún sin los cambios.
+    datos = json.loads(cliente.llamadas[1]["messages"][2]["content"])
+    assert datos["observaciones_nuevas"] == [observacion]
+    assert f"Respuesta: {respuesta}" in datos["registro_decision"]
+    assert "Cambios en la especificación" not in datos["registro_decision"]
+
+    # Una corrección posterior por errores de N9 conserva el registro con su revisión.
+    corregida = previa.model_copy(
+        update={
+            "registro_decision": diseno.registro_decision,
+            "especificacion": diseno.especificacion,
+            "recorridos": diseno.recorridos,
+            "revisiones": diseno.revisiones,
+            "observaciones_atendidas": 1,
+            "disenos": 2,
+            "errores_validacion": ("Validación 3 · catálogo: requests no pertenece",),
+        }
+    )
+    cliente.pendientes.append(completar_respuesta(con_consulta, modelo="gpt-5-2025-08-07"))
+    siguiente = agente(cliente).disenar(APROBADOS, contexto_recuperado(), corregida)
+    assert siguiente.revisiones == diseno.revisiones
+    assert siguiente.registro_decision == diseno.registro_decision
+    correccion = json.loads(cliente.llamadas[2]["messages"][2]["content"])["correccion"]
+    assert " · Escenarios: " not in json.dumps(correccion["especificacion_previa"])
+    assert len(correccion["recorridos_previos"]) == 4
+
+
+def test_con_revisiones_reemplaza_la_seccion_anterior():
+    registro = "# Registro\n\nTexto.\n"
+    con_una = con_revisiones(registro, ("### Revisión 1",))
+    assert con_una == "# Registro\n\nTexto.\n\n## Revisiones\n\n### Revisión 1\n"
+    assert con_revisiones(con_una, ("### Revisión 1",)) == con_una
+    assert con_revisiones(con_una, ()) == registro
+
+
+def test_validar_aplica_el_anexo_b_y_los_recorridos(cliente_falso):
+    salida = salida_especificacion()
+    especificacion = especificacion_desde_salida(salida, APROBADOS, "ARQ-01", "0.1")
+    recorridos = recorridos_desde_salida(salida.recorridos)
     arquitecto = agente(cliente_falso())
-    assert arquitecto.validar(especificacion, APROBADOS) == []
+    assert arquitecto.validar(especificacion, APROBADOS, recorridos) == []
     solo_rf1 = Requerimientos(requerimientos=(RF1, requerimiento("RF-03", "consultar el avalúo")))
-    assert "Validación 2 · cobertura: RF-03 no está asignado a ningún módulo" in arquitecto.validar(
-        especificacion, solo_rf1
-    )
+    errores = arquitecto.validar(especificacion, solo_rf1, recorridos)
+    assert "Validación 2 · cobertura: RF-03 no está asignado a ningún módulo" in errores
+    assert any(e.startswith("Escenarios ejecutables: RF-03 ESC-01 no tiene") for e in errores)
+    assert any("el recorrido de RF-02 ESC-01 no corresponde" in e for e in errores)
 
 
 def test_requerimientos_aprobados_llegan_a_una_especificacion_valida(
@@ -518,9 +627,12 @@ def test_requerimientos_aprobados_llegan_a_una_especificacion_valida(
     assert avance.pausa.datos["capacidades_no_cubiertas"] == []
     assert "Registro de decisión" in avance.pausa.datos["registro_decision"]
 
+    assert len(avance.pausa.datos["recorridos"]) == 4
+
     # Un rechazo humano vuelve a seleccionar y parametrizar con la observación.
+    respondida = salida_seleccion(respuesta_observaciones="La liquidación ya tiene su módulo.")
     cliente.pendientes += [
-        completar_respuesta(salida_seleccion(), modelo="gpt-5-2025-08-07"),
+        completar_respuesta(respondida, modelo="gpt-5-2025-08-07"),
         completar_respuesta(salida_especificacion(), modelo="gpt-5-2025-08-07"),
     ]
     avance = avanzar(app, id_sesion, rechazar("Separar la liquidación en su propio módulo"))
@@ -529,3 +641,194 @@ def test_requerimientos_aprobados_llegan_a_una_especificacion_valida(
     assert (arquitectura.disenos, arquitectura.observaciones_atendidas) == (2, 1)
     assert Nodo.N8 in avance.nodos
     assert len(cliente.llamadas) == 4
+    (revision,) = arquitectura.revisiones
+    assert "- Ninguno." in revision
+    assert avance.pausa.datos["registro_decision"].endswith(f"## Revisiones\n\n{revision}")
+
+
+# Recorridos de los escenarios -------------------------------------------------------------------
+
+
+def especificacion_base(salida: SalidaEspecificacion | None = None):
+    return especificacion_desde_salida(
+        salida or salida_especificacion(), APROBADOS, "ARQ-01", "0.1"
+    )
+
+
+def errores_con(recorridos: list[dict], salida: SalidaEspecificacion | None = None) -> list[str]:
+    salida = salida or salida_especificacion()
+    return errores_de_recorridos(
+        especificacion_base(salida),
+        APROBADOS,
+        recorridos_desde_salida(salida_especificacion(recorridos=recorridos).recorridos),
+    )
+
+
+def test_recorridos_completos_no_tienen_errores():
+    salida = salida_especificacion()
+    recorridos = recorridos_desde_salida(salida.recorridos)
+    assert errores_de_recorridos(especificacion_base(salida), APROBADOS, recorridos) == []
+
+
+def test_cada_escenario_aprobado_tiene_exactamente_un_recorrido():
+    errores = errores_con(
+        [
+            recorrido("RF-01", "ESC-01", "calcular_avaluo"),
+            recorrido("RF-01", "ESC-01", "calcular_avaluo"),
+            recorrido("rf-01", " esc-02 ", "calcular_avaluo"),
+            recorrido("RF-02", "ESC-01", "liquidar"),
+            recorrido("RF-09", "ESC-01", "liquidar"),
+        ]
+    )
+    assert errores[0] == "Escenarios ejecutables: RF-01 ESC-01 tiene 2 recorridos"
+    assert errores[1].startswith("Escenarios ejecutables: RF-02 ESC-02 no tiene recorrido;")
+    assert errores[2] == (
+        "Escenarios ejecutables: el recorrido de RF-09 ESC-01 no corresponde a un escenario "
+        "aprobado"
+    )
+    assert len(errores) == 3
+
+
+def test_cada_nombre_es_una_interfaz_declarada():
+    errores = errores_con(
+        [
+            # Al preparar vale una entidad del modelo de datos, que la prueba construye.
+            recorrido("RF-01", "ESC-01", "`calcular_avaluo(numero_predial)`", preparar=["Predio"]),
+            recorrido("RF-01", "ESC-02", "calcular_avaluo", observar=["Predio"]),
+            recorrido("RF-02", "ESC-01", "liquidar_impuesto", observar=["liquidar"]),
+            recorrido("RF-02", "ESC-02", "aplicacion.liquidacion.liquidar"),
+        ]
+    )
+    assert errores == [
+        "Escenarios ejecutables: RF-01 ESC-02: en observar, «Predio» es una entidad del modelo "
+        "de datos, no una interfaz; nombra la interfaz que la entrega: la de ejecutar, si es lo "
+        "que devuelve, o una de consulta",
+        "Escenarios ejecutables: RF-02 ESC-01: en ejecutar, «liquidar_impuesto» no es una "
+        "interfaz declarada; usa el nombre exacto de una interfaz pública de la especificación "
+        "o declárala",
+    ]
+
+
+def test_un_nombre_repetido_en_dos_modulos_se_califica():
+    salida = salida_especificacion()
+    salida.modulos[0].interfaces_publicas.append(
+        InterfazModelo(
+            nombre="liquidar",
+            tipo="funcion",
+            firma="liquidar(numero_predial: str) -> Decimal",
+            descripcion="Liquida en el dominio",
+            excepciones=[],
+        )
+    )
+    errores = errores_con(
+        [
+            recorrido("RF-01", "ESC-01", "calcular_avaluo"),
+            recorrido("RF-01", "ESC-02", "calcular_avaluo"),
+            recorrido("RF-02", "ESC-01", "liquidar"),
+            recorrido("RF-02", "ESC-02", "aplicacion.liquidacion.liquidar"),
+        ],
+        salida,
+    )
+    assert errores == [
+        "Escenarios ejecutables: RF-02 ESC-01: en ejecutar, «liquidar» está declarada en "
+        "aplicacion.liquidacion, dominio.avaluo; califícala con su módulo (modulo.interfaz)",
+        "Escenarios ejecutables: RF-02 ESC-01: en observar, «liquidar» está declarada en "
+        "aplicacion.liquidacion, dominio.avaluo; califícala con su módulo (modulo.interfaz)",
+    ]
+
+
+def test_el_entonces_debe_poder_observarse():
+    salida = salida_especificacion()
+    salida.modulos[1].interfaces_publicas += [
+        InterfazModelo(
+            nombre="registrar_pago",
+            tipo="funcion",
+            firma="registrar_pago(numero_predial: str, valor: Decimal) -> None",
+            descripcion="Registra el pago del impuesto",
+            excepciones=[],
+        ),
+        InterfazModelo(
+            nombre="consultar_pagos",
+            tipo="funcion",
+            firma="consultar_pagos(numero_predial: str) -> list[Decimal]",
+            descripcion="Consulta los pagos registrados",
+            excepciones=[],
+        ),
+    ]
+    base = [
+        recorrido("RF-01", "ESC-01", "calcular_avaluo"),
+        recorrido("RF-01", "ESC-02", "calcular_avaluo"),
+        recorrido("RF-02", "ESC-01", "liquidar"),
+    ]
+    assert errores_con([*base, recorrido("RF-02", "ESC-02", "registrar_pago")], salida) == [
+        "Escenarios ejecutables: RF-02 ESC-02: solo observa con «registrar_pago», que no "
+        "devuelve nada ni declara excepciones; nombra la interfaz de consulta que muestra el "
+        "efecto del «entonces»"
+    ]
+    observado = recorrido("RF-02", "ESC-02", "registrar_pago", observar=["consultar_pagos"])
+    assert errores_con([*base, observado], salida) == []
+
+
+def test_los_nombres_se_limpian_de_argumentos_y_comillas():
+    assert nombre_limpio(" `Bus().publicar(aviso)` ") == "Bus.publicar"
+    assert nombre_limpio("registrar(f(x), y)") == "registrar"
+    assert nombre_limpio("dominio.avaluo.calcular_avaluo.") == "dominio.avaluo.calcular_avaluo"
+
+
+def test_las_interfaces_quedan_anotadas_con_sus_escenarios():
+    salida = salida_especificacion(
+        recorridos=[
+            recorrido("RF-01", "ESC-01", "calcular_avaluo"),
+            recorrido("RF-01", "ESC-02", "calcular_avaluo"),
+            recorrido(
+                "RF-02",
+                "ESC-01",
+                "liquidar",
+                preparar=["Predio"],
+                observar=["liquidar", "calcular_avaluo"],
+            ),
+            recorrido("RF-02", "ESC-02", "liquidar", observar=["calcular_avaluo"]),
+        ]
+    )
+    especificacion = especificacion_base(salida)
+    recorridos = recorridos_desde_salida(salida.recorridos)
+    anotada = anotar_escenarios(especificacion, recorridos)
+    descripciones = [i.descripcion for m in anotada.modulos for i in m.interfaces_publicas]
+    assert descripciones == [
+        "Calcula el avalúo total · Escenarios: RF-01 ESC-01 (ejecuta; observa su resultado), "
+        "RF-01 ESC-02 (ejecuta; observa su resultado), RF-02 ESC-01 (observa), "
+        "RF-02 ESC-02 (observa)",
+        "Liquida el impuesto del periodo · Escenarios: RF-02 ESC-01 (ejecuta; prepara con "
+        "Predio; observa su resultado y con calcular_avaluo), RF-02 ESC-02 (ejecuta; observa "
+        "con calcular_avaluo)",
+    ]
+    assert anotar_escenarios(anotada, recorridos) == anotada
+    assert sin_anotaciones(anotada) == especificacion
+
+
+def test_sin_recorridos_completos_la_parametrizacion_se_reintenta(
+    cliente_falso, completar_respuesta
+):
+    incompleta = salida_especificacion(recorridos=[recorrido("RF-01", "ESC-01", "calcular_avaluo")])
+    cliente = cliente_falso(
+        completar_respuesta(salida_seleccion(), modelo="gpt-5-2025-08-07"),
+        completar_respuesta(incompleta, modelo="gpt-5-2025-08-07"),
+        completar_respuesta(salida_especificacion(), modelo="gpt-5-2025-08-07"),
+    )
+    diseno = agente(cliente).disenar(APROBADOS, contexto_recuperado(), Arquitectura())
+    assert len(cliente.llamadas) == 3
+    problemas = json.loads(cliente.llamadas[2]["messages"][-1]["content"])
+    assert any(
+        p.startswith("Escenarios ejecutables: RF-02 ESC-01 no tiene recorrido")
+        for p in problemas["problemas_intento_anterior"]
+    )
+    assert len(diseno.recorridos) == 4
+    assert "recorridos" not in diseno.especificacion.model_dump()
+    assert (
+        diseno.especificacion.modulos[0]
+        .interfaces_publicas[0]
+        .descripcion.endswith(
+            " · Escenarios: RF-01 ESC-01 (ejecuta; observa su resultado), "
+            "RF-01 ESC-02 (ejecuta; observa su resultado)"
+        )
+    )

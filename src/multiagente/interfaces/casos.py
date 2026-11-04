@@ -20,6 +20,7 @@ from pydantic import ConfigDict, Field, ValidationError, model_validator
 
 from multiagente.core.esquemas.comunes import IdArquitectura, ModeloEstricto, TextoObligatorio
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
+from multiagente.orquestador.estado import RecorridoEscenario
 from multiagente.orquestador.servicios import Diseno, Sintesis
 
 
@@ -39,10 +40,14 @@ class CasoDiseno(ModeloEstricto):
 
 
 class CasoDesarrollo(CasoDiseno):
-    """Caso sintético de desarrollo: un caso de diseño con su diseño aprobado."""
+    """Caso sintético de desarrollo: un caso de diseño con su diseño aprobado.
+
+    Los recorridos de los escenarios faltan en los casos anteriores al ADR-0015.
+    """
 
     registro_decision: TextoObligatorio
     especificacion: EspecificacionDiseno
+    recorridos: tuple[RecorridoEscenario, ...] = ()
 
     @model_validator(mode="after")
     def _cubre_los_requerimientos_del_caso(self) -> Self:
@@ -56,7 +61,11 @@ class CasoDesarrollo(CasoDiseno):
     @property
     def diseno(self) -> Diseno:
         """Diseño aprobado del caso, como lo entrega N8."""
-        return Diseno(registro_decision=self.registro_decision, especificacion=self.especificacion)
+        return Diseno(
+            registro_decision=self.registro_decision,
+            especificacion=self.especificacion,
+            recorridos=self.recorridos,
+        )
 
 
 class ErrorCasoDiseno(ValueError):
@@ -112,9 +121,10 @@ def exportar_caso_desarrollo(caso: CasoDiseno, diseno: Diseno, archivo: Path) ->
     Returns:
         El caso de desarrollo guardado.
     """
-    # El caso guarda el diseño aprobado; las capacidades no cubiertas eran un aviso para N9.
+    # El caso guarda el diseño aprobado. Las capacidades no cubiertas eran un aviso para N9, y
+    # las revisiones ya están en el registro de decisión.
     datos = caso.model_dump(mode="json") | diseno.model_dump(
-        mode="json", exclude={"capacidades_no_cubiertas"}
+        mode="json", exclude={"capacidades_no_cubiertas", "revisiones"}
     )
     datos["id"] = caso.id.replace("caso-diseno", "caso-desarrollo", 1)
     desarrollo = CasoDesarrollo.model_validate(datos)

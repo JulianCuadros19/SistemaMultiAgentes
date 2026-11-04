@@ -35,6 +35,7 @@ from multiagente.core.esquemas.requerimiento import HistoriaUsuario, Requerimien
 from multiagente.interfaces.documentos import (
     ErrorExportacion,
     especificacion_md,
+    recorridos_md,
     requerimientos_md,
 )
 from multiagente.interfaces.operacion import (
@@ -49,7 +50,13 @@ from multiagente.interfaces.operacion import (
     observaciones_de_pruebas,
 )
 from multiagente.orquestador.ejecucion import Avance
-from multiagente.orquestador.estado import Decision, Destino, PruebasPropias, VersionCodigo
+from multiagente.orquestador.estado import (
+    Decision,
+    Destino,
+    PruebasPropias,
+    RecorridoEscenario,
+    VersionCodigo,
+)
 from multiagente.sandbox.ejecutor import ErrorEntornoAislado
 
 SALIR = "/salir"
@@ -86,7 +93,7 @@ def mostrar_requerimientos(datos: dict[str, Any]) -> None:
 
 
 def mostrar_especificacion(datos: dict[str, Any]) -> None:
-    """Imprime lo que la persona revisa en N9: el registro de decisión y la especificación."""
+    """Imprime lo que la persona revisa en N9: el registro, la especificación y sus recorridos."""
     print("\n=== Punto de control N9: especificación de diseño ===\n")
     print(datos["registro_decision"] or "(Sin registro de decisión.)")
     print()
@@ -94,6 +101,8 @@ def mostrar_especificacion(datos: dict[str, Any]) -> None:
         print("(No hay especificación de diseño: el arquitecto no logró producirla.)")
     else:
         print(especificacion_md(EspecificacionDiseno.model_validate(datos["especificacion"])))
+        recorridos = [RecorridoEscenario.model_validate(r) for r in datos.get("recorridos", [])]
+        print(recorridos_md(recorridos))
     if capacidades := datos.get("capacidades_no_cubiertas"):
         print(
             "Aviso: el diseño no cubre lo siguiente, porque el catálogo tecnológico no lo permite:"
@@ -101,11 +110,11 @@ def mostrar_especificacion(datos: dict[str, Any]) -> None:
         for capacidad in capacidades:
             print(f"  - {capacidad}")
     if datos["errores"]:
-        print("Errores de validación (Anexo B); solo se admite el rechazo:")
+        print("Errores de validación (Anexo B y escenarios); solo se admite el rechazo:")
         for error in datos["errores"]:
             print(f"  - {error}")
     else:
-        print("Validaciones del Anexo B: sin errores.")
+        print("Validaciones del Anexo B y de los escenarios: sin errores.")
 
 
 def mostrar_validacion(datos: dict[str, Any]) -> None:

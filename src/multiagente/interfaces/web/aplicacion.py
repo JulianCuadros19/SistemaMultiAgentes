@@ -40,7 +40,13 @@ from multiagente.interfaces.operacion import (
     observaciones_de_pruebas,
 )
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
-from multiagente.orquestador.estado import Decision, Destino, Fase, PruebasPropias
+from multiagente.orquestador.estado import (
+    Decision,
+    Destino,
+    Fase,
+    PruebasPropias,
+    RecorridoEscenario,
+)
 
 CARPETA = Path(__file__).parent
 
@@ -185,6 +191,9 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
                 ),
                 "errores": datos["errores"],
                 "capacidades": datos.get("capacidades_no_cubiertas", []),
+                "recorridos": [
+                    RecorridoEscenario.model_validate(r) for r in datos.get("recorridos", [])
+                ],
             }
         if pausa.punto == "final":
             estado = operador.estado(vista.id_sesion)

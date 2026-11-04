@@ -27,7 +27,10 @@ class EventoDuplicadoIgnorado(ValueError):
     """Indica que el aviso ya fue procesado y no vuelve a producir cambios."""
 
 
-def suscribir_pago_confirmado(self, manejador: callable) -> None:  # noqa: ANN001
+def suscribir_pago_confirmado(
+    self,  # noqa: ANN001
+    manejador: Callable[[AvisoPagoConfirmadoEnriquecido], object],
+) -> None:
     """Registra un consumidor de pagos confirmados.
 
     Args:
@@ -37,7 +40,10 @@ def suscribir_pago_confirmado(self, manejador: callable) -> None:  # noqa: ANN00
     self._confirmados.append(manejador)
 
 
-def suscribir_pago_reversado(self, manejador: callable) -> None:  # noqa: ANN001
+def suscribir_pago_reversado(
+    self,  # noqa: ANN001
+    manejador: Callable[[AvisoPagoReversadoEnriquecido], object],
+) -> None:
     """Registra un consumidor de reversos.
 
     Args:

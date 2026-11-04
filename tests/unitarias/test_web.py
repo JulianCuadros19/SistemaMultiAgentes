@@ -63,8 +63,11 @@ def test_el_equipo_y_el_cliente_operan_el_flujo_completo_por_la_web(entorno_fals
         cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": respuesta})
     decidir(cliente, id_sesion, "aprobado", revisor="Laura")
 
-    # N9: rechazo y aprobación.
-    assert "N9 · Especificación de diseño" in cliente.get(f"/sesiones/{id_sesion}").text
+    # N9: rechazo y aprobación, con el recorrido de cada escenario a la vista.
+    pagina = cliente.get(f"/sesiones/{id_sesion}").text
+    assert "N9 · Especificación de diseño" in pagina
+    assert "Recorridos de los escenarios" in pagina
+    assert "<td>RF-01 ESC-01</td>" in pagina
     decidir(cliente, id_sesion, "rechazado", observaciones="Separar la validación")
     pagina = decidir(cliente, id_sesion, "aprobado")
 
@@ -227,7 +230,7 @@ def test_la_especificacion_con_errores_no_ofrece_aprobar(entorno_falso):
         cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": respuesta})
     pagina = decidir(cliente, id_sesion, "aprobado")
     assert "N9 · Especificación de diseño" in pagina
-    assert "La especificación no pasa las validaciones del Anexo B y no puede aprobarse" in pagina
+    assert "La especificación no pasa las validaciones de N9 y no puede aprobarse" in pagina
     assert 'value="aprobado"' not in pagina
 
 

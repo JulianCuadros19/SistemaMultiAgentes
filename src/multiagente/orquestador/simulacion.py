@@ -34,6 +34,7 @@ from multiagente.orquestador.estado import (
     Conversacion,
     EjecucionPruebas,
     FragmentoContexto,
+    RecorridoEscenario,
     RegistroCaptura,
     Requerimientos,
     Validacion,
@@ -281,10 +282,23 @@ class ServiciosSimulados:
         return Diseno(
             registro_decision=f"# Registro de decisión simulado, versión 0.{version}",
             especificacion=especificacion,
+            recorridos=tuple(
+                RecorridoEscenario(
+                    id_requerimiento=r.id_requerimiento,
+                    id_escenario=e.id,
+                    ejecutar="ejecutar",
+                    observar=("ejecutar",),
+                )
+                for r in requerimientos.requerimientos
+                for e in r.criterios_aceptacion
+            ),
         )
 
     def validar(
-        self, especificacion: EspecificacionDiseno, requerimientos: Requerimientos
+        self,
+        especificacion: EspecificacionDiseno,
+        requerimientos: Requerimientos,
+        recorridos: tuple[RecorridoEscenario, ...] = (),
     ) -> list[str]:
         """Reporta un error en las primeras validaciones configuradas (N9)."""
         if self._contar("validar") <= self.errores_validacion:
@@ -435,7 +449,10 @@ class ArquitectoFijo:
         return self.diseno
 
     def validar(
-        self, especificacion: EspecificacionDiseno, requerimientos: Requerimientos
+        self,
+        especificacion: EspecificacionDiseno,
+        requerimientos: Requerimientos,
+        recorridos: tuple[RecorridoEscenario, ...] = (),
     ) -> list[str]:
         """No reporta errores: el diseño dado ya pasó las validaciones del Anexo B (N9)."""
         return []

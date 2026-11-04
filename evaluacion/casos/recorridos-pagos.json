@@ -1,0 +1,2503 @@
+{
+  "id": "caso-recorridos-pagos",
+  "descripcion": "Especificaciones 0.2 a 0.5 de la sesión de verificación 5f5d2739 del paso 12 (caso sintético de pagos de pensiones), con los recorridos que exigen sus escenarios. Las interfaces de los recorridos son las del diseño completo de desarrollo-pagos.json: cada versión carece de algunas. No contiene datos de Realtix.",
+  "caso_desarrollo": "desarrollo-pagos.json",
+  "recorridos": [
+    {
+      "id_requerimiento": "RF-01",
+      "id_escenario": "ESC-01",
+      "preparar": [
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "manejar_pago_confirmado_factura",
+        "construir_aviso_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "obtener_factura_por_numero"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-01",
+      "id_escenario": "ESC-02",
+      "preparar": [
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "manejar_pago_confirmado_factura",
+        "construir_aviso_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "obtener_factura_por_numero"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-01",
+      "id_escenario": "ESC-03",
+      "preparar": [
+        "registrar_factura_inicial"
+      ],
+      "ejecutar": "construir_aviso_confirmado",
+      "observar": [
+        "construir_aviso_confirmado",
+        "obtener_factura_por_numero"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-02",
+      "id_escenario": "ESC-01",
+      "preparar": [
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "suscribir_pago_reversado",
+        "manejar_pago_confirmado_factura",
+        "manejar_pago_confirmado_emitir_recibo",
+        "manejar_pago_reversado_factura",
+        "manejar_pago_reversado_recibo",
+        "construir_aviso_confirmado",
+        "publicar_pago_confirmado",
+        "construir_aviso_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "obtener_recibo_por_referencia",
+        "obtener_factura_por_numero"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-02",
+      "id_escenario": "ESC-02",
+      "preparar": [
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "suscribir_pago_reversado",
+        "manejar_pago_confirmado_emitir_recibo",
+        "manejar_pago_reversado_recibo",
+        "construir_aviso_confirmado",
+        "publicar_pago_confirmado",
+        "construir_aviso_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "obtener_recibo_por_referencia"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-02",
+      "id_escenario": "ESC-03",
+      "preparar": [
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "manejar_pago_confirmado_emitir_recibo",
+        "construir_aviso_confirmado",
+        "publicar_pago_confirmado"
+      ],
+      "ejecutar": "construir_aviso_reversado",
+      "observar": [
+        "construir_aviso_reversado",
+        "obtener_recibo_por_referencia"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-03",
+      "id_escenario": "ESC-01",
+      "preparar": [
+        "registrar_cartera_familia",
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "manejar_pago_confirmado_cartera",
+        "construir_aviso_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "obtener_cartera_por_familia"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-03",
+      "id_escenario": "ESC-02",
+      "preparar": [
+        "registrar_cartera_familia",
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "suscribir_pago_reversado",
+        "manejar_pago_confirmado_cartera",
+        "manejar_pago_reversado_cartera",
+        "construir_aviso_confirmado",
+        "publicar_pago_confirmado",
+        "construir_aviso_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "obtener_cartera_por_familia"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-03",
+      "id_escenario": "ESC-03",
+      "preparar": [
+        "registrar_cartera_familia",
+        "registrar_factura_inicial",
+        "BusEventosMemoria",
+        "suscribir_pago_confirmado",
+        "manejar_pago_confirmado_cartera",
+        "construir_aviso_confirmado",
+        "publicar_pago_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "publicar_pago_confirmado",
+        "obtener_cartera_por_familia"
+      ]
+    }
+  ],
+  "versiones": [
+    {
+      "version": "0.2",
+      "decision": "Pasó N9 y se aprobó; en N17 se devolvió al arquitecto porque el resultado de la anulación no decía que el recibo quedó anulado.",
+      "especificacion": {
+        "id_especificacion": "ED-01",
+        "version": "0.2",
+        "arquitectura_base": "ARQ-06",
+        "requerimientos_cubiertos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ],
+        "modulos": [
+          {
+            "nombre": "eventos.aviso_pago",
+            "ruta": "src/eventos/aviso_pago.py",
+            "responsabilidad": "Definir los eventos del dominio emitidos por la pasarela de pagos y sus validaciones",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AvisoPagoConfirmado",
+                "tipo": "clase",
+                "firma": "AvisoPagoConfirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date)",
+                "descripcion": "Evento que representa un pago confirmado por la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "AvisoPagoReversado",
+                "tipo": "clase",
+                "firma": "AvisoPagoReversado(referencia_pago: str, fecha: date, motivo: str)",
+                "descripcion": "Evento que representa un reverso de pago informado por la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "eventos.resultados",
+            "ruta": "src/eventos/resultados.py",
+            "responsabilidad": "Definir los resultados/decisiones que producen los consumidores para que la infraestructura aplique cambios",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AjusteFacturaResultado",
+                "tipo": "clase",
+                "firma": "AjusteFacturaResultado(numero_factura: str, estado_factura: str, valor_aplicado: Decimal, saldo_a_favor: Decimal, clave_idempotencia: str)",
+                "descripcion": "Resultado de aplicar un pago o reverso a una factura, incluyendo clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "AnulacionReciboResultado",
+                "tipo": "clase",
+                "firma": "AnulacionReciboResultado(referencia_pago: str, motivo: str, clave_idempotencia: str)",
+                "descripcion": "Resultado que solicita anular un recibo asociado a una referencia de pago, con motivo y clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "ActualizacionCarteraResultado",
+                "tipo": "clase",
+                "firma": "ActualizacionCarteraResultado(referencia_pago: str, estado_cartera: str, clave_idempotencia: str)",
+                "descripcion": "Resultado de la actualización del estado de la cartera por pago confirmado o reversado",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "productores.publicador_avisos",
+            "ruta": "src/productores/publicador_avisos.py",
+            "responsabilidad": "Construir eventos a partir de los avisos de la pasarela de pagos",
+            "capa": "productores",
+            "interfaces_publicas": [
+              {
+                "nombre": "construir_aviso_confirmado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_confirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date) -> AvisoPagoConfirmado",
+                "descripcion": "Valida y construye un evento de pago confirmado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "construir_aviso_reversado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_reversado(referencia_pago: str, fecha: date, motivo: str) -> AvisoPagoReversado",
+                "descripcion": "Valida y construye un evento de pago reversado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "consumidores.factura",
+            "ruta": "src/consumidores/factura.py",
+            "responsabilidad": "Consumir eventos de pago para determinar el ajuste de factura: aplicar abono/pago o revertir al estado anterior",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_factura(aviso: AvisoPagoConfirmado) -> AjusteFacturaResultado",
+                "descripcion": "Determina el nuevo estado de la factura (pagada o abonada), el valor aplicado y el saldo a favor en pesos sin decimales",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_factura(aviso: AvisoPagoReversado) -> AjusteFacturaResultado",
+                "descripcion": "Determina la reversión del estado de la factura a su estado anterior ante un reverso de pago",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.recibo",
+            "ruta": "src/consumidores/recibo.py",
+            "responsabilidad": "Consumir eventos de reverso para solicitar la anulación del recibo asociado y registrar motivo",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_reversado_recibo",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_recibo(aviso: AvisoPagoReversado) -> AnulacionReciboResultado",
+                "descripcion": "Genera la instrucción de anular el recibo asociado a la referencia con el motivo informado",
+                "excepciones": [
+                  "MotivoObligatorio",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.cartera",
+            "ruta": "src/consumidores/cartera.py",
+            "responsabilidad": "Consumir eventos de pago confirmado o reversado para determinar el nuevo estado de la cartera; proveer claves de idempotencia por referencia",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_cartera(aviso: AvisoPagoConfirmado) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un pago confirmado y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_cartera(aviso: AvisoPagoReversado) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un reverso y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "infraestructura.bus_eventos_memoria",
+            "ruta": "src/infraestructura/bus_eventos_memoria.py",
+            "responsabilidad": "Bus de eventos en memoria para publicar avisos y despacharlos a consumidores; gestiona idempotencia por clave a nivel de infraestructura",
+            "capa": "infraestructura",
+            "interfaces_publicas": [
+              {
+                "nombre": "BusEventosMemoria",
+                "tipo": "clase",
+                "firma": "BusEventosMemoria()",
+                "descripcion": "Canal de mensajería en memoria con registro de manejadores y control de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_confirmado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos AvisoPagoConfirmado",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_reversado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_reversado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos AvisoPagoReversado",
+                "excepciones": []
+              },
+              {
+                "nombre": "publicar_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_confirmado(self, aviso: AvisoPagoConfirmado) -> None",
+                "descripcion": "Publica un evento de pago confirmado y lo despacha a todos los consumidores suscritos; aplica idempotencia cuando el resultado lo indique",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado"
+                ]
+              },
+              {
+                "nombre": "publicar_pago_reversado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_reversado(self, aviso: AvisoPagoReversado) -> None",
+                "descripcion": "Publica un evento de pago reversado y lo despacha a todos los consumidores suscritos; aplica idempotencia cuando el resultado lo indique",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados",
+              "consumidores.factura",
+              "consumidores.recibo",
+              "consumidores.cartera"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          }
+        ],
+        "modelo_datos": [
+          {
+            "nombre": "AvisoPagoConfirmado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoReversado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío; solo viene en avisos de reverso"
+              }
+            ]
+          },
+          {
+            "nombre": "AjusteFacturaResultado",
+            "campos": [
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, anterior"
+              },
+              {
+                "nombre": "valor_aplicado",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "saldo_a_favor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago + numero_factura"
+              }
+            ]
+          },
+          {
+            "nombre": "AnulacionReciboResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "ActualizacionCarteraResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_cartera",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: al día, en mora"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          }
+        ],
+        "dependencias_externas": [
+          {
+            "paquete": "pydantic",
+            "proposito": "validación de esquemas de datos de eventos y resultados"
+          }
+        ],
+        "reglas_de_dependencia": [
+          "Productores y consumidores importan exclusivamente de la capa eventos; no importan entre sí ni de infraestructura",
+          "La capa de eventos no importa de ninguna otra capa",
+          "La infraestructura puede importar de eventos y conocer a los consumidores para orquestar la suscripción y el despacho",
+          "No existen importaciones desde consumidores hacia infraestructura ni desde productores hacia infraestructura",
+          "No existen importaciones entre módulos de productores y módulos de consumidores"
+        ]
+      }
+    },
+    {
+      "version": "0.3",
+      "decision": "Pasó N9 y se aprobó; en N17 se devolvió al arquitecto porque el módulo no funcionaba con su propio bus: no había dónde vivieran las facturas.",
+      "especificacion": {
+        "id_especificacion": "ED-01",
+        "version": "0.3",
+        "arquitectura_base": "ARQ-06",
+        "requerimientos_cubiertos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ],
+        "modulos": [
+          {
+            "nombre": "eventos.aviso_pago",
+            "ruta": "src/eventos/aviso_pago.py",
+            "responsabilidad": "Definir los eventos del dominio emitidos por la pasarela de pagos y sus validaciones",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AvisoPagoConfirmado",
+                "tipo": "clase",
+                "firma": "AvisoPagoConfirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date)",
+                "descripcion": "Evento que representa un pago confirmado por la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "AvisoPagoReversado",
+                "tipo": "clase",
+                "firma": "AvisoPagoReversado(referencia_pago: str, fecha: date, motivo: str)",
+                "descripcion": "Evento que representa un reverso de pago informado por la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "eventos.resultados",
+            "ruta": "src/eventos/resultados.py",
+            "responsabilidad": "Definir los resultados/decisiones que producen los consumidores para que la infraestructura aplique cambios",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AjusteFacturaResultado",
+                "tipo": "clase",
+                "firma": "AjusteFacturaResultado(numero_factura: str, estado_factura: str, valor_aplicado: Decimal, saldo_a_favor: Decimal, clave_idempotencia: str)",
+                "descripcion": "Resultado de aplicar un pago o reverso a una factura, incluyendo clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "AnulacionReciboResultado",
+                "tipo": "clase",
+                "firma": "AnulacionReciboResultado(referencia_pago: str, motivo: str, estado_recibo: str, clave_idempotencia: str)",
+                "descripcion": "Resultado que solicita anular el recibo asociado a una referencia de pago; incluye motivo, estado del recibo (\"anulado\") y clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "ActualizacionCarteraResultado",
+                "tipo": "clase",
+                "firma": "ActualizacionCarteraResultado(referencia_pago: str, estado_cartera: str, clave_idempotencia: str)",
+                "descripcion": "Resultado de la actualización del estado de la cartera por pago confirmado o reversado",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "productores.publicador_avisos",
+            "ruta": "src/productores/publicador_avisos.py",
+            "responsabilidad": "Construir eventos a partir de los avisos de la pasarela de pagos",
+            "capa": "productores",
+            "interfaces_publicas": [
+              {
+                "nombre": "construir_aviso_confirmado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_confirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date) -> AvisoPagoConfirmado",
+                "descripcion": "Valida y construye un evento de pago confirmado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "construir_aviso_reversado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_reversado(referencia_pago: str, fecha: date, motivo: str) -> AvisoPagoReversado",
+                "descripcion": "Valida y construye un evento de pago reversado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "consumidores.factura",
+            "ruta": "src/consumidores/factura.py",
+            "responsabilidad": "Consumir eventos de pago para determinar el ajuste de factura: aplicar abono/pago o revertir al estado anterior",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_factura(aviso: AvisoPagoConfirmado) -> AjusteFacturaResultado",
+                "descripcion": "Determina el nuevo estado de la factura (pagada o abonada), el valor aplicado y el saldo a favor en pesos sin decimales",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_factura(aviso: AvisoPagoReversado) -> AjusteFacturaResultado",
+                "descripcion": "Determina la reversión del estado de la factura a su estado anterior ante un reverso de pago",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.recibo",
+            "ruta": "src/consumidores/recibo.py",
+            "responsabilidad": "Consumir eventos de reverso para solicitar la anulación del recibo asociado y registrar motivo",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_reversado_recibo",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_recibo(aviso: AvisoPagoReversado) -> AnulacionReciboResultado",
+                "descripcion": "Genera la instrucción de anular el recibo asociado a la referencia con el motivo informado; devuelve estado del recibo como \"anulado\"",
+                "excepciones": [
+                  "MotivoObligatorio",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.cartera",
+            "ruta": "src/consumidores/cartera.py",
+            "responsabilidad": "Consumir eventos de pago confirmado o reversado para determinar el nuevo estado de la cartera; proveer claves de idempotencia por referencia",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_cartera(aviso: AvisoPagoConfirmado) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un pago confirmado y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_cartera(aviso: AvisoPagoReversado) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un reverso y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "infraestructura.bus_eventos_memoria",
+            "ruta": "src/infraestructura/bus_eventos_memoria.py",
+            "responsabilidad": "Bus de eventos en memoria para publicar avisos y despacharlos a consumidores; gestiona idempotencia por clave a nivel de infraestructura",
+            "capa": "infraestructura",
+            "interfaces_publicas": [
+              {
+                "nombre": "BusEventosMemoria",
+                "tipo": "clase",
+                "firma": "BusEventosMemoria()",
+                "descripcion": "Canal de mensajería en memoria con registro de manejadores y control de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_confirmado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos AvisoPagoConfirmado",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_reversado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_reversado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos AvisoPagoReversado",
+                "excepciones": []
+              },
+              {
+                "nombre": "publicar_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_confirmado(self, aviso: AvisoPagoConfirmado) -> None",
+                "descripcion": "Publica un evento de pago confirmado y lo despacha a todos los consumidores suscritos; aplica idempotencia cuando el resultado lo indique",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado"
+                ]
+              },
+              {
+                "nombre": "publicar_pago_reversado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_reversado(self, aviso: AvisoPagoReversado) -> None",
+                "descripcion": "Publica un evento de pago reversado y lo despacha a todos los consumidores suscritos; aplica idempotencia cuando el resultado lo indique",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.resultados",
+              "consumidores.factura",
+              "consumidores.recibo",
+              "consumidores.cartera"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          }
+        ],
+        "modelo_datos": [
+          {
+            "nombre": "AvisoPagoConfirmado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoReversado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío; solo viene en avisos de reverso"
+              }
+            ]
+          },
+          {
+            "nombre": "AjusteFacturaResultado",
+            "campos": [
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, anterior"
+              },
+              {
+                "nombre": "valor_aplicado",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "saldo_a_favor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago + numero_factura"
+              }
+            ]
+          },
+          {
+            "nombre": "AnulacionReciboResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_recibo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "valor 'anulado'"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "ActualizacionCarteraResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_cartera",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: al día, en mora"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          }
+        ],
+        "dependencias_externas": [
+          {
+            "paquete": "pydantic",
+            "proposito": "validación de esquemas de datos de eventos y resultados"
+          }
+        ],
+        "reglas_de_dependencia": [
+          "Productores y consumidores importan exclusivamente de la capa eventos; no importan entre sí ni de infraestructura",
+          "La capa de eventos no importa de ninguna otra capa",
+          "La infraestructura puede importar de eventos y conocer a los consumidores para orquestar la suscripción y el despacho",
+          "No existen importaciones desde consumidores hacia infraestructura ni desde productores hacia infraestructura",
+          "No existen importaciones entre módulos de productores y módulos de consumidores"
+        ]
+      }
+    },
+    {
+      "version": "0.4",
+      "decision": "Pasó N9 y el revisor la rechazó: no había cómo registrar un recibo ni la cartera de una familia.",
+      "especificacion": {
+        "id_especificacion": "ED-01",
+        "version": "0.4",
+        "arquitectura_base": "ARQ-06",
+        "requerimientos_cubiertos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ],
+        "modulos": [
+          {
+            "nombre": "eventos.aviso_pago",
+            "ruta": "src/eventos/aviso_pago.py",
+            "responsabilidad": "Definir los eventos brutos emitidos por la pasarela de pagos",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AvisoPagoConfirmado",
+                "tipo": "clase",
+                "firma": "AvisoPagoConfirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date)",
+                "descripcion": "Evento bruto de pago confirmado de la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "AvisoPagoReversado",
+                "tipo": "clase",
+                "firma": "AvisoPagoReversado(referencia_pago: str, fecha: date, motivo: str)",
+                "descripcion": "Evento bruto de pago reversado de la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "eventos.aviso_pago_enriquecido",
+            "ruta": "src/eventos/aviso_pago_enriquecido.py",
+            "responsabilidad": "Definir eventos enriquecidos con datos de factura necesarios para el procesamiento por consumidores",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AvisoPagoConfirmadoEnriquecido",
+                "tipo": "clase",
+                "firma": "AvisoPagoConfirmadoEnriquecido(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date, saldo_actual: Decimal, estado_actual: str)",
+                "descripcion": "Evento enriquecido con el saldo y estado actuales de la factura",
+                "excepciones": []
+              },
+              {
+                "nombre": "AvisoPagoReversadoEnriquecido",
+                "tipo": "clase",
+                "firma": "AvisoPagoReversadoEnriquecido(referencia_pago: str, fecha: date, motivo: str, numero_factura: str, estado_anterior: str)",
+                "descripcion": "Evento enriquecido con el número de factura asociado a la referencia y el estado anterior de la factura",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "eventos.resultados",
+            "ruta": "src/eventos/resultados.py",
+            "responsabilidad": "Definir los resultados/decisiones que producen los consumidores para que la infraestructura aplique cambios",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AjusteFacturaResultado",
+                "tipo": "clase",
+                "firma": "AjusteFacturaResultado(numero_factura: str, estado_factura: str, valor_aplicado: Decimal, saldo_a_favor: Decimal, clave_idempotencia: str)",
+                "descripcion": "Resultado de aplicar un pago o reverso a una factura, incluyendo clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "AnulacionReciboResultado",
+                "tipo": "clase",
+                "firma": "AnulacionReciboResultado(referencia_pago: str, motivo: str, estado_recibo: str, clave_idempotencia: str)",
+                "descripcion": "Resultado que solicita anular el recibo asociado a una referencia de pago; incluye motivo, estado del recibo (\"anulado\") y clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "ActualizacionCarteraResultado",
+                "tipo": "clase",
+                "firma": "ActualizacionCarteraResultado(referencia_pago: str, estado_cartera: str, clave_idempotencia: str)",
+                "descripcion": "Resultado de la actualización del estado de la cartera por pago confirmado o reversado",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "productores.publicador_avisos",
+            "ruta": "src/productores/publicador_avisos.py",
+            "responsabilidad": "Construir eventos a partir de los avisos de la pasarela de pagos",
+            "capa": "productores",
+            "interfaces_publicas": [
+              {
+                "nombre": "construir_aviso_confirmado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_confirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date) -> AvisoPagoConfirmado",
+                "descripcion": "Valida y construye un evento de pago confirmado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "construir_aviso_reversado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_reversado(referencia_pago: str, fecha: date, motivo: str) -> AvisoPagoReversado",
+                "descripcion": "Valida y construye un evento de pago reversado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "consumidores.factura",
+            "ruta": "src/consumidores/factura.py",
+            "responsabilidad": "Consumir eventos de pago para determinar el ajuste de factura: aplicar abono/pago o revertir al estado anterior",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_factura(aviso: AvisoPagoConfirmadoEnriquecido) -> AjusteFacturaResultado",
+                "descripcion": "Determina el nuevo estado de la factura (pagada o abonada), el valor aplicado y el saldo a favor en pesos sin decimales",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_factura(aviso: AvisoPagoReversadoEnriquecido) -> AjusteFacturaResultado",
+                "descripcion": "Determina la reversión del estado de la factura a su estado anterior ante un reverso de pago",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.recibo",
+            "ruta": "src/consumidores/recibo.py",
+            "responsabilidad": "Consumir eventos de reverso para solicitar la anulación del recibo asociado y registrar motivo",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_reversado_recibo",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_recibo(aviso: AvisoPagoReversadoEnriquecido) -> AnulacionReciboResultado",
+                "descripcion": "Genera la instrucción de anular el recibo asociado a la referencia con el motivo informado; devuelve estado del recibo como \"anulado\"",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.cartera",
+            "ruta": "src/consumidores/cartera.py",
+            "responsabilidad": "Consumir eventos de pago confirmado o reversado para determinar el nuevo estado de la cartera; proveer claves de idempotencia por referencia",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_cartera(aviso: AvisoPagoConfirmadoEnriquecido) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un pago confirmado y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_cartera(aviso: AvisoPagoReversadoEnriquecido) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un reverso y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "infraestructura.repos_facturacion_memoria",
+            "ruta": "src/infraestructura/repos_facturacion_memoria.py",
+            "responsabilidad": "Almacenamiento en memoria de facturas, recibos, estado de cartera y mapeos referencia-factura; aplica resultados de consumidores",
+            "capa": "infraestructura",
+            "interfaces_publicas": [
+              {
+                "nombre": "registrar_factura_inicial",
+                "tipo": "funcion",
+                "firma": "registrar_factura_inicial(numero_factura: str, saldo_inicial: Decimal, estado_inicial: str) -> None",
+                "descripcion": "Registra una factura con su saldo y estado iniciales en el almacén en memoria",
+                "excepciones": []
+              },
+              {
+                "nombre": "obtener_factura_por_numero",
+                "tipo": "funcion",
+                "firma": "obtener_factura_por_numero(numero_factura: str) -> Factura",
+                "descripcion": "Obtiene la entidad Factura por su número",
+                "excepciones": [
+                  "FacturaNoExiste"
+                ]
+              },
+              {
+                "nombre": "registrar_mapeo_referencia_factura",
+                "tipo": "funcion",
+                "firma": "registrar_mapeo_referencia_factura(referencia_pago: str, numero_factura: str) -> None",
+                "descripcion": "Registra la asociación entre referencia de pago y número de factura",
+                "excepciones": []
+              },
+              {
+                "nombre": "obtener_numero_factura_por_referencia",
+                "tipo": "funcion",
+                "firma": "obtener_numero_factura_por_referencia(referencia_pago: str) -> str",
+                "descripcion": "Resuelve el número de factura asociado a una referencia de pago",
+                "excepciones": [
+                  "ReferenciaNoAsociada"
+                ]
+              },
+              {
+                "nombre": "aplicar_ajuste_factura",
+                "tipo": "funcion",
+                "firma": "aplicar_ajuste_factura(ajuste: AjusteFacturaResultado) -> Factura",
+                "descripcion": "Aplica un ajuste de factura al almacén, actualizando saldo, estado y estado anterior",
+                "excepciones": [
+                  "FacturaNoExiste"
+                ]
+              },
+              {
+                "nombre": "aplicar_anulacion_recibo",
+                "tipo": "funcion",
+                "firma": "aplicar_anulacion_recibo(anulacion: AnulacionReciboResultado) -> Recibo",
+                "descripcion": "Aplica la anulación del recibo asociado a una referencia de pago",
+                "excepciones": [
+                  "ReciboNoExiste"
+                ]
+              },
+              {
+                "nombre": "actualizar_cartera",
+                "tipo": "funcion",
+                "firma": "actualizar_cartera(actualizacion: ActualizacionCarteraResultado) -> Cartera",
+                "descripcion": "Actualiza el estado de cartera de una familia según el resultado",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "infraestructura.bus_eventos_memoria",
+            "ruta": "src/infraestructura/bus_eventos_memoria.py",
+            "responsabilidad": "Bus de eventos en memoria: suscripción, enriquecimiento de eventos con datos de factura y despacho a consumidores; gestiona idempotencia por clave",
+            "capa": "infraestructura",
+            "interfaces_publicas": [
+              {
+                "nombre": "BusEventosMemoria",
+                "tipo": "clase",
+                "firma": "BusEventosMemoria()",
+                "descripcion": "Canal de mensajería en memoria con registro de manejadores, enriquecimiento y control de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_confirmado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos enriquecidos de pago confirmado",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_reversado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_reversado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos enriquecidos de pago reversado",
+                "excepciones": []
+              },
+              {
+                "nombre": "publicar_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_confirmado(self, aviso: AvisoPagoConfirmado) -> None",
+                "descripcion": "Enriquece y publica un evento de pago confirmado y lo despacha a todos los consumidores suscritos; aplica idempotencia cuando el resultado lo indique",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado",
+                  "FacturaNoExiste"
+                ]
+              },
+              {
+                "nombre": "publicar_pago_reversado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_reversado(self, aviso: AvisoPagoReversado) -> None",
+                "descripcion": "Enriquece y publica un evento de pago reversado y lo despacha a todos los consumidores suscritos; aplica idempotencia cuando el resultado lo indique",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado",
+                  "ReferenciaNoAsociada"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados",
+              "consumidores.factura",
+              "consumidores.recibo",
+              "consumidores.cartera",
+              "infraestructura.repos_facturacion_memoria"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          }
+        ],
+        "modelo_datos": [
+          {
+            "nombre": "AvisoPagoConfirmado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoReversado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío; solo viene en avisos de reverso"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoConfirmadoEnriquecido",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "saldo_actual",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "estado_actual",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoReversadoEnriquecido",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "resuelto por asociación referencia-factura"
+              },
+              {
+                "nombre": "estado_anterior",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              }
+            ]
+          },
+          {
+            "nombre": "AjusteFacturaResultado",
+            "campos": [
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, anterior"
+              },
+              {
+                "nombre": "valor_aplicado",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "saldo_a_favor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago + numero_factura"
+              }
+            ]
+          },
+          {
+            "nombre": "AnulacionReciboResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_recibo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "valor 'anulado'"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "ActualizacionCarteraResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_cartera",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: al día, en mora"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "Factura",
+            "campos": [
+              {
+                "nombre": "numero",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "saldo",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "estado",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              },
+              {
+                "nombre": "estado_anterior",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              }
+            ]
+          },
+          {
+            "nombre": "Recibo",
+            "campos": [
+              {
+                "nombre": "consecutivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "formato REC-000001, REC-000002, ..."
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "estado_recibo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: emitido, anulado"
+              },
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              }
+            ]
+          },
+          {
+            "nombre": "Cartera",
+            "campos": [
+              {
+                "nombre": "id_familia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: al día, en mora"
+              },
+              {
+                "nombre": "ultima_referencia_procesada",
+                "tipo": "str",
+                "obligatorio": false,
+                "restriccion": null
+              }
+            ]
+          }
+        ],
+        "dependencias_externas": [
+          {
+            "paquete": "pydantic",
+            "proposito": "validación de esquemas de datos de eventos y resultados"
+          }
+        ],
+        "reglas_de_dependencia": [
+          "Productores y consumidores importan exclusivamente de la capa eventos; no importan entre sí ni de infraestructura",
+          "La capa de eventos no importa de ninguna otra capa",
+          "La infraestructura puede importar de eventos y conocer a los consumidores para orquestar la suscripción, el enriquecimiento y el despacho",
+          "No existen importaciones desde consumidores hacia infraestructura ni desde productores hacia infraestructura",
+          "No existen importaciones entre módulos de productores y módulos de consumidores"
+        ]
+      }
+    },
+    {
+      "version": "0.5",
+      "decision": "Pasó N9 y se aprobó; el recibo anulado solo se podía observar con una consulta que se agregó a mano al caso de desarrollo (ADR-0015, fase 2).",
+      "especificacion": {
+        "id_especificacion": "ED-01",
+        "version": "0.5",
+        "arquitectura_base": "ARQ-06",
+        "requerimientos_cubiertos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ],
+        "modulos": [
+          {
+            "nombre": "eventos.aviso_pago",
+            "ruta": "src/eventos/aviso_pago.py",
+            "responsabilidad": "Definir los eventos brutos emitidos por la pasarela de pagos",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AvisoPagoConfirmado",
+                "tipo": "clase",
+                "firma": "AvisoPagoConfirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date)",
+                "descripcion": "Evento bruto de pago confirmado de la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "AvisoPagoReversado",
+                "tipo": "clase",
+                "firma": "AvisoPagoReversado(referencia_pago: str, fecha: date, motivo: str)",
+                "descripcion": "Evento bruto de pago reversado de la pasarela",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "eventos.aviso_pago_enriquecido",
+            "ruta": "src/eventos/aviso_pago_enriquecido.py",
+            "responsabilidad": "Definir eventos enriquecidos con datos de factura y familia necesarios para el procesamiento por consumidores",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AvisoPagoConfirmadoEnriquecido",
+                "tipo": "clase",
+                "firma": "AvisoPagoConfirmadoEnriquecido(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date, saldo_actual: Decimal, estado_actual: str, id_familia: str)",
+                "descripcion": "Evento enriquecido con saldo, estado actuales de la factura e id de familia",
+                "excepciones": []
+              },
+              {
+                "nombre": "AvisoPagoReversadoEnriquecido",
+                "tipo": "clase",
+                "firma": "AvisoPagoReversadoEnriquecido(referencia_pago: str, fecha: date, motivo: str, numero_factura: str, estado_anterior: str, id_familia: str)",
+                "descripcion": "Evento enriquecido con el número de factura asociado a la referencia, estado anterior de la factura e id de familia",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "eventos.resultados",
+            "ruta": "src/eventos/resultados.py",
+            "responsabilidad": "Definir los resultados/decisiones que producen los consumidores para que la infraestructura aplique cambios",
+            "capa": "eventos",
+            "interfaces_publicas": [
+              {
+                "nombre": "AjusteFacturaResultado",
+                "tipo": "clase",
+                "firma": "AjusteFacturaResultado(numero_factura: str, estado_factura: str, valor_aplicado: Decimal, saldo_a_favor: Decimal, clave_idempotencia: str)",
+                "descripcion": "Resultado de aplicar un pago o reverso a una factura, incluyendo clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "EmisionReciboResultado",
+                "tipo": "clase",
+                "firma": "EmisionReciboResultado(numero_factura: str, referencia_pago: str, valor: Decimal, fecha: date, clave_idempotencia: str)",
+                "descripcion": "Resultado que solicita emitir el recibo para un pago confirmado; la infraestructura genera el consecutivo",
+                "excepciones": []
+              },
+              {
+                "nombre": "AnulacionReciboResultado",
+                "tipo": "clase",
+                "firma": "AnulacionReciboResultado(referencia_pago: str, motivo: str, estado_recibo: str, clave_idempotencia: str)",
+                "descripcion": "Resultado que solicita anular el recibo asociado a una referencia de pago; incluye motivo, estado del recibo (\"anulado\") y clave de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "ActualizacionCarteraResultado",
+                "tipo": "clase",
+                "firma": "ActualizacionCarteraResultado(referencia_pago: str, id_familia: str, estado_cartera: str, clave_idempotencia: str)",
+                "descripcion": "Resultado de la actualización del estado de la cartera de una familia por pago confirmado o reversado",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "productores.publicador_avisos",
+            "ruta": "src/productores/publicador_avisos.py",
+            "responsabilidad": "Construir eventos a partir de los avisos de la pasarela de pagos",
+            "capa": "productores",
+            "interfaces_publicas": [
+              {
+                "nombre": "construir_aviso_confirmado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_confirmado(referencia_pago: str, numero_factura: str, valor: Decimal, fecha: date) -> AvisoPagoConfirmado",
+                "descripcion": "Valida y construye un evento de pago confirmado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "construir_aviso_reversado",
+                "tipo": "funcion",
+                "firma": "construir_aviso_reversado(referencia_pago: str, fecha: date, motivo: str) -> AvisoPagoReversado",
+                "descripcion": "Valida y construye un evento de pago reversado listo para publicarse en el bus de eventos",
+                "excepciones": [
+                  "AvisoIncompleto",
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "consumidores.factura",
+            "ruta": "src/consumidores/factura.py",
+            "responsabilidad": "Consumir eventos de pago para determinar el ajuste de factura: aplicar abono/pago o revertir al estado anterior",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_factura(aviso: AvisoPagoConfirmadoEnriquecido) -> AjusteFacturaResultado",
+                "descripcion": "Determina el nuevo estado de la factura (pagada o abonada), el valor aplicado y el saldo a favor en pesos sin decimales",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_factura",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_factura(aviso: AvisoPagoReversadoEnriquecido) -> AjusteFacturaResultado",
+                "descripcion": "Determina la reversión del estado de la factura a su estado anterior ante un reverso de pago",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.recibo_emision",
+            "ruta": "src/consumidores/recibo_emision.py",
+            "responsabilidad": "Consumir eventos de pago confirmado para solicitar la emisión del recibo asociado",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_emitir_recibo",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_emitir_recibo(aviso: AvisoPagoConfirmadoEnriquecido) -> EmisionReciboResultado",
+                "descripcion": "Genera la instrucción de emitir el recibo asociado a la referencia y factura; la infraestructura asigna el consecutivo",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.recibo",
+            "ruta": "src/consumidores/recibo.py",
+            "responsabilidad": "Consumir eventos de reverso para solicitar la anulación del recibo asociado y registrar motivo",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_reversado_recibo",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_recibo(aviso: AvisoPagoReversadoEnriquecido) -> AnulacionReciboResultado",
+                "descripcion": "Genera la instrucción de anular el recibo asociado a la referencia con el motivo informado; devuelve estado del recibo como \"anulado\"",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-02"
+            ]
+          },
+          {
+            "nombre": "consumidores.cartera",
+            "ruta": "src/consumidores/cartera.py",
+            "responsabilidad": "Consumir eventos de pago confirmado o reversado para determinar el nuevo estado de la cartera; proveer claves de idempotencia por referencia",
+            "capa": "consumidores",
+            "interfaces_publicas": [
+              {
+                "nombre": "manejar_pago_confirmado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_confirmado_cartera(aviso: AvisoPagoConfirmadoEnriquecido) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un pago confirmado y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              },
+              {
+                "nombre": "manejar_pago_reversado_cartera",
+                "tipo": "funcion",
+                "firma": "manejar_pago_reversado_cartera(aviso: AvisoPagoReversadoEnriquecido) -> ActualizacionCarteraResultado",
+                "descripcion": "Calcula el estado de cartera resultante por un reverso y emite una clave de idempotencia basada en la referencia",
+                "excepciones": [
+                  "ValidacionEventoInvalido"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "infraestructura.repos_facturacion_memoria",
+            "ruta": "src/infraestructura/repos_facturacion_memoria.py",
+            "responsabilidad": "Almacenamiento en memoria de facturas, recibos, cartera y mapeos referencia-factura; aplica resultados de consumidores y gestiona consecutivos",
+            "capa": "infraestructura",
+            "interfaces_publicas": [
+              {
+                "nombre": "registrar_factura_inicial",
+                "tipo": "funcion",
+                "firma": "registrar_factura_inicial(numero_factura: str, id_familia: str, saldo_inicial: Decimal, estado_inicial: str) -> None",
+                "descripcion": "Registra una factura con su saldo, estado inicial e id de familia en el almacén en memoria",
+                "excepciones": []
+              },
+              {
+                "nombre": "obtener_factura_por_numero",
+                "tipo": "funcion",
+                "firma": "obtener_factura_por_numero(numero_factura: str) -> Factura",
+                "descripcion": "Obtiene la entidad Factura por su número",
+                "excepciones": [
+                  "FacturaNoExiste"
+                ]
+              },
+              {
+                "nombre": "registrar_mapeo_referencia_factura",
+                "tipo": "funcion",
+                "firma": "registrar_mapeo_referencia_factura(referencia_pago: str, numero_factura: str) -> None",
+                "descripcion": "Registra la asociación entre referencia de pago y número de factura",
+                "excepciones": []
+              },
+              {
+                "nombre": "obtener_numero_factura_por_referencia",
+                "tipo": "funcion",
+                "firma": "obtener_numero_factura_por_referencia(referencia_pago: str) -> str",
+                "descripcion": "Resuelve el número de factura asociado a una referencia de pago",
+                "excepciones": [
+                  "ReferenciaNoAsociada"
+                ]
+              },
+              {
+                "nombre": "registrar_cartera_familia",
+                "tipo": "funcion",
+                "firma": "registrar_cartera_familia(id_familia: str, estado_inicial: str) -> None",
+                "descripcion": "Registra la cartera de una familia en el almacén en memoria",
+                "excepciones": []
+              },
+              {
+                "nombre": "obtener_cartera_por_familia",
+                "tipo": "funcion",
+                "firma": "obtener_cartera_por_familia(id_familia: str) -> Cartera",
+                "descripcion": "Obtiene la entidad Cartera por id de familia",
+                "excepciones": []
+              },
+              {
+                "nombre": "aplicar_ajuste_factura",
+                "tipo": "funcion",
+                "firma": "aplicar_ajuste_factura(ajuste: AjusteFacturaResultado) -> Factura",
+                "descripcion": "Aplica un ajuste de factura al almacén, actualizando saldo, estado y estado anterior",
+                "excepciones": [
+                  "FacturaNoExiste"
+                ]
+              },
+              {
+                "nombre": "aplicar_emision_recibo",
+                "tipo": "funcion",
+                "firma": "aplicar_emision_recibo(emision: EmisionReciboResultado) -> Recibo",
+                "descripcion": "Emite un recibo nuevo asignando consecutivo (REC-000001, …), estado 'emitido' y lo asocia a la referencia y factura",
+                "excepciones": []
+              },
+              {
+                "nombre": "aplicar_anulacion_recibo",
+                "tipo": "funcion",
+                "firma": "aplicar_anulacion_recibo(anulacion: AnulacionReciboResultado) -> Recibo",
+                "descripcion": "Aplica la anulación del recibo asociado a una referencia de pago",
+                "excepciones": [
+                  "ReciboNoExiste"
+                ]
+              },
+              {
+                "nombre": "actualizar_cartera",
+                "tipo": "funcion",
+                "firma": "actualizar_cartera(actualizacion: ActualizacionCarteraResultado) -> Cartera",
+                "descripcion": "Actualiza el estado de cartera de una familia según el resultado",
+                "excepciones": []
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.resultados"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          },
+          {
+            "nombre": "infraestructura.bus_eventos_memoria",
+            "ruta": "src/infraestructura/bus_eventos_memoria.py",
+            "responsabilidad": "Bus de eventos en memoria: suscripción, enriquecimiento de eventos con datos de factura y familia, despacho a consumidores y aplicación de resultados; gestiona idempotencia por clave",
+            "capa": "infraestructura",
+            "interfaces_publicas": [
+              {
+                "nombre": "BusEventosMemoria",
+                "tipo": "clase",
+                "firma": "BusEventosMemoria()",
+                "descripcion": "Canal de mensajería en memoria con registro de manejadores, enriquecimiento y control de idempotencia",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_confirmado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos enriquecidos de pago confirmado",
+                "excepciones": []
+              },
+              {
+                "nombre": "suscribir_pago_reversado",
+                "tipo": "funcion",
+                "firma": "suscribir_pago_reversado(self, manejador: callable) -> None",
+                "descripcion": "Registra un manejador para eventos enriquecidos de pago reversado",
+                "excepciones": []
+              },
+              {
+                "nombre": "publicar_pago_confirmado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_confirmado(self, aviso: AvisoPagoConfirmado) -> None",
+                "descripcion": "Enriquece y publica un evento de pago confirmado y lo despacha a todos los consumidores suscritos; registra el mapeo referencia→factura; aplica resultados de consumidores (ajuste de factura, emisión de recibo, actualización de cartera) respetando idempotencia",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado",
+                  "FacturaNoExiste"
+                ]
+              },
+              {
+                "nombre": "publicar_pago_reversado",
+                "tipo": "funcion",
+                "firma": "publicar_pago_reversado(self, aviso: AvisoPagoReversado) -> None",
+                "descripcion": "Enriquece y publica un evento de pago reversado y lo despacha a todos los consumidores suscritos; resuelve factura por referencia; aplica resultados de consumidores (reversión de factura, anulación de recibo, actualización de cartera) respetando idempotencia",
+                "excepciones": [
+                  "EventoDuplicadoIgnorado",
+                  "ReferenciaNoAsociada"
+                ]
+              }
+            ],
+            "dependencias_permitidas": [
+              "eventos.aviso_pago",
+              "eventos.aviso_pago_enriquecido",
+              "eventos.resultados",
+              "consumidores.factura",
+              "consumidores.recibo_emision",
+              "consumidores.recibo",
+              "consumidores.cartera",
+              "infraestructura.repos_facturacion_memoria"
+            ],
+            "requerimientos": [
+              "RF-01",
+              "RF-02",
+              "RF-03"
+            ]
+          }
+        ],
+        "modelo_datos": [
+          {
+            "nombre": "AvisoPagoConfirmado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoReversado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío; solo viene en avisos de reverso"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoConfirmadoEnriquecido",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "saldo_actual",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "estado_actual",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              },
+              {
+                "nombre": "id_familia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              }
+            ]
+          },
+          {
+            "nombre": "AvisoPagoReversadoEnriquecido",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "resuelto por asociación referencia-factura"
+              },
+              {
+                "nombre": "estado_anterior",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              },
+              {
+                "nombre": "id_familia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              }
+            ]
+          },
+          {
+            "nombre": "AjusteFacturaResultado",
+            "campos": [
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              },
+              {
+                "nombre": "valor_aplicado",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "saldo_a_favor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago + numero_factura"
+              }
+            ]
+          },
+          {
+            "nombre": "EmisionReciboResultado",
+            "campos": [
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "fecha",
+                "tipo": "date",
+                "obligatorio": true,
+                "restriccion": "fecha calendario válida"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "AnulacionReciboResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "motivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_recibo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "valor 'anulado'"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "ActualizacionCarteraResultado",
+            "campos": [
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "id_familia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado_cartera",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: al día, en mora"
+              },
+              {
+                "nombre": "clave_idempotencia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "derivada de tipo_evento + referencia_pago"
+              }
+            ]
+          },
+          {
+            "nombre": "Factura",
+            "campos": [
+              {
+                "nombre": "numero",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "id_familia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "saldo",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "estado",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              },
+              {
+                "nombre": "estado_anterior",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: pagada, abonada, pendiente"
+              }
+            ]
+          },
+          {
+            "nombre": "Recibo",
+            "campos": [
+              {
+                "nombre": "consecutivo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "formato REC-000001, REC-000002, ..."
+              },
+              {
+                "nombre": "numero_factura",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "valor",
+                "tipo": "Decimal",
+                "obligatorio": true,
+                "restriccion": "pesos sin decimales, entero no negativo"
+              },
+              {
+                "nombre": "estado_recibo",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: emitido, anulado"
+              },
+              {
+                "nombre": "referencia_pago",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              }
+            ]
+          },
+          {
+            "nombre": "Cartera",
+            "campos": [
+              {
+                "nombre": "id_familia",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "no vacío"
+              },
+              {
+                "nombre": "estado",
+                "tipo": "str",
+                "obligatorio": true,
+                "restriccion": "uno de: al día, en mora"
+              },
+              {
+                "nombre": "ultima_referencia_procesada",
+                "tipo": "str",
+                "obligatorio": false,
+                "restriccion": null
+              }
+            ]
+          }
+        ],
+        "dependencias_externas": [
+          {
+            "paquete": "pydantic",
+            "proposito": "validación de esquemas de datos de eventos y resultados"
+          }
+        ],
+        "reglas_de_dependencia": [
+          "Productores y consumidores importan exclusivamente de la capa eventos; no importan entre sí ni de infraestructura",
+          "La capa de eventos no importa de ninguna otra capa",
+          "La infraestructura puede importar de eventos y conocer a los consumidores para orquestar la suscripción, el enriquecimiento y el despacho",
+          "No existen importaciones desde consumidores hacia infraestructura ni desde productores hacia infraestructura",
+          "No existen importaciones entre módulos de productores y módulos de consumidores"
+        ]
+      }
+    }
+  ]
+}

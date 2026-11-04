@@ -4,8 +4,8 @@ titulo: Procesamiento dirigido por eventos
 fuente: Catálogo de arquitecturas de referencia, elaboración propia sobre patrones consolidados
 tipo_fuente: practica_industria
 tags: [arquitectura, catalogo, procesamiento_por_eventos]
-version: 1.0
-fecha: 2026-09-14
+version: 1.1
+fecha: 2026-11-03
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -30,7 +30,7 @@ coleccion: arquitecturas_referencia
         - `eventos/ · definición y esquema de los eventos del dominio`
 - `productores/ · componentes que publican eventos`
 - `consumidores/ · manejadores, uno por tipo de evento`
-- `infraestructura/ · adaptador del canal de mensajería`
+- `infraestructura/ · adaptador del canal de mensajería y almacén del estado que registran y actualizan los consumidores, con operaciones de registro y de consulta`
 
         ## Regla de dependencia
 
@@ -56,3 +56,4 @@ coleccion: arquitecturas_referencia
         | Asignación de requerimientos | Qué requerimiento implementa cada módulo |
         | Interfaces públicas | Firma completa de lo que cada módulo expone |
         | Dependencias externas | Librerías del catálogo tecnológico que se emplearán |
+        | Estado del dominio | Dónde vive lo que los consumidores registran o actualizan, y con qué interfaces se registra y se consulta |

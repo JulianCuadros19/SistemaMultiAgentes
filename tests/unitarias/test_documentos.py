@@ -21,6 +21,7 @@ from multiagente.interfaces.documentos import (
     ErrorExportacion,
     especificacion_md,
     paquete_del_modulo,
+    recorridos_md,
     requerimientos_md,
     requirements_del_modulo,
     trazabilidad_md,
@@ -31,6 +32,7 @@ from multiagente.orquestador.ejecucion import (
     iniciar_sesion,
     validaciones,
 )
+from multiagente.orquestador.estado import RecorridoEscenario
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
 from multiagente.persistencia.puntos_control import serializador
@@ -83,6 +85,27 @@ def test_especificacion_en_el_formato_del_anexo_b():
         assert f"`{modulo.ruta}`" in documento
     assert "## Modelo de datos" in documento
     assert "## Reglas de dependencia" in documento
+    assert "## Recorridos de los escenarios" not in documento
+
+
+def test_recorridos_de_los_escenarios():
+    recorridos = [
+        RecorridoEscenario(
+            id_requerimiento="RF-01",
+            id_escenario="ESC-02",
+            preparar=("registrar_factura", "Familia"),
+            ejecutar="Bus.publicar",
+            observar=("consultar_factura",),
+        )
+    ]
+    tabla = recorridos_md(recorridos)
+    assert tabla.startswith("## Recorridos de los escenarios\n")
+    assert (
+        "| RF-01 ESC-02 | registrar_factura, Familia | Bus.publicar | consultar_factura |" in tabla
+    )
+    assert recorridos_md([]).endswith("El diseño no declara recorridos.\n")
+    documento = especificacion_md(especificacion_de_referencia(), recorridos)
+    assert documento.endswith(tabla)
 
 
 def sesion_validada():
@@ -134,6 +157,7 @@ def test_paquete_del_modulo_validado():
     for nombre in ("LEEME.md", "requerimientos.md", "especificacion.md", "trazabilidad.md"):
         assert paquete[nombre].endswith("\n")
     assert paquete["decision_arquitectura.md"].startswith(estado["arquitectura"].registro_decision)
+    assert "| RF-01 ESC-01 | — | ejecutar | ejecutar |" in paquete["especificacion.md"]
     assert paquete["validacion.md"].startswith("# Reporte simulado de la versión 3")
 
 

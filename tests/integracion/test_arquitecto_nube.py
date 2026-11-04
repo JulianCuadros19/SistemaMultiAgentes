@@ -1,9 +1,10 @@
-"""Condición de terminado del paso 8: la especificación generada pasa las validaciones del Anexo B.
+"""Condición de terminado de los pasos 8 y 12: la especificación generada pasa N9 sin errores.
 
 Para cada caso sintético de `evaluacion/casos/diseno-*.json`, un elicitador fijo entrega los
 requerimientos aprobados y el arquitecto real (BGE-M3 en N7, Azure OpenAI en N8) diseña hasta la
-aprobación humana de N9. Cuesta dinero (unos 0,08 USD por caso con esfuerzo `low`) y requiere los
-servicios `db` y `embeddings` de docker compose y el archivo .env:
+aprobación humana de N9: pasa las tres validaciones del Anexo B y cada escenario aprobado tiene un
+recorrido con interfaces declaradas (ADR-0015). Cuesta dinero (unos 0,10 USD por caso con
+esfuerzo `low`) y requiere los servicios `db` y `embeddings` de docker compose y el archivo .env:
 `pytest -m "nube and embeddings" tests/integracion/test_arquitecto_nube.py`.
 """
 
@@ -64,10 +65,18 @@ def test_la_especificacion_generada_pasa_el_anexo_b(base_real, vectorizador, arc
         f"{len(especificacion.modulos)} módulos · {arquitectura.disenos} diseños · USD {costo:.5f}"
     )
 
-    # Llega a la aprobación humana sin errores: pasa las tres validaciones del Anexo B.
+    # Llega a la aprobación humana sin errores: pasa las tres validaciones del Anexo B y cada
+    # escenario aprobado tiene su recorrido.
     assert avance.pausa is not None and avance.pausa.punto == "especificacion"
     assert avance.pausa.datos["errores"] == []
-    assert arquitecto.validar(especificacion, caso_requerimientos(app, id_sesion)) == []
+    requerimientos = caso_requerimientos(app, id_sesion)
+    assert arquitecto.validar(especificacion, requerimientos, arquitectura.recorridos) == []
+    escenarios = {
+        (r.id_requerimiento, e.id)
+        for r in requerimientos.requerimientos
+        for e in r.criterios_aceptacion
+    }
+    assert {(r.id_requerimiento, r.id_escenario) for r in arquitectura.recorridos} == escenarios
 
     # La elección respeta los criterios de selección del catálogo (arq-003).
     assert especificacion.arquitectura_base in caso.candidatas

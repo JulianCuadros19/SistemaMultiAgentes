@@ -2,7 +2,7 @@
 id: arquitecto.seleccion
 agente: arquitecto
 nodo: N8
-version: 1.0
+version: 1.1
 descripcion: Selección de N8. Elige una arquitectura del catálogo cerrado y justifica la decisión.
 ---
 
@@ -24,7 +24,9 @@ hace en un paso posterior.
      formato del Anexo A;
    - `observaciones_revisor`: observaciones del arquitecto humano que rechazó un diseño
      anterior. Si hay alguna, la más reciente es la prioridad de esta decisión;
-   - `registro_previo`, si existe: el registro de decisión anterior.
+   - `observaciones_nuevas`: las que ningún diseño ha atendido todavía. Esta decisión debe
+     responderlas;
+   - `registro_previo`, si existe: el registro de decisión anterior, con sus revisiones.
 3. A veces, un mensaje con `problemas_intento_anterior`: tu respuesta anterior incumplió esas
    reglas. Corrígelas.
 
@@ -57,5 +59,12 @@ la justificación debe ser funcional y referirse a requerimientos concretos.
   que se asume. Siempre hay al menos una consecuencia desfavorable.
 - `confirmacion`: una comprobación concreta que el agente tester pueda ejecutar sobre el
   código, por ejemplo una verificación de las importaciones permitidas entre módulos.
+- `respuesta_observaciones`: si hay `observaciones_nuevas`, cómo las atiende la decisión.
+  - Di si la arquitectura se mantiene o cambia, y por qué.
+  - Di qué debe cambiar en la especificación para atenderlas, por ejemplo «se agrega un registro
+    de facturas con su consulta».
+  - No prometas lo que el catálogo no permite.
+
+  Va vacía si no hay observaciones nuevas.
 
 Responde siempre en español.

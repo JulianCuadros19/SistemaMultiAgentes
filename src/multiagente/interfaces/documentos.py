@@ -17,6 +17,7 @@ from multiagente.orquestador.estado import (
     EstadoGrafo,
     Fase,
     PruebasPropias,
+    RecorridoEscenario,
     ResultadoPrueba,
     Severidad,
     Validacion,
@@ -126,11 +127,38 @@ def requerimientos_md(
     return "\n".join(lineas) + "\n"
 
 
-def especificacion_md(especificacion: EspecificacionDiseno) -> str:
+def recorridos_md(recorridos: Sequence[RecorridoEscenario]) -> str:
+    """Tabla de los recorridos de los escenarios: con qué interfaces se ejecuta cada uno.
+
+    Args:
+        recorridos: Recorridos que declaró el arquitecto.
+
+    Returns:
+        La sección en Markdown, o un aviso si el diseño no los declaró.
+    """
+    lineas = ["## Recorridos de los escenarios", ""]
+    if not recorridos:
+        return "\n".join([*lineas, "El diseño no declara recorridos."]) + "\n"
+    lineas += ["| Escenario | Prepara | Ejecuta | Observa |", "|---|---|---|---|"]
+    lineas += [
+        f"| {r.id_requerimiento} {r.id_escenario} | {_celda(', '.join(r.preparar)) or '—'} | "
+        f"{_celda(r.ejecutar)} | {_celda(', '.join(r.observar))} |"
+        for r in recorridos
+    ]
+    return "\n".join(lineas) + "\n"
+
+
+def especificacion_md(
+    especificacion: EspecificacionDiseno, recorridos: Sequence[RecorridoEscenario] = ()
+) -> str:
     """Documento de la especificación de diseño en el formato del Anexo B.
+
+    Los recorridos de los escenarios no son parte del Anexo B: si los hay, van al final, como
+    anexo de la especificación.
 
     Args:
         especificacion: Especificación de diseño.
+        recorridos: Recorridos de sus escenarios.
 
     Returns:
         El documento en Markdown.
@@ -184,6 +212,8 @@ def especificacion_md(especificacion: EspecificacionDiseno) -> str:
     ] or ["Ninguna."]
     lineas += ["", "## Reglas de dependencia", ""]
     lineas += [f"- {regla}" for regla in especificacion.reglas_de_dependencia] or ["Ninguna."]
+    if recorridos:
+        lineas += ["", recorridos_md(recorridos).rstrip("\n")]
     return "\n".join(lineas) + "\n"
 
 
@@ -420,7 +450,7 @@ def paquete_del_modulo(
             arquitectura.registro_decision, arquitectura.capacidades_no_cubiertas
         ),
         "especificacion.json": a_json(especificacion.model_dump(mode="json")),
-        "especificacion.md": especificacion_md(especificacion),
+        "especificacion.md": especificacion_md(especificacion, arquitectura.recorridos),
         "validacion.md": (estado["validacion"].reporte or "Sin reporte.").rstrip() + "\n",
         "trazabilidad.md": trazabilidad_md(estado, historial),
         **archivos,
