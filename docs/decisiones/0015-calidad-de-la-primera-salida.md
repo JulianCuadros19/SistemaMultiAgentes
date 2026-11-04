@@ -470,16 +470,25 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
         verificar».
       - La síntesis los usa como datos de los escenarios.
     - **Tipos invisibles.** El cliente pedía que un dato fuera decimal y el resumen no mostraba el
-      tipo. Ahora muestra el tipo de cada dato.
+      tipo.
+      - Ahora muestra el tipo de cada dato, pero solo si el cliente lo dijo, sin contar la
+        palabra «número».
+      - En la corrida de 20 casos, mostrar todos los tipos hizo que el cliente objetara los que
+        la extracción supuso (caso 17).
     - **«Falta algo» sin el dato.** La pregunta fija «¿Qué falta o qué debo corregir del
       resumen?» se repetía (caso 06). Ahora el modelo pregunta específicamente por lo que el
       cliente señaló (`resumen_incompleto`), sin repetir el resumen.
     - **Sistemas en «A quién le sirve».** El cliente pedía la tarea programada que usa la
       herramienta en esa línea, y el rol no la admite (decisión 29 del ADR-0014), así que el
       reclamo se repetía hasta el límite (caso 14).
-      - Con condiciones registradas, el resumen avisa junto al rol que los sistemas o procesos
-        que lo usan aparecen en «Condiciones ya definidas».
+      - Las condiciones sobre quién o qué usa lo pedido («la usa una tarea programada cada
+        noche») aparecen en la línea «Quién lo usa y cómo», justo después del rol.
       - Si el cliente insiste, N3 le explica dónde quedó.
+      - Primero se probó un aviso junto al rol que remitía a las condiciones. En la corrida de 20
+        casos, el cliente objetó el texto del aviso en seis resúmenes seguidos.
+    - **«Sin respuesta del cliente».** El cliente rechazaba esa frase en un atributo sin
+      definir, como los casos de error, y pedía que dijera que no hay ninguno (casos 13, 17 y
+      19). Ahora el resumen muestra «sin definir».
 24. **La síntesis y la verificación ante la exploración** (modifica el ADR-0008).
     - **Preguntas abiertas.** En la corrida ampliada, 14 de 20 historias llegaron a N6 con
       preguntas abiertas. En 4 de ellas, el registro no tenía preguntas abiertas ni atributos sin
@@ -499,10 +508,11 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
       mayúsculas con guion bajo, como `ESC_2019_00042`: es un valor que dio el cliente. Los
       ejemplos lo llevaban a los escenarios.
 25. **Prompts.**
-    - `elicitador.dialogo` 1.9:
+    - `elicitador.dialogo` 1.10:
       - categorías de casos límite, prioridad entre ellas, pregunta abierta y salida de la fase;
       - la pregunta específica ante un resumen incompleto;
-      - dónde quedan los sistemas que el cliente pide en «A quién le sirve»;
+      - dónde quedan los sistemas que el cliente pide en «A quién le sirve» (1.10: en «Quién lo
+        usa y cómo»);
       - la pregunta de cierre pide todas las correcciones de una vez.
       - Hasta la 1.8, el ejemplo de pregunta por un caso límite («¿Qué debe pasar si el pago
         llega con una fecha anterior al inicio de la vigencia?») era la regla oculta R1 del caso
@@ -638,6 +648,31 @@ una corrida por caso):
   - **Rol desconocido (caso 11):** N3 pregunta el rol con variantes y no detecta el «no sé». No
     llega al resumen.
 - **Costo de la corrida:** 2,64 USD. La fase suma 11,35 USD con las pruebas `nube`.
+
+**Segunda corrida de 20 casos**, con el resumen corregido por las tres primeras causas
+(`data/local/elicitaciones-ampliada-final-2`):
+
+| Medición | Turnos | Sin exploración | Confirmados | En el límite | Defectos en N6 | Sin defectos | USD, sistema y cliente |
+|---|---|---|---|---|---|---|---|
+| Final | 291 | 221 | 14 | 6 | 17 | 7 | 1,93 y 0,71 |
+| Final 2: quién lo usa, tipos dichos y «sin definir» | 296 | 224 | 15 | 5 | 8 | 12 | 1,87 y 0,70 |
+
+- **Las seis sesiones que no confirmaban ahora confirman.** No confirman cinco que antes sí
+  (02, 05, 06, 10 y 18): la variación entre corridas es alta, y cada corrida destapa causas que
+  la anterior no mostró.
+- **Causas nuevas:**
+  - **«No sé» sin detectar (caso 18; antes, el 11):** el cliente dice «eso no me lo
+    especificaron», «no está definido» o «no tengo una regla», y `MARCAS_DESCONOCIMIENTO` no lo
+    reconoce. El atributo nunca queda sin respuesta, y N3 lo pregunta hasta el límite.
+  - **Quién lo usa y a quién le sirve (casos 02, 05 y 06):** el cliente distingue a la persona
+    que lo usa, como el jefe de bodega, de la que obtiene el valor, como operaciones. El
+    registro tiene un solo rol, y «Quién lo usa y cómo» solo capta condiciones con verbos como
+    «usa» o «ejecuta».
+  - **Datos por operación (caso 10):** el cliente pide que un dato figure solo en la operación
+    que lo usa.
+  - **Errores registrados como reglas (caso 05):** el resumen muestra «Casos de error: sin
+    definir» aunque el cliente dio los mensajes de rechazo.
+- **Costo de la corrida:** 2,57 USD. La fase suma 13,92 USD.
 
 ## Verificación
 
