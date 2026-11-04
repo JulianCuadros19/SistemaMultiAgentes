@@ -350,13 +350,19 @@ Mantener esta sección actualizada al cerrar cada paso.
   - **criterio sin cumplir de la fase 5,** por decisión del equipo: 15 de 20 resúmenes
     confirmados (criterio 17) y 224 turnos sin exploración (criterio 211). Se mide de nuevo en la
     fase 7;
-  - **siguiente: fase 6,** enmiendas desde N17 por el elicitador (N17 → N5 → N6 → N16 → N10).
-    El plan está aprobado; para retomar basta «continúa con la fase 6 siguiendo el plan». La
-    sección «Para retomar» del plan dice qué leer primero;
-  - **después: fase 7,** medición de extremo a extremo con los 20 casos ampliados y cierre del
-    paso aquí;
-  - **verificado al cerrar la fase 5:** 690 pruebas unitarias, 31 de integración y 19 de
-    embeddings.
+  - **fase 6, cerrada el 2026-11-04:** enmiendas desde N17 por el elicitador
+    (N17 → N5 → N6 → N16 → N10, sin pasar por el diseño):
+    - prompt `elicitador.enmienda` 1.0 y validación en `agentes/elicitador/enmienda.py`;
+    - RF-39 nuevo y RF-38 con tres destinos (`docs/requerimientos.md` 1.2);
+    - por decisión del equipo, N6 no devuelve a N5 los defectos que el analista ya aceptó;
+    - la prueba `nube` `tests/integracion/test_enmienda_nube.py` pasa: RF-01 v0.2 con su
+      escenario, versión corregida aprobada por el tester y exportación con la enmienda, por
+      0,20 USD;
+  - **siguiente: fase 7,** medición de extremo a extremo con los 20 casos ampliados y cierre del
+    paso aquí. Espera el visto bueno del equipo; para retomar basta «continúa con la fase 7
+    siguiendo el plan»;
+  - **verificado al cerrar la fase 6:** 715 pruebas unitarias, 31 de integración, 19 de
+    embeddings y 33 del entorno aislado.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
