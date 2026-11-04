@@ -2,7 +2,7 @@
 id: arquitecto.parametrizacion
 agente: arquitecto
 nodo: N8
-version: 1.5
+version: 1.6
 descripcion: Parametrización de N8. Declara la especificación de diseño de la arquitectura elegida.
 ---
 
@@ -40,17 +40,17 @@ verificarlo, y el tester las rechaza.
 - `modulos`: los módulos que pide la estructura de la arquitectura elegida, con nombres del
   dominio y no genéricos. Usa el menor número de módulos que satisfaga los requerimientos.
   - `nombre`: nombre importable en notación de puntos, en minúsculas y con guion bajo, por
-    ejemplo `dominio.predio`.
+    ejemplo `dominio.prestamo`.
   - `ruta`: el archivo que corresponde al nombre, bajo `src/`, por ejemplo
-    `src/dominio/predio.py`. La primera carpeta es la capa del módulo, y no puede llamarse como
+    `src/dominio/prestamo.py`. La primera carpeta es la capa del módulo, y no puede llamarse como
     un módulo de la biblioteca estándar de Python (`io`, `json`, `logging`, `types`…) ni como
     una dependencia, porque taparía ese módulo al importarlo.
   - `responsabilidad` y `capa`: qué hace el módulo y a qué capa pertenece. La capa es el nombre
     de la carpeta de su ruta.
   - `interfaces_publicas`: al menos una por módulo.
     - `firma` es una firma de Python con tipos. Para una función:
-      `calcular_avaluo(predio: Predio, vigencia: int) -> Decimal`. Para una clase, su
-      constructor: `Predio(numero_predial: str, area_terreno: Decimal)`.
+      `calcular_multa(prestamo: Prestamo, devuelto_el: date) -> Decimal`. Para una clase, su
+      constructor: `Prestamo(codigo_libro: str, vence_el: date)`.
     - Los tipos son tipos, no funciones: una función que se recibe como parámetro es
       `Callable[[Aviso], Resultado]`, de `collections.abc`, y nunca `callable`; un valor de
       cualquier tipo es `object`, nunca `any`.

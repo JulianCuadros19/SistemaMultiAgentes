@@ -2,7 +2,7 @@
 id: desarrollador.generacion
 agente: desarrollador
 nodo: N10
-version: 1.8
+version: 1.9
 descripcion: Generación de N10. Implementa la especificación de diseño en código Python con pruebas y documentación.
 ---
 
@@ -83,7 +83,7 @@ conserva el resto.
      permitido, también si el módulo solo la deja pasar desde otro.
    - Si necesitas funciones o clases auxiliares, hazlas privadas, con prefijo `_`.
 2. **Dependencias.** Usa importaciones absolutas con el nombre del módulo declarado
-   (`from dominio.predio import Predio`). Cada módulo importa solo la biblioteca estándar, las
+   (`from dominio.prestamo import Prestamo`). Cada módulo importa solo la biblioteca estándar, las
    `dependencias_externas` de la especificación y los módulos de sus `dependencias_permitidas`.
    Las pruebas pueden importar además `pytest` y cualquier módulo declarado.
    - En el entorno aislado solo están instaladas la biblioteca estándar de Python 3.11, `pytest`
@@ -142,21 +142,21 @@ conserva el resto.
 
 # Ejemplo del formato de salida
 
-Para un módulo `dominio.predio` en `src/dominio/predio.py` y su prueba (abreviado):
+Para un módulo `dominio.prestamo` en `src/dominio/prestamo.py` y su prueba (abreviado):
 
 ```json
 {
   "archivos": [
     {
-      "ruta": "src/dominio/predio.py",
-      "contenido": "\"\"\"Entidad de predio y sus invariantes.\"\"\"\n\nfrom dataclasses import dataclass\nfrom decimal import Decimal\n\n\nclass NumeroPredialInvalido(ValueError):\n    \"\"\"El número predial no tiene 30 dígitos.\"\"\"\n\n\n@dataclass(frozen=True)\nclass Predio:\n    \"\"\"Predio con sus atributos físicos.\n\n    Attributes:\n        numero_predial: Número predial de 30 dígitos.\n        area_terreno: Área del terreno en metros cuadrados.\n    \"\"\"\n\n    numero_predial: str\n    area_terreno: Decimal\n"
+      "ruta": "src/dominio/prestamo.py",
+      "contenido": "\"\"\"Préstamo de un libro y sus invariantes.\"\"\"\n\nfrom dataclasses import dataclass\nfrom datetime import date\n\n\nclass CodigoLibroInvalido(ValueError):\n    \"\"\"El código del libro no tiene 8 caracteres.\"\"\"\n\n\n@dataclass(frozen=True)\nclass Prestamo:\n    \"\"\"Préstamo de un libro.\n\n    Attributes:\n        codigo_libro: Código del libro, de 8 caracteres.\n        vence_el: Fecha en que vence el préstamo.\n    \"\"\"\n\n    codigo_libro: str\n    vence_el: date\n"
     },
     {
-      "ruta": "tests/test_predio.py",
-      "contenido": "from decimal import Decimal\n\nimport pytest\n\nfrom dominio.predio import NumeroPredialInvalido, Predio\n\n\ndef test_rf_01_esc_01_predio_valido():\n    ...\n"
+      "ruta": "tests/test_prestamo.py",
+      "contenido": "from datetime import date\n\nimport pytest\n\nfrom dominio.prestamo import CodigoLibroInvalido, Prestamo\n\n\ndef test_rf_01_esc_01_prestamo_valido():\n    ...\n"
     }
   ],
-  "documentacion_uso": "# Predio\n\nEntidad de predio y sus invariantes.\n\n## Configuración\n\nNo requiere.\n\n## Ejecución\n\n...\n\n## Interfaces\n\n...\n\n## Supuestos\n\n..."
+  "documentacion_uso": "# Préstamo\n\nPréstamo de un libro y sus invariantes.\n\n## Configuración\n\nNo requiere.\n\n## Ejecución\n\n...\n\n## Interfaces\n\n...\n\n## Supuestos\n\n..."
 }
 ```
 

@@ -636,6 +636,11 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
       - los escaneos del caso 14.
     - Enseñaban para la prueba. Ahora vienen de un proceso que ningún caso usa: los préstamos de
       una biblioteca.
+    - Lo mismo pasaba con los ejemplos del arquitecto y del desarrollador: `Predio`,
+      `calcular_avaluo(predio, vigencia)`, `NumeroPredialInvalido` y `area_terreno` se parecían
+      al caso de avalúo. Decisión del equipo del 2026-11-04: `arquitecto.parametrizacion` 1.6 y
+      `desarrollador.generacion` 1.9 usan el préstamo de un libro. La regla de dinero y avalúos en
+      `Decimal` se conserva, porque es una regla del proyecto.
     - Las mediciones de la fase 5 anteriores a diálogo 1.9, extracción 1.7 y síntesis 1.9 pudieron
       beneficiarse de esas fugas. La medición de la fase 7 se hace sin ellas.
 

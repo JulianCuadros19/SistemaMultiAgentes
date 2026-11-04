@@ -243,7 +243,7 @@ def test_genera_la_primera_version(cliente_falso, completar_respuesta):
     assert argumentos["response_format"]["json_schema"]["name"] == "SalidaGeneracion"
     assert cliente.opciones == {"timeout": 600}
     (llamada,) = registro.llamadas
-    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.8")
+    assert (llamada.nodo, llamada.prompt) == ("N10", "desarrollador.generacion@1.9")
     assert llamada.costo_usd == Decimal("0.091")
 
 
