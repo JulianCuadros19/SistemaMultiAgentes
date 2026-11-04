@@ -2,7 +2,7 @@
 id: arquitecto.parametrizacion
 agente: arquitecto
 nodo: N8
-version: 1.4
+version: 1.5
 descripcion: Parametrización de N8. Declara la especificación de diseño de la arquitectura elegida.
 ---
 
@@ -56,8 +56,17 @@ verificarlo, y el tester las rechaza.
       cualquier tipo es `object`, nunca `any`.
     - Un parámetro que recibe un objeto declarado en la especificación, como un almacén, lleva
       como tipo esa clase o el contrato que implementa, nunca `object`.
-    - El `nombre` de la interfaz es el mismo de la firma. Las interfaces son de nivel superior
-      del módulo: funciones y clases.
+    - El `nombre` de la interfaz es el mismo de la firma. Las interfaces son las funciones y las
+      clases del módulo y los métodos de esas clases.
+    - Un método se declara como interfaz de tipo `funcion` llamada `Clase.metodo`, con la firma
+      del método y `self` como primer parámetro, sin tipo:
+      - `RegistroPrestamos.registrar` tiene la firma `registrar(self, prestamo: Prestamo) -> None`;
+      - su clase se declara aparte, como interfaz de tipo `clase`, con su constructor;
+      - declara cada método que usan otro módulo o las pruebas, y no los describas en prosa en la
+        descripción de la clase.
+    - Cada interfaz lleva un nombre único en toda la especificación. El contrato y su
+      implementación no se llaman igual (`RegistroPrestamos` y `RegistroPrestamosMemoria`), ni la
+      operación del servicio y la del almacén (`prestar` y `RegistroPrestamos.registrar`).
     - `excepciones` lista las clases de excepción que puede lanzar.
   - `dependencias_permitidas`: los módulos de esta especificación que el módulo puede
     importar, según la regla de dependencia de la arquitectura, sin ciclos.
@@ -106,11 +115,12 @@ requerimiento aprobado:
 consulta (préstamos, socios, existencias), declara dónde vive ese estado: un módulo de la capa de
 infraestructura o de persistencia que la arquitectura prevé.
 
-- Declara la clase del almacén con su constructor.
-- Declara sus operaciones de registro y de consulta como funciones que reciben la instancia como
-  primer parámetro con su tipo, por ejemplo
-  `registrar_prestamo(registro: RegistroPrestamos, prestamo: Prestamo) -> None` y
-  `consultar_prestamo(registro: RegistroPrestamos, codigo: str) -> Prestamo`.
+- Declara la clase del almacén con su constructor, y sus operaciones de registro y de consulta
+  como métodos, por ejemplo `RegistroPrestamos.registrar(self, prestamo: Prestamo) -> None` y
+  `RegistroPrestamos.consultar(self, codigo: str) -> Prestamo`.
+- Si la regla de dependencia pide un contrato para que otro módulo no dependa de la
+  infraestructura, declara el contrato con sus métodos y la implementación con los suyos, con
+  nombres distintos. Di en la descripción de la implementación qué contrato implementa.
 - No uses estado global del módulo: cada prueba crea su propio almacén, y quien lo necesita lo
   recibe como parámetro.
 
@@ -136,8 +146,9 @@ Declara el recorrido de cada escenario en `recorridos`, uno por escenario, sin o
 - `ejecutar`: la interfaz del «cuando».
 - `observar`: las interfaces con que se verifica el «entonces». Si lo que se verifica es lo que
   devuelve la interfaz de `ejecutar` o la excepción que lanza, inclúyela.
-- Cada nombre es exactamente el `nombre` de una interfaz declarada, sin argumentos. Si el mismo
-  nombre existe en dos módulos, califícalo con el módulo: `aplicacion.prestamos.prestar`.
+- Cada nombre es exactamente el `nombre` de una interfaz declarada, sin argumentos: un método se
+  nombra `Clase.metodo`. Si aun así un nombre existe en dos módulos, califícalo con el módulo:
+  `aplicacion.prestamos.prestar`.
 
 Por ejemplo, para «dado que el socio tiene un préstamo vigente, cuando devuelve el libro, entonces
 el préstamo queda cerrado con la fecha de devolución»:
@@ -146,9 +157,9 @@ el préstamo queda cerrado con la fecha de devolución»:
 {
   "id_requerimiento": "RF-03",
   "id_escenario": "ESC-01",
-  "preparar": ["RegistroPrestamos", "registrar_prestamo"],
+  "preparar": ["RegistroPrestamos", "RegistroPrestamos.registrar"],
   "ejecutar": "devolver_libro",
-  "observar": ["devolver_libro", "consultar_prestamo"]
+  "observar": ["devolver_libro", "RegistroPrestamos.consultar"]
 }
 ```
 

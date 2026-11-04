@@ -8,6 +8,7 @@ from multiagente.agentes.arquitecto.catalogo import (
     cargar_catalogo_tecnologico,
     titulos_del_catalogo,
 )
+from multiagente.agentes.arquitecto.recorridos import anotar_escenarios, errores_de_recorridos
 from multiagente.agentes.arquitecto.validacion import validar_especificacion
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.casos import (
@@ -30,6 +31,7 @@ from multiagente.orquestador.simulacion import (
 from multiagente.persistencia.puntos_control import serializador
 
 CASOS = sorted((RAIZ_EVALUACION / "casos").glob("desarrollo-*.json"))
+CON_RECORRIDOS = sorted((RAIZ_EVALUACION / "casos" / "con-recorridos").glob("desarrollo-*.json"))
 
 
 def test_hay_un_caso_de_desarrollo_por_caso_de_diseno():
@@ -96,3 +98,30 @@ def test_arquitecto_fijo_lleva_la_sesion_hasta_n10():
     assert Nodo.N10 in avance.nodos
     arquitectura = app.get_state(configuracion_hilo(id_sesion)).values["arquitectura"]
     assert arquitectura.especificacion == caso.especificacion
+
+
+def test_hay_un_caso_con_recorridos_por_caso_de_diseno():
+    assert [c.name for c in CON_RECORRIDOS] == [c.name for c in CASOS]
+
+
+@pytest.mark.parametrize("archivo", CON_RECORRIDOS, ids=[caso.stem for caso in CON_RECORRIDOS])
+def test_el_diseno_con_recorridos_pasa_n9_y_va_anotado(archivo):
+    # Diseños del arquitecto vigente (ADR-0015, fase 4): pasan las validaciones de N9, con sus
+    # recorridos, y la especificación ya trae la anotación de escenarios que lee el desarrollador.
+    caso = cargar_caso_desarrollo(archivo)
+    requerimientos = Requerimientos(
+        historias=caso.sintesis.historias, requerimientos=caso.sintesis.requerimientos
+    )
+    assert (
+        validar_especificacion(
+            caso.especificacion,
+            requerimientos,
+            cargar_catalogo_tecnologico(),
+            frozenset(titulos_del_catalogo()),
+        )
+        == []
+    )
+    assert errores_de_recorridos(caso.especificacion, requerimientos, caso.recorridos) == []
+    assert anotar_escenarios(caso.especificacion, caso.recorridos) == caso.especificacion
+    assert caso.especificacion.arquitectura_base in caso.candidatas
+    assert caso.diseno.recorridos == caso.recorridos

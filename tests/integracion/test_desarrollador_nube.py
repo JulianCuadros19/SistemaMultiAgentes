@@ -1,8 +1,10 @@
-"""Condición de terminado del paso 9: el código generado se importa y cubre las interfaces.
+"""Condición de terminado de los pasos 9 y 12: el código generado se importa y cubre las interfaces.
 
-Para cada caso de `evaluacion/casos/desarrollo-*.json`, un elicitador y un arquitecto fijos
-entregan los requerimientos y la especificación aprobados, y el desarrollador real (Azure OpenAI
-en N10) genera el módulo hasta la aprobación final. La primera versión debe:
+Para cada caso de `evaluacion/casos/con-recorridos/desarrollo-*.json`, un elicitador y un arquitecto
+fijos entregan los requerimientos y la especificación aprobados, con los escenarios anotados en sus
+interfaces (ADR-0015), y el desarrollador real (Azure OpenAI en N10) genera el módulo hasta la
+aprobación final. Los casos del paso 9, sin recorridos, quedan para los corpus de defectos. La
+primera versión debe:
 - pasar la verificación estructural, que exige los archivos declarados y las interfaces con sus
   firmas;
 - importar cada módulo declarado sin error en el entorno aislado.
@@ -41,7 +43,7 @@ from multiagente.persistencia.puntos_control import serializador
 
 pytestmark = [pytest.mark.nube, pytest.mark.sandbox]
 
-CASOS = sorted((RAIZ_EVALUACION / "casos").glob("desarrollo-*.json"))
+CASOS = sorted((RAIZ_EVALUACION / "casos" / "con-recorridos").glob("desarrollo-*.json"))
 
 
 @pytest.mark.parametrize("archivo", CASOS, ids=[caso.stem for caso in CASOS])

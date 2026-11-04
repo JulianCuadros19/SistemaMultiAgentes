@@ -1,0 +1,1018 @@
+{
+  "id": "caso-desarrollo-pagos",
+  "titulo": "Aplicación de los pagos de pensiones por eventos",
+  "cliente": "Colegio Campestre Los Almendros (sintética)",
+  "proyecto": "Aplicación de pagos de pensiones",
+  "necesidad": "La pasarela de pagos nos avisa cuando un pago queda confirmado o se reversa. Necesitamos que varios procesos reaccionen a esos avisos de manera independiente: aplicar el pago a la factura, generar o anular el recibo y actualizar el estado de cartera de la familia.",
+  "candidatas": [
+    "ARQ-06"
+  ],
+  "criterio": "arq-003: varios procesos reaccionan por separado al mismo aviso de la pasarela de pagos (factura, recibo y cartera), sin depender unos de otros.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "epica": null,
+        "prioridad": "alta",
+        "supuestos": [
+          "El canal de los avisos puede funcionar en memoria para las pruebas."
+        ],
+        "preguntas_abiertas": [
+          "Qué hacer si el aviso llega incompleto.",
+          "Qué hacer cuando el valor no coincide con la factura."
+        ]
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.2",
+        "proyecto": "Aplicación de pagos de pensiones",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "pasarela de pagos",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "tesorería",
+        "funcional_responsable": "tesorera del colegio",
+        "titulo": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "descripcion": {
+          "precondicion": "La factura existe y la pasarela de pagos envía un aviso de pago confirmado.",
+          "regla_negocio": "Cuando la pasarela de pagos avisa que un pago queda confirmado, se debe aplicar el pago a la factura. Si el pago confirmado cubre el saldo, la factura queda pagada; si no, queda abonada; y si sobra dinero, queda saldo a favor. El valor del ajuste se expresa en pesos sin decimales.",
+          "datos_entrada": [
+            {
+              "nombre": "referencia_del_pago",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "numero_de_factura",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "valor",
+              "tipo": "número decimal",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "fecha",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "estado_de_la_factura",
+              "tipo": "lista",
+              "formato": "pagada o abonada"
+            },
+            {
+              "nombre": "valor",
+              "tipo": "número entero",
+              "formato": "pesos sin decimales"
+            },
+            {
+              "nombre": "saldo_a_favor",
+              "tipo": "número entero",
+              "formato": "pesos sin decimales"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "pago confirmado cubre el saldo",
+            "dado_que": "existe una factura asociada al número de factura 2024-000123 y la pasarela de pagos confirma un pago con referencia PAGO-7788 por un valor de 250000 pesos en la fecha 2026-10-31",
+            "cuando": "se recibe el aviso de pago confirmado",
+            "entonces": "la factura queda en estado pagada y el valor aplicado se muestra en pesos sin decimales"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "pago confirmado no cubre el saldo",
+            "dado_que": "existe una factura asociada al número de factura 2024-000124 y la pasarela de pagos confirma un pago con referencia PAGO-7789 por un valor de 120000 pesos en la fecha 2026-10-31",
+            "cuando": "se recibe el aviso de pago confirmado",
+            "entonces": "la factura queda en estado abonada y el valor aplicado se muestra en pesos sin decimales"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "aviso de pago confirmado incompleto",
+            "dado_que": "la pasarela de pagos envía un aviso de pago confirmado sin número de factura",
+            "cuando": "se intenta registrar el aviso",
+            "entonces": "el sistema rechaza el aviso y no aplica cambios a la factura"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      },
+      {
+        "id_requerimiento": "RF-02",
+        "version": "0.2",
+        "proyecto": "Aplicación de pagos de pensiones",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "pasarela de pagos",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "tesorería",
+        "funcional_responsable": "tesorera del colegio",
+        "titulo": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "descripcion": {
+          "precondicion": "Existe un recibo generado para el pago confirmado y la pasarela de pagos envía un aviso de pago reversado.",
+          "regla_negocio": "Cuando la pasarela de pagos avisa que un pago se reversa, se debe anular el recibo y devolver la factura a su estado anterior. El motivo solo viene en el aviso de pago reversado. El consecutivo del recibo sigue el formato REC-000001, REC-000002, ...",
+          "datos_entrada": [
+            {
+              "nombre": "referencia_del_pago",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "fecha",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "motivo",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": "solo viene en el aviso de pago reversado"
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "consecutivo_del_recibo",
+              "tipo": "texto",
+              "formato": "REC-000001, REC-000002, ..."
+            },
+            {
+              "nombre": "valor_del_recibo",
+              "tipo": "número entero",
+              "formato": "pesos sin decimales"
+            },
+            {
+              "nombre": "factura_del_recibo",
+              "tipo": "texto",
+              "formato": null
+            },
+            {
+              "nombre": "estado_de_la_factura",
+              "tipo": "lista",
+              "formato": "estado anterior"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "pago reversado anula el recibo",
+            "dado_que": "existe un recibo asociado a la referencia del pago PAGO-7788 y la factura estaba actualizada por ese pago",
+            "cuando": "se recibe el aviso de pago reversado",
+            "entonces": "el recibo queda anulado y la factura vuelve a su estado anterior"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "pago reversado con motivo informado",
+            "dado_que": "la pasarela de pagos envía un aviso de reverso con referencia PAGO-7789, fecha 2026-10-31 y motivo reverso por contracargo",
+            "cuando": "se procesa el aviso de reverso",
+            "entonces": "el motivo queda registrado y el recibo asociado queda anulado"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "aviso de reverso sin motivo",
+            "dado_que": "la pasarela de pagos envía un aviso de pago reversado sin motivo",
+            "cuando": "se intenta registrar el aviso",
+            "entonces": "el sistema rechaza el aviso y no anula el recibo"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      },
+      {
+        "id_requerimiento": "RF-03",
+        "version": "0.2",
+        "proyecto": "Aplicación de pagos de pensiones",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "cartera",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "tesorería",
+        "funcional_responsable": "tesorera del colegio",
+        "titulo": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "descripcion": {
+          "precondicion": "La familia tiene una cartera registrada y la pasarela de pagos envía un aviso de pago confirmado o reversado.",
+          "regla_negocio": "Cuando la pasarela de pagos avisa que un pago queda confirmado o se reversa, se debe actualizar el estado de cartera de la familia. El estado de cartera solo puede quedar como al día o en mora.",
+          "datos_entrada": [
+            {
+              "nombre": "referencia_del_pago",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "fecha",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "estado_de_la_cartera",
+              "tipo": "lista",
+              "formato": "al día o en mora"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "cartera actualizada por pago confirmado",
+            "dado_que": "la familia tiene cartera registrada y la pasarela de pagos confirma un pago con referencia PAGO-7790 en la fecha 2026-10-31",
+            "cuando": "se procesa el aviso de pago confirmado",
+            "entonces": "el estado de cartera queda en al día o en mora según la actualización aplicada"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "cartera actualizada por pago reversado",
+            "dado_que": "la familia tiene cartera registrada y la pasarela de pagos reversa un pago con referencia PAGO-7791 en la fecha 2026-10-31",
+            "cuando": "se procesa el aviso de pago reversado",
+            "entonces": "el estado de cartera queda en al día o en mora según la actualización aplicada"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "aviso duplicado con la misma referencia",
+            "dado_que": "ya se procesó un aviso con la referencia PAGO-7792",
+            "cuando": "llega de nuevo un aviso con la misma referencia",
+            "entonces": "el sistema ignora el aviso y no vuelve a aplicar cambios en la cartera"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-001 v1.0 · Formato de la historia de usuario › Reglas de redacción de cada parte",
+        "eli-001 v1.0 · Formato de la historia de usuario › Estructura obligatoria",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de identificación",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de contenido",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Cobertura mínima obligatoria",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Reglas de redacción",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Estructura",
+        "dom-002 v1.0 · Mutaciones catastrales › Estados del trámite",
+        "dom-002 v1.0 · Mutaciones catastrales › Clasificación por tipo"
+      ],
+      "RF-02": [
+        "eli-001 v1.0 · Formato de la historia de usuario › Reglas de redacción de cada parte",
+        "eli-001 v1.0 · Formato de la historia de usuario › Estructura obligatoria",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de identificación",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de contenido",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Cobertura mínima obligatoria",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Reglas de redacción",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Estructura",
+        "dom-002 v1.0 · Mutaciones catastrales › Estados del trámite"
+      ],
+      "RF-03": [
+        "eli-001 v1.0 · Formato de la historia de usuario › Reglas de redacción de cada parte",
+        "eli-001 v1.0 · Formato de la historia de usuario › Estructura obligatoria",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de identificación",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de contenido",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Cobertura mínima obligatoria",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Reglas de redacción",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Estructura",
+        "dom-002 v1.0 · Mutaciones catastrales › Estados del trámite"
+      ]
+    }
+  },
+  "registro_decision": "---\nestado: propuesta\nfecha: 2026-11-04\ndecisores: [Agente arquitecto]\n---\n\n# Registro de decisión · Avisos de pasarela con reacciones independientes: procesamiento dirigido por eventos\n\n## Contexto y planteamiento del problema\n\nEl módulo debe procesar avisos de pago confirmados y reversados provenientes de la pasarela y provocar que factura, recibo y cartera se actualicen de forma independiente. La decisión cubre la arquitectura estructural del módulo de avisos: definición de eventos, productores y consumidores, y el adaptador del canal de mensajería.\n\n## Factores de decisión\n\n- Naturaleza reactiva: el sistema reacciona a avisos externos (RF-01, RF-02, RF-03)\n- Desacoplar productores y consumidores en el tiempo y entre componentes (RF-01, RF-03)\n- Múltiples consumidores interesados en el mismo hecho: factura, recibo y cartera (RF-01, RF-02, RF-03)\n- Idempotencia ante avisos duplicados (RF-03 · ESC-03)\n- Simplicidad suficiente: evitar capas innecesarias cuando no exponen API HTTP ni CLI\n- Canal de avisos con adaptador que pueda funcionar en memoria para pruebas (supuesto de HU-01)\n\n## Opciones consideradas\n\n- ARQ-06 · Procesamiento dirigido por eventos\n- ARQ-01 · Arquitectura en capas\n- ARQ-02 · Arquitectura hexagonal o de puertos y adaptadores\n\n## Resultado de la decisión\n\nOpción elegida: «ARQ-06 · Procesamiento dirigido por eventos», porque Se elige ARQ-06 porque los requerimientos RF-01, RF-02 y RF-03 describen un módulo reactivo que debe reaccionar a avisos de la pasarela y actualizar factura, recibo y cartera de forma independiente. ARQ-06 proporciona desacoplamiento fuerte productor–consumidor y soporta múltiples consumidores por evento, exactamente lo pedido en RF-01 y RF-03. Además, RF-03 · ESC-03 exige ignorar avisos duplicados, lo que se aborda naturalmente con consumidores idempotentes en un esquema dirigido por eventos. El supuesto de HU-01 sobre un canal en memoria para pruebas se satisface definiendo un adaptador de infraestructura con implementación en memoria. Entre las candidatas, es la única que cumple explícitamente el desacoplamiento temporal indicado por los criterios de selección (favorece ARQ-06).\n\n### Consecuencias\n\n- Favorable, porque Desacoplamiento entre productor (avisos) y consumidores (factura, recibo, cartera), cumpliendo RF-01, RF-02 y RF-03\n- Favorable, porque Posibilidad de añadir nuevos consumidores sin impactar el productor\n- Favorable, porque Capacidad de absorber picos de avisos mediante cola y reintentos por consumidor\n- Favorable, porque Pruebas de consumidores con un canal en memoria, acorde al supuesto de HU-01\n- Desfavorable, porque Mayor complejidad operativa y consistencia eventual entre componentes\n- Desfavorable, porque Necesariedad de diseñar idempotencia y detección de duplicados por referencia_del_pago en cada consumidor (RF-03 · ESC-03)\n- Desfavorable, porque Diagnóstico y trazabilidad más complejos; requiere instrumentación adicional por evento\n\n### Confirmación\n\nPrueba de arquitectura: verificar que los módulos productores/ y consumidores/ solo importan de eventos/ y nunca entre sí (fallar si consumidores importan de productores). Prueba funcional: un aviso duplicado con la misma referencia_del_pago no provoca segunda actualización en cartera (RF-03 · ESC-03).\n\n## Análisis de las opciones\n\n### ARQ-06 · Procesamiento dirigido por eventos\n- Favorable, porque Encaja con módulos que reaccionan a hechos de otros procesos (RF-01, RF-02, RF-03)\n- Favorable, porque Desacopla productores y consumidores permitiendo reacciones independientes (RF-01)\n- Favorable, porque Permite tener múltiples consumidores para el mismo evento: factura, recibo y cartera (RF-01, RF-02, RF-03)\n- Favorable, porque Facilita manejar avisos duplicados mediante idempotencia en consumidores (RF-03 · ESC-03)\n- Favorable, porque Permite un adaptador de canal en memoria para pruebas sin infraestructura real, según el supuesto de HU-01\n- Desfavorable, porque Aumenta la complejidad operativa e introduce consistencia eventual entre componentes\n- Desfavorable, porque Exige diseñar idempotencia y control de duplicados en cada consumidor\n- Desfavorable, porque La depuración es más difícil por ausencia de flujo lineal\n\n### ARQ-01 · Arquitectura en capas\n- Favorable, porque Estructura conocida y simple para orquestar lógica de negocio moderada\n- Favorable, porque Separa responsabilidades por capas en un mismo proceso\n- Desfavorable, porque Acopla orquestación y persistencia en un flujo síncrono, dificultando reacciones independientes\n- Desfavorable, porque No desacopla temporalmente productores y consumidores ni múltiples interesados en el mismo hecho\n- Descartada, porque RF-01 y RF-03 requieren reacciones independientes y desacopladas en el tiempo; una arquitectura en capas induce flujo síncrono y acoplamiento, contrariando el objetivo de independencia entre factura, recibo y cartera.\n\n### ARQ-02 · Arquitectura hexagonal o de puertos y adaptadores\n- Favorable, porque Permite aislar y probar reglas del dominio si la lógica fuera el activo principal\n- Desfavorable, porque No introduce por sí misma el desacoplamiento temporal ni la multiplicidad de consumidores\n- Desfavorable, porque Añade indirección innecesaria si el objetivo principal es la reacción a eventos externos\n- Descartada, porque Aunque hay reglas de negocio (RF-01, RF-02), la fuerza dominante es la reacción desacoplada a avisos y múltiples consumidores (RF-01, RF-03). ARQ-02 no satisface el desacoplamiento productor-consumidor que exige RF-01; sería sobreingeniería sin cumplir el objetivo central.",
+  "especificacion": {
+    "id_especificacion": "ED-01",
+    "version": "0.1",
+    "arquitectura_base": "ARQ-06",
+    "requerimientos_cubiertos": [
+      "RF-01",
+      "RF-02",
+      "RF-03"
+    ],
+    "modulos": [
+      {
+        "nombre": "eventos.avisos",
+        "ruta": "src/eventos/avisos.py",
+        "responsabilidad": "Definición de los eventos del dominio provenientes de la pasarela de pagos",
+        "capa": "eventos",
+        "interfaces_publicas": [
+          {
+            "nombre": "PagoConfirmadoEvento",
+            "tipo": "clase",
+            "firma": "PagoConfirmadoEvento(referencia_del_pago: str, numero_de_factura: str, valor: Decimal, fecha: date)",
+            "descripcion": "Evento que representa un pago confirmado por la pasarela. Se usa como insumo de productores y consumidores. Participa en RF-01 ESC-01, RF-01 ESC-02, RF-01 ESC-03, RF-03 ESC-01, RF-03 ESC-03",
+            "excepciones": []
+          },
+          {
+            "nombre": "PagoReversadoEvento",
+            "tipo": "clase",
+            "firma": "PagoReversadoEvento(referencia_del_pago: str, fecha: date, motivo: str)",
+            "descripcion": "Evento que representa un pago reversado por la pasarela. Se usa como insumo de productores y consumidores. Participa en RF-02 ESC-01, RF-02 ESC-02, RF-02 ESC-03, RF-03 ESC-02, RF-03 ESC-03",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ]
+      },
+      {
+        "nombre": "eventos.acciones",
+        "ruta": "src/eventos/acciones.py",
+        "responsabilidad": "Definición de acciones de dominio que los consumidores producen al reaccionar a eventos",
+        "capa": "eventos",
+        "interfaces_publicas": [
+          {
+            "nombre": "AccionFacturaAplicarPago",
+            "tipo": "clase",
+            "firma": "AccionFacturaAplicarPago(numero_de_factura: str, valor: Decimal, fecha: date)",
+            "descripcion": "Acción para aplicar un pago a una factura. Participa en RF-01 ESC-01, RF-01 ESC-02",
+            "excepciones": []
+          },
+          {
+            "nombre": "AccionFacturaRevertirPago",
+            "tipo": "clase",
+            "firma": "AccionFacturaRevertirPago(referencia_del_pago: str)",
+            "descripcion": "Acción para revertir el efecto de un pago previamente aplicado a una factura, identificada por la referencia del pago. Participa en RF-02 ESC-01",
+            "excepciones": []
+          },
+          {
+            "nombre": "AccionReciboAnular",
+            "tipo": "clase",
+            "firma": "AccionReciboAnular(referencia_del_pago: str, motivo: str)",
+            "descripcion": "Acción para anular un recibo asociado a una referencia de pago, registrando el motivo. Participa en RF-02 ESC-01, RF-02 ESC-02",
+            "excepciones": []
+          },
+          {
+            "nombre": "AccionCarteraActualizar",
+            "tipo": "clase",
+            "firma": "AccionCarteraActualizar(referencia_del_pago: str, tipo: str)",
+            "descripcion": "Acción para actualizar el estado de cartera a partir de un evento de pago confirmado o reversado. El campo tipo admite los valores 'confirmado' o 'reversado'. Participa en RF-03 ESC-01, RF-03 ESC-02, RF-03 ESC-03",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ]
+      },
+      {
+        "nombre": "productores.avisos_pasarela",
+        "ruta": "src/productores/avisos_pasarela.py",
+        "responsabilidad": "Productor que recibe avisos de la pasarela, valida su contenido y publica eventos en el canal",
+        "capa": "productores",
+        "interfaces_publicas": [
+          {
+            "nombre": "AvisoInvalidoError",
+            "tipo": "clase",
+            "firma": "AvisoInvalidoError(mensaje: str)",
+            "descripcion": "Excepción para avisos de pasarela con datos incompletos o inválidos. Participa en RF-01 ESC-03 y RF-02 ESC-03",
+            "excepciones": []
+          },
+          {
+            "nombre": "publicar_pago_confirmado",
+            "tipo": "funcion",
+            "firma": "publicar_pago_confirmado(evento: PagoConfirmadoEvento, canal: CanalEventos) -> None",
+            "descripcion": "Valida y publica un PagoConfirmadoEvento en el canal. Rechaza si falta numero_de_factura o referencia_del_pago o valor o fecha. Participa en RF-01 ESC-01, RF-01 ESC-02, RF-01 ESC-03, RF-03 ESC-01, RF-03 ESC-03 · Escenarios: RF-01 ESC-01 (ejecuta; prepara con AlmacenFacturas, AlmacenFacturas.registrar_factura, CanalEventos y CanalEventos.suscribir_pago_confirmado; observa su resultado y con AlmacenFacturas.consultar), RF-01 ESC-02 (ejecuta; prepara con AlmacenFacturas, AlmacenFacturas.registrar_factura, CanalEventos y CanalEventos.suscribir_pago_confirmado; observa su resultado y con AlmacenFacturas.consultar), RF-01 ESC-03 (ejecuta; prepara con CanalEventos y CanalEventos.suscribir_pago_confirmado; observa su resultado), RF-03 ESC-01 (ejecuta; prepara con AlmacenFacturas, AlmacenFacturas.registrar_factura, AlmacenCartera, AlmacenCartera.registrar_cartera, CanalEventos y CanalEventos.suscribir_pago_confirmado; observa su resultado y con AlmacenCartera.consultar), RF-03 ESC-03 (ejecuta; prepara con AlmacenFacturas, AlmacenFacturas.registrar_factura, AlmacenCartera, AlmacenCartera.registrar_cartera, CanalEventos y CanalEventos.suscribir_pago_confirmado; observa su resultado y con AlmacenCartera.consultar)",
+            "excepciones": [
+              "AvisoInvalidoError"
+            ]
+          },
+          {
+            "nombre": "publicar_pago_reversado",
+            "tipo": "funcion",
+            "firma": "publicar_pago_reversado(evento: PagoReversadoEvento, canal: CanalEventos) -> None",
+            "descripcion": "Valida y publica un PagoReversadoEvento en el canal. Rechaza si falta motivo, referencia_del_pago o fecha. Participa en RF-02 ESC-01, RF-02 ESC-02, RF-02 ESC-03, RF-03 ESC-02, RF-03 ESC-03 · Escenarios: RF-02 ESC-01 (ejecuta; prepara con AlmacenFacturas, AlmacenFacturas.registrar_factura, AlmacenFacturas.aplicar_pago, AlmacenRecibos, AlmacenRecibos.registrar_recibo, CanalEventos, CanalEventos.suscribir_pago_reversado y CanalEventos.suscribir_pago_reversado; observa su resultado y con AlmacenRecibos.consultar_por_referencia y AlmacenFacturas.consultar), RF-02 ESC-02 (ejecuta; prepara con AlmacenRecibos, AlmacenFacturas, AlmacenFacturas.registrar_factura, AlmacenRecibos.registrar_recibo, CanalEventos y CanalEventos.suscribir_pago_reversado; observa su resultado y con AlmacenRecibos.consultar_por_referencia), RF-02 ESC-03 (ejecuta; prepara con CanalEventos y CanalEventos.suscribir_pago_reversado; observa su resultado), RF-03 ESC-02 (ejecuta; prepara con AlmacenFacturas, AlmacenFacturas.registrar_factura, AlmacenRecibos, AlmacenRecibos.registrar_recibo, AlmacenCartera, AlmacenCartera.registrar_cartera, CanalEventos y CanalEventos.suscribir_pago_reversado; observa su resultado y con AlmacenCartera.consultar)",
+            "excepciones": [
+              "AvisoInvalidoError"
+            ]
+          }
+        ],
+        "dependencias_permitidas": [
+          "eventos.avisos",
+          "infraestructura.canal"
+        ],
+        "requerimientos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ]
+      },
+      {
+        "nombre": "consumidores.factura",
+        "ruta": "src/consumidores/factura.py",
+        "responsabilidad": "Manejadores de eventos para actualizar el estado de la factura",
+        "capa": "consumidores",
+        "interfaces_publicas": [
+          {
+            "nombre": "manejar_pago_confirmado_factura",
+            "tipo": "funcion",
+            "firma": "manejar_pago_confirmado_factura(evento: PagoConfirmadoEvento) -> AccionFacturaAplicarPago",
+            "descripcion": "Genera una acción de aplicar pago a la factura indicada por el evento de pago confirmado. Participa en RF-01 ESC-01, RF-01 ESC-02",
+            "excepciones": []
+          },
+          {
+            "nombre": "manejar_pago_reversado_factura",
+            "tipo": "funcion",
+            "firma": "manejar_pago_reversado_factura(evento: PagoReversadoEvento) -> AccionFacturaRevertirPago",
+            "descripcion": "Genera una acción de revertir el pago sobre la factura asociada a la referencia del pago reversado. Participa en RF-02 ESC-01",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [
+          "eventos.avisos",
+          "eventos.acciones"
+        ],
+        "requerimientos": [
+          "RF-01",
+          "RF-02"
+        ]
+      },
+      {
+        "nombre": "consumidores.recibo",
+        "ruta": "src/consumidores/recibo.py",
+        "responsabilidad": "Manejadores de eventos para anular recibos ante pagos reversados",
+        "capa": "consumidores",
+        "interfaces_publicas": [
+          {
+            "nombre": "manejar_pago_reversado_recibo",
+            "tipo": "funcion",
+            "firma": "manejar_pago_reversado_recibo(evento: PagoReversadoEvento) -> AccionReciboAnular",
+            "descripcion": "Genera una acción para anular el recibo asociado a la referencia del pago reversado, registrando el motivo. Participa en RF-02 ESC-01, RF-02 ESC-02",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [
+          "eventos.avisos",
+          "eventos.acciones"
+        ],
+        "requerimientos": [
+          "RF-02"
+        ]
+      },
+      {
+        "nombre": "consumidores.cartera",
+        "ruta": "src/consumidores/cartera.py",
+        "responsabilidad": "Manejadores de eventos para actualizar el estado de cartera ante pagos confirmados o reversados",
+        "capa": "consumidores",
+        "interfaces_publicas": [
+          {
+            "nombre": "manejar_pago_confirmado_cartera",
+            "tipo": "funcion",
+            "firma": "manejar_pago_confirmado_cartera(evento: PagoConfirmadoEvento) -> AccionCarteraActualizar",
+            "descripcion": "Genera una acción para actualizar la cartera como consecuencia de un pago confirmado. Participa en RF-03 ESC-01",
+            "excepciones": []
+          },
+          {
+            "nombre": "manejar_pago_reversado_cartera",
+            "tipo": "funcion",
+            "firma": "manejar_pago_reversado_cartera(evento: PagoReversadoEvento) -> AccionCarteraActualizar",
+            "descripcion": "Genera una acción para actualizar la cartera como consecuencia de un pago reversado. Participa en RF-03 ESC-02, RF-03 ESC-03",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [
+          "eventos.avisos",
+          "eventos.acciones"
+        ],
+        "requerimientos": [
+          "RF-03"
+        ]
+      },
+      {
+        "nombre": "infraestructura.canal",
+        "ruta": "src/infraestructura/canal.py",
+        "responsabilidad": "Canal de mensajería en memoria para suscripción y publicación de eventos, con soporte de idempotencia por consumidor",
+        "capa": "infraestructura",
+        "interfaces_publicas": [
+          {
+            "nombre": "CanalEventos",
+            "tipo": "clase",
+            "firma": "CanalEventos()",
+            "descripcion": "Canal en memoria para publicar y despachar eventos a manejadores suscritos. Permite configurar idempotencia por clave por suscripción. · Escenarios: RF-01 ESC-01 (prepara), RF-01 ESC-02 (prepara), RF-01 ESC-03 (prepara), RF-02 ESC-01 (prepara), RF-02 ESC-02 (prepara), RF-02 ESC-03 (prepara), RF-03 ESC-01 (prepara), RF-03 ESC-02 (prepara), RF-03 ESC-03 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "CanalEventos.suscribir_pago_confirmado",
+            "tipo": "funcion",
+            "firma": "suscribir_pago_confirmado(self, manejador: Callable[[PagoConfirmadoEvento], object], aplicador: Callable[[object], None], idempotencia_por_clave: Callable[[PagoConfirmadoEvento], str] | None) -> None",
+            "descripcion": "Registra un manejador puro para PagoConfirmadoEvento y un aplicador de la acción resultante. Puede opcionalmente configurar una función de clave de idempotencia por evento. Participa en todos los escenarios donde se procesa pago confirmado. · Escenarios: RF-01 ESC-01 (prepara), RF-01 ESC-02 (prepara), RF-01 ESC-03 (prepara), RF-03 ESC-01 (prepara), RF-03 ESC-03 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "CanalEventos.suscribir_pago_reversado",
+            "tipo": "funcion",
+            "firma": "suscribir_pago_reversado(self, manejador: Callable[[PagoReversadoEvento], object], aplicador: Callable[[object], None], idempotencia_por_clave: Callable[[PagoReversadoEvento], str] | None) -> None",
+            "descripcion": "Registra un manejador puro para PagoReversadoEvento y un aplicador de la acción resultante. Puede opcionalmente configurar una función de clave de idempotencia por evento. Participa en todos los escenarios donde se procesa pago reversado. · Escenarios: RF-02 ESC-01 (prepara), RF-02 ESC-02 (prepara), RF-02 ESC-03 (prepara), RF-03 ESC-02 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "CanalEventos.publicar_pago_confirmado",
+            "tipo": "funcion",
+            "firma": "publicar_pago_confirmado(self, evento: PagoConfirmadoEvento) -> None",
+            "descripcion": "Publica y despacha un PagoConfirmadoEvento a los manejadores suscritos, aplicando idempotencia cuando se configuró. Participa en RF-01 ESC-01, RF-01 ESC-02, RF-03 ESC-01, RF-03 ESC-03",
+            "excepciones": []
+          },
+          {
+            "nombre": "CanalEventos.publicar_pago_reversado",
+            "tipo": "funcion",
+            "firma": "publicar_pago_reversado(self, evento: PagoReversadoEvento) -> None",
+            "descripcion": "Publica y despacha un PagoReversadoEvento a los manejadores suscritos, aplicando idempotencia cuando se configuró. Participa en RF-02 ESC-01, RF-02 ESC-02, RF-03 ESC-02, RF-03 ESC-03",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [
+          "eventos.avisos"
+        ],
+        "requerimientos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ]
+      },
+      {
+        "nombre": "infraestructura.facturas",
+        "ruta": "src/infraestructura/facturas.py",
+        "responsabilidad": "Almacén en memoria de facturas y operaciones de consulta y actualización ante pagos y reversos",
+        "capa": "infraestructura",
+        "interfaces_publicas": [
+          {
+            "nombre": "Factura",
+            "tipo": "clase",
+            "firma": "Factura(numero_de_factura: str, id_familia: str, saldo_pendiente: Decimal)",
+            "descripcion": "Entidad de factura con su saldo y familia asociada. Mantiene estado, saldo a favor y valor del último pago aplicado.",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenFacturas",
+            "tipo": "clase",
+            "firma": "AlmacenFacturas()",
+            "descripcion": "Almacén en memoria para registrar, consultar y actualizar facturas. · Escenarios: RF-01 ESC-01 (prepara), RF-01 ESC-02 (prepara), RF-02 ESC-01 (prepara), RF-02 ESC-02 (prepara), RF-03 ESC-01 (prepara), RF-03 ESC-02 (prepara), RF-03 ESC-03 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenFacturas.registrar_factura",
+            "tipo": "funcion",
+            "firma": "registrar_factura(self, factura: Factura) -> None",
+            "descripcion": "Registra una factura inicial en el almacén. Participa en la preparación de RF-01 ESC-01, RF-01 ESC-02, RF-02 ESC-01, RF-03 ESC-01, RF-03 ESC-02 · Escenarios: RF-01 ESC-01 (prepara), RF-01 ESC-02 (prepara), RF-02 ESC-01 (prepara), RF-02 ESC-02 (prepara), RF-03 ESC-01 (prepara), RF-03 ESC-02 (prepara), RF-03 ESC-03 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenFacturas.aplicar_pago",
+            "tipo": "funcion",
+            "firma": "aplicar_pago(self, numero_de_factura: str, valor: Decimal, fecha: date) -> None",
+            "descripcion": "Aplica un pago a la factura indicada, actualizando estado (pagada o abonada), saldo pendiente y saldo a favor según corresponda. Participa en RF-01 ESC-01, RF-01 ESC-02 y en la preparación de RF-02 ESC-01 · Escenarios: RF-02 ESC-01 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenFacturas.revertir_ultimo_pago",
+            "tipo": "funcion",
+            "firma": "revertir_ultimo_pago(self, numero_de_factura: str) -> None",
+            "descripcion": "Revierte el último pago aplicado, devolviendo la factura a su estado anterior. Participa en RF-02 ESC-01",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenFacturas.consultar",
+            "tipo": "funcion",
+            "firma": "consultar(self, numero_de_factura: str) -> Factura",
+            "descripcion": "Consulta y devuelve la factura por su número. Permite observar estado, saldo, saldo a favor y valor del último pago. Participa en la observación de RF-01 ESC-01, RF-01 ESC-02, RF-02 ESC-01 · Escenarios: RF-01 ESC-01 (observa), RF-01 ESC-02 (observa), RF-02 ESC-01 (observa)",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-01",
+          "RF-02"
+        ]
+      },
+      {
+        "nombre": "infraestructura.recibos",
+        "ruta": "src/infraestructura/recibos.py",
+        "responsabilidad": "Almacén en memoria de recibos con generación y anulación ante reversos",
+        "capa": "infraestructura",
+        "interfaces_publicas": [
+          {
+            "nombre": "Recibo",
+            "tipo": "clase",
+            "firma": "Recibo(consecutivo: str, referencia_del_pago: str, numero_de_factura: str, valor: Decimal, estado: str, motivo_anulacion: str | None)",
+            "descripcion": "Entidad de recibo con su consecutivo, referencia de pago y estado (vigente o anulado).",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenRecibos",
+            "tipo": "clase",
+            "firma": "AlmacenRecibos()",
+            "descripcion": "Almacén en memoria para registrar, consultar y anular recibos. · Escenarios: RF-02 ESC-01 (prepara), RF-02 ESC-02 (prepara), RF-03 ESC-02 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenRecibos.registrar_recibo",
+            "tipo": "funcion",
+            "firma": "registrar_recibo(self, recibo: Recibo) -> None",
+            "descripcion": "Registra un recibo existente asociado a una referencia de pago. Participa en la preparación de RF-02 ESC-01, RF-02 ESC-02 · Escenarios: RF-02 ESC-01 (prepara), RF-02 ESC-02 (prepara), RF-03 ESC-02 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenRecibos.anular_por_referencia",
+            "tipo": "funcion",
+            "firma": "anular_por_referencia(self, referencia_del_pago: str, motivo: str) -> None",
+            "descripcion": "Anula el recibo asociado a la referencia, registrando el motivo. Participa en RF-02 ESC-01, RF-02 ESC-02",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenRecibos.consultar_por_referencia",
+            "tipo": "funcion",
+            "firma": "consultar_por_referencia(self, referencia_del_pago: str) -> Recibo",
+            "descripcion": "Consulta un recibo por su referencia de pago. Participa en la observación de RF-02 ESC-01, RF-02 ESC-02 · Escenarios: RF-02 ESC-01 (observa), RF-02 ESC-02 (observa)",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-02"
+        ]
+      },
+      {
+        "nombre": "infraestructura.cartera",
+        "ruta": "src/infraestructura/cartera.py",
+        "responsabilidad": "Almacén en memoria del estado de cartera por familia y operaciones de actualización ante pagos confirmados o reversados",
+        "capa": "infraestructura",
+        "interfaces_publicas": [
+          {
+            "nombre": "Cartera",
+            "tipo": "clase",
+            "firma": "Cartera(id_familia: str, estado: str)",
+            "descripcion": "Entidad de cartera con su estado (al_dia o en_mora) por familia.",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenCartera",
+            "tipo": "clase",
+            "firma": "AlmacenCartera()",
+            "descripcion": "Almacén en memoria para registrar y consultar el estado de cartera por familia. · Escenarios: RF-03 ESC-01 (prepara), RF-03 ESC-02 (prepara), RF-03 ESC-03 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenCartera.registrar_cartera",
+            "tipo": "funcion",
+            "firma": "registrar_cartera(self, cartera: Cartera) -> None",
+            "descripcion": "Registra el estado inicial de la cartera de una familia. Participa en la preparación de RF-03 ESC-01, RF-03 ESC-02, RF-03 ESC-03 · Escenarios: RF-03 ESC-01 (prepara), RF-03 ESC-02 (prepara), RF-03 ESC-03 (prepara)",
+            "excepciones": []
+          },
+          {
+            "nombre": "AlmacenCartera.consultar",
+            "tipo": "funcion",
+            "firma": "consultar(self, id_familia: str) -> Cartera",
+            "descripcion": "Consulta el estado de cartera de una familia por su identificador. Participa en la observación de RF-03 ESC-01, RF-03 ESC-02, RF-03 ESC-03 · Escenarios: RF-03 ESC-01 (observa), RF-03 ESC-02 (observa), RF-03 ESC-03 (observa)",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [],
+        "requerimientos": [
+          "RF-03"
+        ]
+      },
+      {
+        "nombre": "infraestructura.servicios",
+        "ruta": "src/infraestructura/servicios.py",
+        "responsabilidad": "Servicios de aplicación en memoria que aplican acciones producidas por los consumidores sobre los almacenes",
+        "capa": "infraestructura",
+        "interfaces_publicas": [
+          {
+            "nombre": "ServiciosAplicacion",
+            "tipo": "clase",
+            "firma": "ServiciosAplicacion(almacen_facturas: AlmacenFacturas, almacen_recibos: AlmacenRecibos, almacen_cartera: AlmacenCartera)",
+            "descripcion": "Fachada que aplica acciones de factura, recibo y cartera sobre sus almacenes y resuelve relaciones entre referencia, factura y familia.",
+            "excepciones": []
+          },
+          {
+            "nombre": "ServiciosAplicacion.aplicar_accion_factura",
+            "tipo": "funcion",
+            "firma": "aplicar_accion_factura(self, accion: AccionFacturaAplicarPago) -> None",
+            "descripcion": "Aplica la acción de pago sobre la factura indicada. Participa en RF-01 ESC-01, RF-01 ESC-02",
+            "excepciones": []
+          },
+          {
+            "nombre": "ServiciosAplicacion.aplicar_accion_factura_reverso",
+            "tipo": "funcion",
+            "firma": "aplicar_accion_factura_reverso(self, accion: AccionFacturaRevertirPago) -> None",
+            "descripcion": "Revierte el pago asociado a la referencia de pago, resolviendo el número de factura a partir del recibo registrado. Participa en RF-02 ESC-01",
+            "excepciones": []
+          },
+          {
+            "nombre": "ServiciosAplicacion.aplicar_accion_recibo",
+            "tipo": "funcion",
+            "firma": "aplicar_accion_recibo(self, accion: AccionReciboAnular) -> None",
+            "descripcion": "Anula el recibo asociado a la referencia de pago y registra el motivo. Participa en RF-02 ESC-01, RF-02 ESC-02",
+            "excepciones": []
+          },
+          {
+            "nombre": "ServiciosAplicacion.aplicar_accion_cartera",
+            "tipo": "funcion",
+            "firma": "aplicar_accion_cartera(self, accion: AccionCarteraActualizar) -> None",
+            "descripcion": "Actualiza la cartera de la familia correspondiente al pago confirmado o reversado. Para 'confirmado' usa el número de factura del evento y la factura registrada para obtener la familia; para 'reversado' usa el recibo registrado para resolver la factura y la familia. Participa en RF-03 ESC-01, RF-03 ESC-02, RF-03 ESC-03",
+            "excepciones": []
+          }
+        ],
+        "dependencias_permitidas": [
+          "eventos.acciones",
+          "infraestructura.facturas",
+          "infraestructura.recibos",
+          "infraestructura.cartera"
+        ],
+        "requerimientos": [
+          "RF-01",
+          "RF-02",
+          "RF-03"
+        ]
+      }
+    ],
+    "modelo_datos": [
+      {
+        "nombre": "Factura",
+        "campos": [
+          {
+            "nombre": "numero_de_factura",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "identificador único legible"
+          },
+          {
+            "nombre": "id_familia",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "identificador de la familia titular"
+          },
+          {
+            "nombre": "saldo_pendiente",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos sin decimales, no negativo"
+          },
+          {
+            "nombre": "estado",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "pendiente | abonada | pagada"
+          },
+          {
+            "nombre": "saldo_a_favor",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos sin decimales, no negativo"
+          },
+          {
+            "nombre": "valor_ultimo_pago_aplicado",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos sin decimales, puede ser 0 si no hay pagos"
+          }
+        ]
+      },
+      {
+        "nombre": "Recibo",
+        "campos": [
+          {
+            "nombre": "consecutivo",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "formato REC-000001, REC-000002, ..."
+          },
+          {
+            "nombre": "referencia_del_pago",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "identificador único por pago"
+          },
+          {
+            "nombre": "numero_de_factura",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "debe corresponder a una factura registrada"
+          },
+          {
+            "nombre": "valor",
+            "tipo": "Decimal",
+            "obligatorio": true,
+            "restriccion": "pesos sin decimales"
+          },
+          {
+            "nombre": "estado",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "vigente | anulado"
+          },
+          {
+            "nombre": "motivo_anulacion",
+            "tipo": "str",
+            "obligatorio": false,
+            "restriccion": "texto explicativo cuando estado es anulado"
+          }
+        ]
+      },
+      {
+        "nombre": "Cartera",
+        "campos": [
+          {
+            "nombre": "id_familia",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "identificador de la familia titular"
+          },
+          {
+            "nombre": "estado",
+            "tipo": "str",
+            "obligatorio": true,
+            "restriccion": "al_dia | en_mora"
+          }
+        ]
+      }
+    ],
+    "dependencias_externas": [],
+    "reglas_de_dependencia": [
+      "Productores y consumidores importan solo de eventos y nunca entre sí",
+      "El canal de mensajería y los almacenes viven en infraestructura",
+      "Los servicios de infraestructura aplican las acciones producidas por consumidores sobre los almacenes",
+      "Los productores publican eventos en el canal sin conocer a los consumidores"
+    ]
+  },
+  "recorridos": [
+    {
+      "id_requerimiento": "RF-01",
+      "id_escenario": "ESC-01",
+      "preparar": [
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "publicar_pago_confirmado",
+        "AlmacenFacturas.consultar"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-01",
+      "id_escenario": "ESC-02",
+      "preparar": [
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "publicar_pago_confirmado",
+        "AlmacenFacturas.consultar"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-01",
+      "id_escenario": "ESC-03",
+      "preparar": [
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "publicar_pago_confirmado"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-02",
+      "id_escenario": "ESC-01",
+      "preparar": [
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "AlmacenFacturas.aplicar_pago",
+        "AlmacenRecibos",
+        "AlmacenRecibos.registrar_recibo",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_reversado",
+        "CanalEventos.suscribir_pago_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "publicar_pago_reversado",
+        "AlmacenRecibos.consultar_por_referencia",
+        "AlmacenFacturas.consultar"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-02",
+      "id_escenario": "ESC-02",
+      "preparar": [
+        "AlmacenRecibos",
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "AlmacenRecibos.registrar_recibo",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "publicar_pago_reversado",
+        "AlmacenRecibos.consultar_por_referencia"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-02",
+      "id_escenario": "ESC-03",
+      "preparar": [
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "publicar_pago_reversado"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-03",
+      "id_escenario": "ESC-01",
+      "preparar": [
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "AlmacenCartera",
+        "AlmacenCartera.registrar_cartera",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "publicar_pago_confirmado",
+        "AlmacenCartera.consultar"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-03",
+      "id_escenario": "ESC-02",
+      "preparar": [
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "AlmacenRecibos",
+        "AlmacenRecibos.registrar_recibo",
+        "AlmacenCartera",
+        "AlmacenCartera.registrar_cartera",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_reversado"
+      ],
+      "ejecutar": "publicar_pago_reversado",
+      "observar": [
+        "publicar_pago_reversado",
+        "AlmacenCartera.consultar"
+      ]
+    },
+    {
+      "id_requerimiento": "RF-03",
+      "id_escenario": "ESC-03",
+      "preparar": [
+        "AlmacenFacturas",
+        "AlmacenFacturas.registrar_factura",
+        "AlmacenCartera",
+        "AlmacenCartera.registrar_cartera",
+        "CanalEventos",
+        "CanalEventos.suscribir_pago_confirmado"
+      ],
+      "ejecutar": "publicar_pago_confirmado",
+      "observar": [
+        "publicar_pago_confirmado",
+        "AlmacenCartera.consultar"
+      ]
+    }
+  ]
+}
