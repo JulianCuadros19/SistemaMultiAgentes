@@ -14,7 +14,8 @@ regla esperada. Un control acierta si sale aprobado sin hallazgos. El juez se mi
 caso: cada caso que marca fuera de los esperados (`casos_juez`) es un rechazo falso, aunque el
 veredicto de la variante no cambie. El script imprime la matriz de confusión por variante, los
 aciertos del juez por caso, sus errores con la justificación y el costo. Cada llamada al modelo se
-agrega a docs/mediciones/paso-10-tester.jsonl, sin el contenido de los mensajes.
+agrega a la traza (por defecto docs/mediciones/paso-10-tester.jsonl; otra con `--traza`), sin el
+contenido de los mensajes.
 
 Requiere `docker compose up -d --wait`, la imagen del entorno aislado, el corpus ingerido y el
 archivo .env. Tiene costo.
@@ -41,6 +42,7 @@ from multiagente.core.configuracion import (
     ConfiguracionBaseDatos,
     ConfiguracionModelos,
 )
+from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.interfaces.defectos import CorpusDefectos, Variante, cargar_corpus_de_defectos
 from multiagente.llm.cliente import crear_cliente
 from multiagente.llm.traza import RegistroJsonl
@@ -67,6 +69,7 @@ class Preparada:
     validacion: Validacion
     contexto: Contexto
     version: VersionCodigo
+    especificacion: EspecificacionDiseno
 
 
 def plan_de(requerimientos: Requerimientos) -> tuple[CasoPrueba, ...]:
@@ -103,7 +106,7 @@ def preparar(tester: object, corpus: CorpusDefectos, variante: Variante) -> Prep
         no_evaluadas=analisis.no_evaluadas,
     )
     contexto = tester.recuperar_criterios(validacion)
-    return Preparada(variante, plan, validacion, contexto, version)
+    return Preparada(variante, plan, validacion, contexto, version, caso.especificacion)
 
 
 def casos_marcados_por_el_juez(dictamen: Dictamen) -> tuple[set[str], int]:
@@ -132,6 +135,12 @@ def main() -> None:
     parser.add_argument("--modelo-juez", help="Despliegue del juez; por defecto, el de .env.")
     parser.add_argument("--corridas", type=int, default=1, help="Corridas del juez.")
     parser.add_argument(
+        "--traza",
+        type=Path,
+        default=ARCHIVO_MEDICIONES,
+        help="Archivo JSONL de la traza; por defecto, el del paso 10.",
+    )
+    parser.add_argument(
         "--solo-juez",
         action="store_true",
         help="Solo los controles y los defectos que detecta el juez (selección del modelo).",
@@ -140,7 +149,9 @@ def main() -> None:
     logging.basicConfig(level=logging.WARNING, format="(aviso) %(message)s")
 
     modelo = argumentos.modelo_juez or ConfiguracionModelos().n14_veredicto
-    registro = RegistroJsonl(ARCHIVO_MEDICIONES, sesion=f"tester-{modelo}-{int(time.time())}")
+    registro = RegistroJsonl(
+        argumentos.traza.resolve(), sesion=f"tester-{modelo}-{int(time.time())}"
+    )
     variantes = [
         (corpus, variante)
         for corpus in cargar_corpus_de_defectos()
@@ -167,7 +178,11 @@ def main() -> None:
             for preparada in preparadas:
                 variante = preparada.variante
                 dictamen = tester.dictaminar(
-                    preparada.plan, preparada.validacion, preparada.contexto, preparada.version
+                    preparada.plan,
+                    preparada.validacion,
+                    preparada.contexto,
+                    preparada.version,
+                    preparada.especificacion,
                 )
                 bien = acierta(variante, dictamen)
                 clave = (

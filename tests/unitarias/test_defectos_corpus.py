@@ -20,8 +20,13 @@ from multiagente.orquestador.simulacion import DesarrolladorFijo
 
 REGLAS = cargar_reglas_calidad()
 CORPUS = {corpus.nombre: corpus for corpus in cargar_corpus_de_defectos()}
-ESTATICOS = {"D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09", "D10", "D11", "D13"}
-"""Defectos que N12 detecta sin ejecutar el código."""
+ESTATICOS = {
+    "avaluo": {"D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09", "D10", "D11", "D13"}
+    | {"D17", "J03"},
+    "pagos": {"D01"},
+}
+"""Defectos que N12 detecta sin ejecutar el código, por corpus. Desde el ADR-0015, J03 y las
+pruebas que inyectan atributos los detecta N12 (CAL-FS-006)."""
 
 
 def analizar(corpus, archivos):
@@ -33,41 +38,64 @@ def analizar(corpus, archivos):
     return analizar_version(version, caso.especificacion, requerimientos, REGLAS)
 
 
-def test_corpus_con_dos_controles_y_dieciseis_defectos():
-    assert set(CORPUS) == {"avaluo", "mutacion"}
-    avaluo = CORPUS["avaluo"].definicion
-    assert len(avaluo.defectos) == 16
+def test_corpus_con_tres_controles_y_veintiun_defectos():
+    assert set(CORPUS) == {"avaluo", "mutacion", "pagos"}
+    avaluo, pagos = CORPUS["avaluo"].definicion, CORPUS["pagos"].definicion
+    assert (len(avaluo.defectos), len(pagos.defectos)) == (18, 3)
     assert sum(defecto.solo_juez for defecto in avaluo.defectos) == 3
+    assert sum(defecto.solo_juez for defecto in pagos.defectos) == 2
     assert all(c.definicion.control.veredicto is Veredicto.APROBADO for c in CORPUS.values())
     assert all(
         defecto.esperado.veredicto is Veredicto.RECHAZADO and defecto.esperado.reglas
-        for defecto in avaluo.defectos
+        for corpus in CORPUS.values()
+        for defecto in corpus.definicion.defectos
     )
 
 
 def test_las_reglas_esperadas_existen_en_la_base_de_conocimiento():
     esperadas = {
         regla
-        for defecto in CORPUS["avaluo"].definicion.defectos
+        for corpus in CORPUS.values()
+        for defecto in corpus.definicion.defectos
         for regla in defecto.esperado.reglas
     }
     assert esperadas <= set(REGLAS)
 
 
-@pytest.mark.parametrize("nombre", ["avaluo", "mutacion"])
+@pytest.mark.parametrize("nombre", ["avaluo", "mutacion", "pagos"])
 def test_las_bases_no_tienen_hallazgos_estaticos(nombre):
     corpus = CORPUS[nombre]
     assert analizar(corpus, corpus.base).hallazgos == ()
 
 
 @pytest.mark.parametrize(
-    "variante",
-    [v for v in CORPUS["avaluo"].variantes() if v.defecto and v.defecto.id in ESTATICOS],
-    ids=lambda v: v.id,
+    ("nombre", "variante"),
+    [
+        (nombre, v)
+        for nombre, estaticos in ESTATICOS.items()
+        for v in CORPUS[nombre].variantes()
+        if v.defecto and v.defecto.id in estaticos
+    ],
+    ids=lambda valor: valor if isinstance(valor, str) else valor.id,
 )
-def test_n12_detecta_cada_defecto_estatico(variante):
-    reglas = {h.regla for h in analizar(CORPUS["avaluo"], variante.archivos).hallazgos}
+def test_n12_detecta_cada_defecto_estatico(nombre, variante):
+    reglas = {h.regla for h in analizar(CORPUS[nombre], variante.archivos).hallazgos}
     assert set(variante.esperado.reglas) <= reglas, reglas
+
+
+@pytest.mark.parametrize(
+    ("nombre", "variante"),
+    [
+        (nombre, v)
+        for nombre, corpus in CORPUS.items()
+        for v in corpus.variantes()
+        if v.defecto and v.defecto.solo_juez
+    ],
+    ids=lambda valor: valor if isinstance(valor, str) else valor.id,
+)
+def test_los_defectos_del_juez_no_los_detecta_n12(nombre, variante):
+    # Así el corpus mide al juez: N12 no deja ningún hallazgo en estas variantes.
+    assert analizar(CORPUS[nombre], variante.archivos).hallazgos == ()
 
 
 def test_una_inyeccion_desalineada_hace_fallar_la_carga():

@@ -1,0 +1,72 @@
+{
+  "caso": "evaluacion/casos/desarrollo-pagos.json",
+  "descripcion": "Módulo de pagos de pensiones por eventos (ARQ-06), con su almacén en memoria, que validaron el tester y una persona en la sesión 5f5d2739 (v6). Se ajustó a mano para que el tester no le encuentre hallazgos: la especificación ganó la consulta pública de recibos y el campo motivo, y las pruebas observan solo por interfaces públicas. Es el control limpio y la base de las inyecciones de pruebas que simulan el efecto del módulo (ADR-0015).",
+  "control": {
+    "veredicto": "aprobado"
+  },
+  "defectos": [
+    {
+      "id": "D01",
+      "clase": "simulacion",
+      "descripcion": "La prueba del RF-01 ESC-01 le agrega al aviso, con object.__setattr__, un saldo de factura que la clase no tiene.",
+      "cambios": [
+        {
+          "ruta": "tests/test_pagos.py",
+          "buscar": "    bus.suscribir_pago_confirmado(observar)\n    bus.publicar_pago_confirmado(_confirmado())\n    factura = repos.obtener_factura_por_numero(\"2024-000123\")\n    assert factura.estado == \"pagada\"\n",
+          "reemplazar": "    bus.suscribir_pago_confirmado(observar)\n    aviso = _confirmado()\n    object.__setattr__(aviso, \"saldo_factura\", Decimal(250000))\n    bus.publicar_pago_confirmado(aviso)\n    factura = repos.obtener_factura_por_numero(\"2024-000123\")\n    assert factura.estado == \"pagada\"\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-006"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "J01",
+      "clase": "juez",
+      "descripcion": "La prueba del RF-02 ESC-01 arma ella misma, en un diccionario, la factura restaurada que debía consultar en el módulo.",
+      "cambios": [
+        {
+          "ruta": "tests/test_pagos.py",
+          "buscar": "    assert repos.obtener_recibo_por_referencia(\"PAGO-7788\").estado_recibo == \"anulado\"\n    factura = repos.obtener_factura_por_numero(\"2024-000123\")\n    assert factura.estado == \"pendiente\"\n    assert factura.saldo == Decimal(250000)\n",
+          "reemplazar": "    assert repos.obtener_recibo_por_referencia(\"PAGO-7788\").estado_recibo == \"anulado\"\n    factura = {\"estado\": \"pagada\", \"saldo\": Decimal(0)}\n    factura.update(estado=\"pendiente\", saldo=Decimal(250000))\n    assert factura[\"estado\"] == \"pendiente\"\n    assert factura[\"saldo\"] == Decimal(250000)\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ],
+        "casos_juez": [
+          "CP-RF-02-ESC-01"
+        ]
+      },
+      "solo_juez": true
+    },
+    {
+      "id": "J02",
+      "clase": "juez",
+      "descripcion": "La prueba del RF-03 ESC-01 aplica ella misma la actualización de la cartera en una función que suscribe al bus, y verifica su propio diccionario.",
+      "cambios": [
+        {
+          "ruta": "tests/test_pagos.py",
+          "buscar": "    bus.publicar_pago_confirmado(_confirmado(\"PAGO-7790\"))\n    cartera = repos.obtener_cartera_por_familia(\"FAMILIA-1\")\n    assert cartera.estado == \"al día\"\n    assert cartera.ultima_referencia_procesada == \"PAGO-7790\"\n",
+          "reemplazar": "    cartera = {}\n\n    def anotar(aviso):\n        actualizacion = manejar_pago_confirmado_cartera(aviso)\n        cartera.update(estado=\"al día\", ultima_referencia_procesada=aviso.referencia_pago)\n        return actualizacion\n\n    bus.suscribir_pago_confirmado(anotar)\n    bus.publicar_pago_confirmado(_confirmado(\"PAGO-7790\"))\n    assert cartera[\"estado\"] == \"al día\"\n    assert cartera[\"ultima_referencia_procesada\"] == \"PAGO-7790\"\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ],
+        "casos_juez": [
+          "CP-RF-03-ESC-01"
+        ]
+      },
+      "solo_juez": true
+    }
+  ]
+}

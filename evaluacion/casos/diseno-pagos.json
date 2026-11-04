@@ -1,0 +1,311 @@
+{
+  "id": "caso-diseno-pagos",
+  "titulo": "Aplicación de los pagos de pensiones por eventos",
+  "cliente": "Colegio Campestre Los Almendros (sintética)",
+  "proyecto": "Aplicación de pagos de pensiones",
+  "necesidad": "La pasarela de pagos nos avisa cuando un pago queda confirmado o se reversa. Necesitamos que varios procesos reaccionen a esos avisos de manera independiente: aplicar el pago a la factura, generar o anular el recibo y actualizar el estado de cartera de la familia.",
+  "candidatas": [
+    "ARQ-06"
+  ],
+  "criterio": "arq-003: varios procesos reaccionan por separado al mismo aviso de la pasarela de pagos (factura, recibo y cartera), sin depender unos de otros.",
+  "sintesis": {
+    "historias": [
+      {
+        "id": "HU-01",
+        "enunciado": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "epica": null,
+        "prioridad": "alta",
+        "supuestos": [
+          "El canal de los avisos puede funcionar en memoria para las pruebas."
+        ],
+        "preguntas_abiertas": [
+          "Qué hacer si el aviso llega incompleto.",
+          "Qué hacer cuando el valor no coincide con la factura."
+        ]
+      }
+    ],
+    "requerimientos": [
+      {
+        "id_requerimiento": "RF-01",
+        "version": "0.2",
+        "proyecto": "Aplicación de pagos de pensiones",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "pasarela de pagos",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "tesorería",
+        "funcional_responsable": "tesorera del colegio",
+        "titulo": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "descripcion": {
+          "precondicion": "La factura existe y la pasarela de pagos envía un aviso de pago confirmado.",
+          "regla_negocio": "Cuando la pasarela de pagos avisa que un pago queda confirmado, se debe aplicar el pago a la factura. Si el pago confirmado cubre el saldo, la factura queda pagada; si no, queda abonada; y si sobra dinero, queda saldo a favor. El valor del ajuste se expresa en pesos sin decimales.",
+          "datos_entrada": [
+            {
+              "nombre": "referencia_del_pago",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "numero_de_factura",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "valor",
+              "tipo": "número decimal",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "fecha",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "estado_de_la_factura",
+              "tipo": "lista",
+              "formato": "pagada o abonada"
+            },
+            {
+              "nombre": "valor",
+              "tipo": "número entero",
+              "formato": "pesos sin decimales"
+            },
+            {
+              "nombre": "saldo_a_favor",
+              "tipo": "número entero",
+              "formato": "pesos sin decimales"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "pago confirmado cubre el saldo",
+            "dado_que": "existe una factura asociada al número de factura 2024-000123 y la pasarela de pagos confirma un pago con referencia PAGO-7788 por un valor de 250000 pesos en la fecha 2026-10-31",
+            "cuando": "se recibe el aviso de pago confirmado",
+            "entonces": "la factura queda en estado pagada y el valor aplicado se muestra en pesos sin decimales"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "pago confirmado no cubre el saldo",
+            "dado_que": "existe una factura asociada al número de factura 2024-000124 y la pasarela de pagos confirma un pago con referencia PAGO-7789 por un valor de 120000 pesos en la fecha 2026-10-31",
+            "cuando": "se recibe el aviso de pago confirmado",
+            "entonces": "la factura queda en estado abonada y el valor aplicado se muestra en pesos sin decimales"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "aviso de pago confirmado incompleto",
+            "dado_que": "la pasarela de pagos envía un aviso de pago confirmado sin número de factura",
+            "cuando": "se intenta registrar el aviso",
+            "entonces": "el sistema rechaza el aviso y no aplica cambios a la factura"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      },
+      {
+        "id_requerimiento": "RF-02",
+        "version": "0.2",
+        "proyecto": "Aplicación de pagos de pensiones",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "pasarela de pagos",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "tesorería",
+        "funcional_responsable": "tesorera del colegio",
+        "titulo": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "descripcion": {
+          "precondicion": "Existe un recibo generado para el pago confirmado y la pasarela de pagos envía un aviso de pago reversado.",
+          "regla_negocio": "Cuando la pasarela de pagos avisa que un pago se reversa, se debe anular el recibo y devolver la factura a su estado anterior. El motivo solo viene en el aviso de pago reversado. El consecutivo del recibo sigue el formato REC-000001, REC-000002, ...",
+          "datos_entrada": [
+            {
+              "nombre": "referencia_del_pago",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "fecha",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "motivo",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": "solo viene en el aviso de pago reversado"
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "consecutivo_del_recibo",
+              "tipo": "texto",
+              "formato": "REC-000001, REC-000002, ..."
+            },
+            {
+              "nombre": "valor_del_recibo",
+              "tipo": "número entero",
+              "formato": "pesos sin decimales"
+            },
+            {
+              "nombre": "factura_del_recibo",
+              "tipo": "texto",
+              "formato": null
+            },
+            {
+              "nombre": "estado_de_la_factura",
+              "tipo": "lista",
+              "formato": "estado anterior"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "pago reversado anula el recibo",
+            "dado_que": "existe un recibo asociado a la referencia del pago PAGO-7788 y la factura estaba actualizada por ese pago",
+            "cuando": "se recibe el aviso de pago reversado",
+            "entonces": "el recibo queda anulado y la factura vuelve a su estado anterior"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "pago reversado con motivo informado",
+            "dado_que": "la pasarela de pagos envía un aviso de reverso con referencia PAGO-7789, fecha 2026-10-31 y motivo reverso por contracargo",
+            "cuando": "se procesa el aviso de reverso",
+            "entonces": "el motivo queda registrado y el recibo asociado queda anulado"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "aviso de reverso sin motivo",
+            "dado_que": "la pasarela de pagos envía un aviso de pago reversado sin motivo",
+            "cuando": "se intenta registrar el aviso",
+            "entonces": "el sistema rechaza el aviso y no anula el recibo"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      },
+      {
+        "id_requerimiento": "RF-03",
+        "version": "0.2",
+        "proyecto": "Aplicación de pagos de pensiones",
+        "tipo_solicitud": "nuevo",
+        "impacto": "alto",
+        "modulo": "cartera",
+        "riesgo": null,
+        "autor": "Agente elicitador",
+        "area_funcional": "tesorería",
+        "funcional_responsable": "tesorera del colegio",
+        "titulo": {
+          "como": "tesorera del colegio",
+          "quiero": "hacer que varios procesos reaccionen de manera independiente a los avisos de la pasarela de pagos",
+          "para": "que cada parte se actualice por su lado sin depender de las otras, de modo que la factura, el recibo y el estado de cartera queden reflejados correctamente cuando llegue un aviso de pago o de reverso"
+        },
+        "descripcion": {
+          "precondicion": "La familia tiene una cartera registrada y la pasarela de pagos envía un aviso de pago confirmado o reversado.",
+          "regla_negocio": "Cuando la pasarela de pagos avisa que un pago queda confirmado o se reversa, se debe actualizar el estado de cartera de la familia. El estado de cartera solo puede quedar como al día o en mora.",
+          "datos_entrada": [
+            {
+              "nombre": "referencia_del_pago",
+              "tipo": "texto",
+              "obligatorio": true,
+              "restriccion": null
+            },
+            {
+              "nombre": "fecha",
+              "tipo": "fecha",
+              "obligatorio": true,
+              "restriccion": null
+            }
+          ],
+          "datos_salida": [
+            {
+              "nombre": "estado_de_la_cartera",
+              "tipo": "lista",
+              "formato": "al día o en mora"
+            }
+          ]
+        },
+        "criterios_aceptacion": [
+          {
+            "id": "ESC-01",
+            "nombre": "cartera actualizada por pago confirmado",
+            "dado_que": "la familia tiene cartera registrada y la pasarela de pagos confirma un pago con referencia PAGO-7790 en la fecha 2026-10-31",
+            "cuando": "se procesa el aviso de pago confirmado",
+            "entonces": "el estado de cartera queda en al día o en mora según la actualización aplicada"
+          },
+          {
+            "id": "ESC-02",
+            "nombre": "cartera actualizada por pago reversado",
+            "dado_que": "la familia tiene cartera registrada y la pasarela de pagos reversa un pago con referencia PAGO-7791 en la fecha 2026-10-31",
+            "cuando": "se procesa el aviso de pago reversado",
+            "entonces": "el estado de cartera queda en al día o en mora según la actualización aplicada"
+          },
+          {
+            "id": "ESC-03",
+            "nombre": "aviso duplicado con la misma referencia",
+            "dado_que": "ya se procesó un aviso con la referencia PAGO-7792",
+            "cuando": "llega de nuevo un aviso con la misma referencia",
+            "entonces": "el sistema ignora el aviso y no vuelve a aplicar cambios en la cartera"
+          }
+        ],
+        "prioridad": "alta",
+        "requerimientos_relacionados": []
+      }
+    ],
+    "referencias": {
+      "RF-01": [
+        "eli-001 v1.0 · Formato de la historia de usuario › Reglas de redacción de cada parte",
+        "eli-001 v1.0 · Formato de la historia de usuario › Estructura obligatoria",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de identificación",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de contenido",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Cobertura mínima obligatoria",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Reglas de redacción",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Estructura",
+        "dom-002 v1.0 · Mutaciones catastrales › Estados del trámite",
+        "dom-002 v1.0 · Mutaciones catastrales › Clasificación por tipo"
+      ],
+      "RF-02": [
+        "eli-001 v1.0 · Formato de la historia de usuario › Reglas de redacción de cada parte",
+        "eli-001 v1.0 · Formato de la historia de usuario › Estructura obligatoria",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de identificación",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de contenido",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Cobertura mínima obligatoria",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Reglas de redacción",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Estructura",
+        "dom-002 v1.0 · Mutaciones catastrales › Estados del trámite"
+      ],
+      "RF-03": [
+        "eli-001 v1.0 · Formato de la historia de usuario › Reglas de redacción de cada parte",
+        "eli-001 v1.0 · Formato de la historia de usuario › Estructura obligatoria",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de identificación",
+        "eli-003 v1.1 · Plantilla del requerimiento funcional formal › Campos de contenido",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Cobertura mínima obligatoria",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Reglas de redacción",
+        "eli-004 v1.0 · Redacción de criterios de aceptación en Gherkin › Estructura",
+        "dom-002 v1.0 · Mutaciones catastrales › Estados del trámite"
+      ]
+    }
+  }
+}

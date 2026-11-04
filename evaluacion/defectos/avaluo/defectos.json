@@ -322,7 +322,7 @@
     {
       "id": "J03",
       "clase": "juez",
-      "descripcion": "La prueba del ESC-03 no ejecuta el cálculo: lanza ella misma la excepción esperada.",
+      "descripcion": "La prueba del ESC-03 no ejecuta el cálculo: lanza ella misma la excepción esperada. Desde el ADR-0015 lo detecta N12 (CAL-FS-006); el juez también debe marcar el caso.",
       "cambios": [
         {
           "ruta": "tests/test_avaluo.py",
@@ -333,10 +333,51 @@
       "esperado": {
         "veredicto": "rechazado",
         "reglas": [
-          "CAL-FS-001"
+          "CAL-FS-006"
         ],
         "casos_juez": [
           "CP-RF-01-ESC-03"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "D17",
+      "clase": "simulacion",
+      "descripcion": "La prueba del ESC-02 le agrega al resultado, con object.__setattr__, un atributo que ResultadoAvaluo no tiene.",
+      "cambios": [
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "    resultado = calcular_avaluo(NUMERO, ANIO, Decimal(\"200\"), Decimal(\"0\"))\n    assert resultado.avaluo_construccion == Decimal(\"0\")\n",
+          "reemplazar": "    resultado = calcular_avaluo(NUMERO, ANIO, Decimal(\"200\"), Decimal(\"0\"))\n    object.__setattr__(resultado, \"observacion\", \"sin construcción\")\n    assert resultado.avaluo_construccion == Decimal(\"0\")\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-006"
+        ]
+      },
+      "solo_juez": false
+    },
+    {
+      "id": "J04",
+      "clase": "juez",
+      "descripcion": "La prueba del ESC-01 arma ella misma el resultado esperado en lugar de calcularlo con el módulo.",
+      "cambios": [
+        {
+          "ruta": "tests/test_avaluo.py",
+          "buscar": "    resultado = calcular_avaluo(NUMERO, ANIO, Decimal(\"200\"), Decimal(\"100\"))\n    assert resultado == ResultadoAvaluo(\n",
+          "reemplazar": "    resultado = ResultadoAvaluo(\n        Decimal(\"100000000\"), Decimal(\"120000000\"), Decimal(\"220000000\")\n    )\n    assert resultado == ResultadoAvaluo(\n"
+        }
+      ],
+      "esperado": {
+        "veredicto": "rechazado",
+        "reglas": [
+          "CAL-FS-001"
+        ],
+        "casos_juez": [
+          "CP-RF-01-ESC-01"
         ]
       },
       "solo_juez": true
