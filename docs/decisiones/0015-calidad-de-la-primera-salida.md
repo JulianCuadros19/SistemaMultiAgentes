@@ -541,6 +541,15 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
       `UMBRAL_HALLAZGOS_MEDIA=0`, rechazan las infracciones de severidad alta y media.
     - La verificación de N10 las reporta como «RF-16 · estilo», y el reintento las corrige.
     - El tester sigue dictaminando el estilo, la ejecución y la severidad.
+30. **N6 corrige lo corregible aunque haya preguntas abiertas** (decisión del equipo del
+    2026-11-04; modifica la implementación de la decisión 10 del ADR-0008).
+    - **Antes:** una sola pregunta abierta o un marcador de pendiente hacía escalar todo al
+      analista, sin corregir los demás defectos. En 9 de las 20 sesiones de la corrida ampliada,
+      llegaron al analista defectos C5, C7 o C9 que N5 podía resolver.
+    - **Ahora:** `VerificacionCalidad.del_cliente` separa lo que solo resuelve el cliente. N6
+      devuelve a N5 solo los defectos corregibles, hasta el límite de correcciones.
+    - **Lo que no cambia:** lo que requiere al cliente sigue escalando sin intentar corregirlo,
+      porque N5 no puede resolverlo sin inventar (eli-009).
 
 **Verificación de la fase 5.**
 - **Sin costo:** 677 pruebas unitarias, 31 de integración y 19 de embeddings.
@@ -590,17 +599,45 @@ pidieron las observaciones 2 y 3, y se habrían ahorrado dos ciclos de N17.
   - reparto: N3 4,51, N5 1,42, cliente simulado 2,53 y juez 0,10;
   - aparte, las dos corridas de la prueba `nube`, de unos 0,08 USD cada una.
 
-**Pendientes de la fase 5** (para el equipo).
-- **Corrida ampliada de 20 casos** con las decisiones 23 y 24, de unos 2,7 USD. La alternativa es
-  dejarla a la fase 7, cuya corrida de extremo a extremo incluye la elicitación.
-- **Criterio de turnos:** revisarlo, por ejemplo 211 turnos sin contar la exploración.
-- **Captura de reglas ocultas:** aceptarla así o ampliar la exploración, por ejemplo a cuatro
-  preguntas.
-- **Propuesta:** que N6 corrija los defectos que N5 puede resolver aunque haya preguntas
-  abiertas, y que después escale solo lo que requiere al cliente.
-  - En 9 de las 20 sesiones de la corrida ampliada, N6 escaló sin corregir defectos C5, C7 o C9
-    porque había al menos una pregunta abierta.
-  - Cambia la implementación de la decisión 10 del ADR-0008.
+**Decisiones del equipo sobre la fase 5 (2026-11-04).**
+- **Corrida de 20 casos:** se repite ahora, antes de la fase 6, con las decisiones 23, 24 y 30.
+- **N6:** se implementa la propuesta antes de la corrida (decisión 30).
+- **Reglas ocultas:** se acepta el nivel alcanzado, y el criterio queda registrado como no
+  cumplido. Ampliar la exploración costaría turnos y convergencia.
+- **Criterio de turnos:** pasa a «como máximo 211 turnos sin contar las respuestas a la
+  exploración», y se mantienen al menos 17 de 20 resúmenes confirmados. La exploración se
+  informa aparte.
+
+**Corrida de 20 casos con las decisiones 23, 24 y 30** (`data/local/elicitaciones-ampliada-final`,
+una corrida por caso):
+
+| Medición | Turnos | Sin exploración | Confirmados | En el límite | Defectos en N6 | Sin defectos | USD, sistema y cliente |
+|---|---|---|---|---|---|---|---|
+| Medición 2 del ADR-0014 | 211 | — | 17 | 3 | — | — | — |
+| Primera de la fase 5 (decisiones 20 a 22) | 306 | — | 13 | 8 | 44 | 6 | 1,80 y 0,71 |
+| Final (decisiones 23, 24 y 30) | 291 | 221 | 14 | 6 | 17 | 7 | 1,93 y 0,71 |
+
+- **Criterios redefinidos:** no se cumplen. Son 221 turnos sin exploración frente a 211, y 14
+  resúmenes confirmados frente a 17.
+- **N6:** los defectos bajaron de 44 a 17.
+  - 12 sesiones llegaron con preguntas abiertas; en las confirmadas, solo las del registro.
+  - La decisión 30 intentó corregir lo demás. Tras las dos correcciones quedan tres defectos: dos
+    C5 en el caso 14 y un C7 en el 18. Queda además un C9 en el caso 08.
+- **Diagnóstico de las 6 sesiones sin confirmar.** Las causas ya no son las de la decisión 23, y
+  dos son efectos de cambios de esta fase:
+  - **El aviso de sistemas (caso 14):** el cliente objeta el texto mismo del aviso junto al rol, y
+    pide que diga que la usan el técnico y la tarea programada. Seis resúmenes seguidos.
+  - **Tipos inferidos (caso 17):** el resumen muestra tipos que la extracción supuso, como
+    «número entero», y el cliente responde que eso no quedó definido.
+  - **«Sin respuesta del cliente» (casos 13, 17 y 19):** el cliente no acepta esa frase en los
+    casos de error o en los resultados, y pide que diga que no hay ninguno definido.
+  - **Obligatoriedad (caso 15):** dos datos con valor por defecto quedan como obligatorios, y el
+    supuesto persiste.
+  - **Revelación gradual (caso 13):** con un registro grande, el cliente agrega un faltante por
+    resumen.
+  - **Rol desconocido (caso 11):** N3 pregunta el rol con variantes y no detecta el «no sé». No
+    llega al resumen.
+- **Costo de la corrida:** 2,64 USD. La fase suma 11,35 USD con las pruebas `nube`.
 
 ## Verificación
 
@@ -610,8 +647,10 @@ _Pendiente._ Criterios, fijados antes de medir:
 - ninguna sesión escalada (hoy 1);
 - costo medio por módulo: como máximo 0,35 USD (hoy 0,28);
 - ningún falso positivo del patrón «prueba que simula» en el corpus de defectos;
-- la elicitación no retrocede (como máximo 211 turnos y al menos 17 de 20 resúmenes confirmados)
-  y captura al menos 2 de 3 reglas ocultas.
+- la elicitación no retrocede: como máximo 211 turnos sin contar la exploración y al menos 17 de
+  20 resúmenes confirmados (redefinido en la fase 5);
+- la elicitación captura al menos 2 de 3 reglas ocultas. En la fase 5 el equipo aceptó una media
+  de 1,33 por caso.
 
 ## Cambios para el documento de tesis
 
@@ -643,4 +682,6 @@ Con la arquitectura vigente al cierre del paso 12. `docs/arquitectura.md` pasa a
   - Tabla 1, N5: con el resumen confirmado, las preguntas abiertas de la historia son las del
     registro.
   - RF-07 en N6: al menos tres escenarios por requerimiento.
+  - Tabla 1, N6: corrige los defectos que N5 puede resolver aunque haya preguntas abiertas, y
+    escala estas al analista.
   - Tabla 1, N10: antes de entregar, verifica también el estilo que rechazaría el tester.
