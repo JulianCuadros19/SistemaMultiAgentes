@@ -125,6 +125,11 @@ REGLA = ejemplo_plantilla()["descripcion"]["regla_negocio"]
             "detalle de implementación",
         ),
         (
+            {"criterios_aceptacion__0__dado_que": "el archivo esc_2019_00042.pdf"},
+            "CONFORME",
+            "«esc_2019_00042»",
+        ),
+        (
             {"criterios_aceptacion__0__dado_que": "una fecha de documento <= la radicación"},
             "CONFORME",
             "«<=»",
@@ -156,6 +161,8 @@ def test_senal_inyectada_es_detectada(cambios, caracteristica, senal):
             "descripcion__datos_entrada__0__nombre": "Número predial",
             "criterios_aceptacion__2__dado_que": "un numero_predial de 29 dígitos",
         },
+        # Un código o un nombre de archivo en mayúsculas es un valor que dio el cliente.
+        {"criterios_aceptacion__0__dado_que": "la carpeta contiene el archivo ESC_2019_00042.pdf"},
     ],
 )
 def test_usos_legitimos_no_son_defectos(cambios):

@@ -224,6 +224,7 @@ def elicitar(
     estado = app.get_state(configuracion_hilo(id_sesion)).values
     conversacion = estado["conversacion"]
     registro = conversacion.registro
+    historias = estado["requerimientos"].historias
     requerimientos = estado["requerimientos"].requerimientos
     defectos = avance.pausa.datos.get("defectos", []) if avance.pausa else []
     costos: dict[str, Decimal] = defaultdict(Decimal)
@@ -260,6 +261,7 @@ def elicitar(
                     for turno in conversacion.turnos
                 ],
                 "registro": registro.model_dump(mode="json"),
+                "historias": [h.model_dump(mode="json") for h in historias],
                 "requerimientos": [r.model_dump(mode="json") for r in requerimientos],
                 "defectos": list(defectos),
                 "juicios": [juicio.model_dump() for juicio in juicios],

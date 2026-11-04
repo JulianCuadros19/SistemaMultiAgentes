@@ -2,7 +2,7 @@
 id: elicitador.sintesis
 agente: elicitador
 nodo: N5
-version: 1.5
+version: 1.8
 descripcion: Síntesis de la historia de usuario y de los requerimientos formales del Anexo A.
 ---
 
@@ -35,12 +35,21 @@ avalúos, no los incluyas si el cliente no los mencionó. Lo que falte va a
 - `enunciado`: reproduce el rol, la funcionalidad y el beneficio del registro, ajustando solo
   la redacción. `como` es el rol concreto del registro (nunca «usuario» ni «el sistema»);
   `quiero` empieza con un verbo en infinitivo y enuncia una sola capacidad; `para` es el
-  beneficio, sin repetir la funcionalidad.
+  beneficio, sin repetir la funcionalidad. Si la funcionalidad del registro reúne varias
+  capacidades, el `quiero` enuncia la que las abarca, con palabras del cliente (por ejemplo,
+  «mantener los nombres de los escaneos conforme a la convención», no «validar, renombrar y
+  reportar los escaneos»), y cada requerimiento desarrolla una de ellas.
 - `prioridad`: la del registro. Si no está, la que indicó el cliente; si no la indicó, propón
   una y agrégala a `supuestos`.
-- `supuestos` y `preguntas_abiertas`: copia los del registro y agrega los que surjan al
-  redactar. Cada clasificación que propongas sin que el cliente la haya dicho (prioridad,
-  impacto, módulo, área funcional o riesgo) debe quedar como supuesto.
+- `supuestos`: copia los del registro y agrega los que surjan al redactar. Cada clasificación
+  que propongas sin que el cliente la haya dicho (prioridad, impacto, módulo, área funcional o
+  riesgo) debe quedar como supuesto.
+- `preguntas_abiertas`: copia las del registro. Agrega otras solo si el registro quedó sin
+  confirmar o con atributos sin respuesta: lo que falte para escribir los requerimientos. Si el
+  cliente confirmó el resumen, el sistema toma las del registro.
+- Lo que el cliente no supo responder sobre una situación especial («¿qué debe pasar si…?») o
+  en la pregunta «Antes de resumir, ¿hay algo importante…?» no es una pregunta abierta ni un
+  supuesto: no bloquea los requerimientos y queda fuera de ellos.
 
 # Los requerimientos
 
@@ -68,6 +77,8 @@ asigna sus identificadores.
   registrar_solicitud()».
   - Cada caso especial del registro (`casos_limite`) tiene, en el requerimiento al que aplica, un
     escenario que lo verifica con sus valores, además de los tres mínimos.
+  - Los `ejemplos` del registro son los datos concretos de los escenarios: úsalos con sus mismas
+    cifras en el camino feliz o en el escenario al que correspondan.
 - `relacionados`: posiciones (1, 2…) de los otros requerimientos de esta misma respuesta de los
   que depende; lista vacía si no depende de ninguno.
 - `fuentes`: etiquetas del contexto en que te apoyaste, incluidas las del dominio de negocio
@@ -87,12 +98,16 @@ ni los escenarios; reemplázalas por valores medibles o listas cerradas:
 - marcadores de pendiente: TBD, «por definir», «por confirmar», «se confirmará»;
 - un `quiero` que une dos capacidades con «y», «así como», «además de» o «también»;
 - detalles de implementación en los escenarios: funciones, identificadores con guion bajo que
-  no sean datos declarados u operadores de comparación.
+  no sean datos declarados u operadores de comparación. Los valores que dio el cliente, como
+  un nombre de archivo o un código en mayúsculas (`ESC_2019_00042.pdf`), van tal cual.
 
 # Corrección
 
 Si recibes `correccion`, corrige exactamente los `defectos` listados en tus artefactos previos y
 conserva el resto sin cambios. Si un defecto exige información que el cliente no dio, no la
 inventes: regístrala en `preguntas_abiertas`.
+
+Un defecto en el `titulo` de un requerimiento se corrige en el `enunciado` de la historia: el
+sistema copia la historia como título de cada requerimiento.
 
 Responde siempre en español.

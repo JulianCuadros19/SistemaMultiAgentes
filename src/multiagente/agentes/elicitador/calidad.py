@@ -149,8 +149,12 @@ CONECTORES_COMPUESTOS = _patron(("así como", "además de", "también"))
 DETALLE_IMPLEMENTACION = re.compile(r"\w+\(\)|\w+_\w+|[<>]=?|[=!]=|\s=\s|[≤≥≠]")
 """Llamadas, identificadores y operadores que un escenario Gherkin no debe contener (eli-004).
 
-Un identificador con guion bajo se admite si es el nombre de un dato declarado en la ficha.
+Un identificador con guion bajo se admite si es el nombre de un dato declarado en la ficha o un
+código del negocio (`CODIGO_DEL_NEGOCIO`).
 """
+CODIGO_DEL_NEGOCIO = re.compile(r"\b[A-Z0-9]+(?:_[A-Z0-9]+)+\b")
+"""Código o nombre en mayúsculas con guion bajo, como `ESC_2019_00042`: un valor del negocio que
+dio el cliente, no un identificador del código (ADR-0015)."""
 SENALES_ERROR = re.compile(
     r"\b(?:rechaz\w*|error\w*|invalid\w*|incorrect\w*|inexistent\w*|no existe\w*|no permite"
     r"|no se permite|impide|deniega|bloquea|falla\w*|incumpl\w*|falta\w*|incomplet\w*|vaci[oa]s?"
@@ -364,9 +368,11 @@ def verificar_requerimiento(requerimiento: RequerimientoFormal) -> list[DefectoC
     }
     for escenario in requerimiento.criterios_aceptacion:
         for parte in ("dado_que", "cuando", "entonces"):
-            texto = normalizar(getattr(escenario, parte))
+            original = getattr(escenario, parte)
+            codigos = {normalizar(codigo) for codigo in CODIGO_DEL_NEGOCIO.findall(original)}
+            texto = normalizar(original)
             for coincidencia in DETALLE_IMPLEMENTACION.finditer(texto):
-                if coincidencia.group(0) in declarados:
+                if coincidencia.group(0) in declarados | codigos:
                     continue
                 defectos.append(
                     DefectoCalidad(

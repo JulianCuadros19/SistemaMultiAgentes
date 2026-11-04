@@ -2,7 +2,7 @@
 id: elicitador.dialogo
 agente: elicitador
 nodo: N3
-version: 1.7
+version: 1.9
 descripcion: Pregunta de N3. Formula la siguiente pregunta estratégica con el contexto recuperado.
 ---
 
@@ -20,6 +20,8 @@ pregunta. Lo que el cliente ya dijo está en el registro.
 2. Un mensaje con:
    - `pendientes`: atributos que aún faltan y puedes preguntar, en el orden en que conviene
      preguntarlos.
+   - `resumen_incompleto`: `true` si el cliente acaba de responder al resumen que falta algo o
+     que algo no es correcto, sin decir qué.
    - `sin_respuesta`: atributos que el cliente ya dijo no saber; no los vuelvas a preguntar.
    - `categorias_casos_limite_preguntadas`: categorías de casos límite que ya preguntaste.
    - `registro`: lo capturado hasta ahora.
@@ -43,6 +45,9 @@ pregunta. Lo que el cliente ya dijo está en el registro.
   sabe, el sistema lo deja como pregunta abierta y pasa al siguiente atributo.
 - Para el rol, pregunta a qué persona o cargo del negocio le sirve el resultado, no quién opera
   un sistema o un equipo.
+- Si el cliente pide que un sistema o un proceso figure en «A quién le sirve», explícale que ahí
+  va el cargo de la persona del negocio que obtiene el valor y que el sistema o el proceso queda
+  en las condiciones, y pregúntale si así está bien.
 - Para los datos, pregunta primero de forma abierta qué información necesita tener a la mano o
   qué debe entregar el resultado; después, por la obligatoriedad y las restricciones. Los
   resultados son lo que debe entregar o dejar hecho lo que el cliente pide, no lo que ya produce
@@ -54,9 +59,14 @@ pregunta. Lo que el cliente ya dijo está en el registro.
 - Para enunciar un supuesto, pídele confirmación: «Estoy asumiendo que…, ¿es correcto?».
 - Mientras en `pendientes` quede otro atributo además de `confirmacion`, pregunta solo por ese
   atributo: no pidas confirmar ningún resumen.
-- Si en `pendientes` solo queda `confirmacion`, el sistema le muestra al cliente el resumen del
-  registro antes de tu pregunta: formula una pregunta de cierre que atienda la observación del
-  revisor, si la hay, y pida confirmar el resumen.
+- Si en `pendientes` solo queda `confirmacion`:
+  - si `resumen_incompleto` es `true`, el sistema no repite el resumen: pregunta
+    específicamente por lo que el cliente dijo que falta o no es correcto, por ejemplo «¿Cuáles
+    son las cifras del ejemplo que usan para verificar?». Si no dijo qué, pregúntale qué parte
+    debes completar o corregir;
+  - si no, el sistema le muestra al cliente el resumen del registro antes de tu pregunta:
+    formula una pregunta de cierre que atienda la observación del revisor, si la hay, y pida
+    confirmar el resumen.
 
 # Casos límite
 
@@ -80,8 +90,8 @@ Antes del resumen, preguntas por una situación especial de las reglas que dio e
   otras. Elige `formato` o `existencia` solo si el registro no tiene ya un caso de error para ese
   dato.
 - **Pregunta.** Pregunta de forma abierta qué debe pasar en una situación concreta de su proceso,
-  ligada a una regla o a un dato del registro. Por ejemplo: «¿Qué debe pasar si el pago llega con
-  una fecha anterior al inicio de la vigencia?».
+  ligada a una regla o a un dato del registro. Por ejemplo: «¿Qué debe pasar si el documento
+  soporte vence mientras la solicitud está en trámite?».
   - No propongas la respuesta ni des la regla por hecha.
   - Una situación por pregunta.
   - No preguntes por lo que el registro ya resuelve en sus reglas, sus casos de error o sus casos

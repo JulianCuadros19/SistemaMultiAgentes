@@ -2,7 +2,7 @@
 id: elicitador.extraccion
 agente: elicitador
 nodo: N3
-version: 1.5
+version: 1.6
 descripcion: Extracción de N3. Registra lo que el cliente acaba de decir, sin contexto de dominio.
 ---
 
@@ -27,9 +27,10 @@ A veces llega un segundo mensaje con `problemas_intento_anterior`: corrígelos.
 
 Extrae solo de `respuesta_nueva`, leyéndola como respuesta a `pregunta_anterior`. Una misma
 respuesta puede aportar varios atributos aunque la pregunta fuera sobre uno solo: revísalos
-todos. Devuelve en `null` cada atributo del que la respuesta no hable. Cuando la respuesta aporte o corrija un
-atributo, devuelve su valor completo y vigente: en las listas, las entradas previas que sigan
-valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
+todos. Devuelve en `null` cada atributo del que la respuesta no hable. Cuando la respuesta aporte o
+corrija un atributo, devuelve su valor completo y vigente: en las listas, las entradas previas
+que sigan valiendo más las nuevas. Una entrada previa que omitas se conserva si la respuesta no
+habla de ella. Si el cliente no lo dijo, no va al registro.
 
 - `rol`: quién obtiene el valor de la funcionalidad: el cargo de una persona del negocio, tal
   como lo dice el cliente (por ejemplo, «analista de conservación catastral»). Nunca «usuario»,
@@ -63,6 +64,9 @@ valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
   después (por ejemplo, «para las pruebas, el canal puede funcionar en memoria»). Lo que el
   cliente cuenta sobre cómo se hace hoy, como «hoy se anota en una hoja de cálculo», no es una
   condición ni una regla.
+- `ejemplos`: cada ejemplo con cifras que el cliente da para verificar el resultado, completo y
+  con sus valores. Por ejemplo: «un impuesto de 1.000.000 pagado el 15 de marzo tiene un
+  descuento de 150.000 y un valor a pagar de 850.000».
 - `casos_limite`: cada situación especial que el cliente definió al responder un caso límite,
   en una frase con la situación, cómo se maneja y sus valores concretos. Por ejemplo: «si la
   fecha de pago es anterior al inicio de la vigencia, el pago se rechaza».
@@ -71,10 +75,13 @@ valiendo más las nuevas. Si el cliente no lo dijo, no va al registro.
 - `prioridad`: `alta`, `media` o `baja`, solo si el cliente la dice; si no, `null`.
 - `retirar`: lo que la respuesta rechaza del registro sin decir con qué reemplazarlo, por
   ejemplo «eso no es un resultado» o «esa regla no aplica». Cada elemento con `lista`
-  (`reglas_negocio`, `datos_entrada`, `datos_salida`, `excepciones`, `condiciones` o
-  `casos_limite`) y
+  (`reglas_negocio`, `datos_entrada`, `datos_salida`, `excepciones`, `condiciones`,
+  `casos_limite` o `ejemplos`) y
   `entrada`, copiada tal como figura en `registro`; de un dato, su `nombre`. Si el cliente da el
   reemplazo, corrige la lista como siempre. Si no rechaza nada, devuelve `[]`.
+  - Los datos de entrada y de salida se combinan por nombre: los que no devuelvas se conservan.
+    Si el cliente cambia el nombre de un dato, devuelve el dato con el nombre nuevo y retira el
+    anterior.
 - `supuestos`: lista completa y vigente de lo que tú asumes y el cliente debe confirmar. Quita
   los que confirme o corrija. Lo que el cliente da por definido nunca es un supuesto: va en el
   atributo que le corresponde, por ejemplo `condiciones`.

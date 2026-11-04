@@ -197,8 +197,9 @@ class RegistroCaptura(ModeloEstricto):
 
     `no_sabe` anota el atributo que se preguntaba cada vez que el cliente dijo no saberlo. Tras
     `INTENTOS_SIN_RESPUESTA` veces queda sin respuesta: sigue pendiente, pero N3 no lo vuelve a
-    preguntar y el cliente puede confirmar el resumen sin él. La prioridad y las condiciones que el
-    cliente ya definió (quién consume lo que pide, cómo se prueba, qué cambiará) son opcionales.
+    preguntar y el cliente puede confirmar el resumen sin él. Son opcionales la prioridad, las
+    condiciones que el cliente ya definió (quién consume lo que pide, cómo se prueba, qué cambiará)
+    y los ejemplos con cifras que da para verificar, que N5 usa en los escenarios.
 
     Con los atributos completos, y antes del resumen, N3 pregunta por casos límite: situaciones
     especiales de las reglas registradas, hasta `MAX_PREGUNTAS_CASOS_LIMITE`, una categoría de
@@ -221,6 +222,7 @@ class RegistroCaptura(ModeloEstricto):
     excepciones: tuple[TextoObligatorio, ...] = ()
     condiciones: tuple[TextoObligatorio, ...] = ()
     casos_limite: tuple[TextoObligatorio, ...] = ()
+    ejemplos: tuple[TextoObligatorio, ...] = ()
     prioridad: Prioridad | None = None
     supuestos: tuple[TextoObligatorio, ...] = ()
     preguntas_abiertas: tuple[TextoObligatorio, ...] = ()

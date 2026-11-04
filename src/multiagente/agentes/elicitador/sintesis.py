@@ -205,16 +205,25 @@ def validar_sintesis(
     problemas: list[str] = []
     etiquetas = etiquetar(contexto)
     fuente = raices_del_cliente(conversacion)
+    registro = conversacion.registro
     # Si N4 cerró por límite de turnos, lo que falta se declara pendiente en lugar de inventarlo.
-    incompleto = conversacion.registro.pendientes not in ([], ["confirmacion"])
+    incompleto = registro.pendientes not in ([], ["confirmacion"])
+    # Con el resumen confirmado y nada pendiente, el cliente dio todo lo que sabe: las preguntas
+    # abiertas son las del registro. Lo que no supo de una situación especial o en la pregunta
+    # por algo más no bloquea los requerimientos (ADR-0015).
+    cerrado = registro.resumen_confirmado and not registro.pendientes
     try:
         historia = HistoriaUsuario(
             id="HU-01",
             enunciado=Enunciado(**salida.historia.enunciado.model_dump()),
             epica=_texto(salida.historia.epica),
-            prioridad=conversacion.registro.prioridad or salida.historia.prioridad,
+            prioridad=registro.prioridad or salida.historia.prioridad,
             supuestos=_textos(salida.historia.supuestos),
-            preguntas_abiertas=_textos(salida.historia.preguntas_abiertas),
+            preguntas_abiertas=(
+                registro.preguntas_abiertas
+                if cerrado
+                else _textos(salida.historia.preguntas_abiertas)
+            ),
         )
     except ValidationError as error:
         raise ErrorValidacionSalida([f"historia: {_errores(error)}"]) from error

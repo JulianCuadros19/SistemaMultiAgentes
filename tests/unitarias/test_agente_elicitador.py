@@ -17,9 +17,9 @@ from multiagente.agentes.elicitador.contexto import (
     recuperar_contexto,
 )
 from multiagente.agentes.elicitador.dialogo import (
+    AVISO_SISTEMAS,
     PREGUNTA_ALGO_MAS,
     PREGUNTA_CIERRE,
-    PREGUNTA_QUE_FALTA,
     SIN_RESPUESTA,
     SalidaExtraccion,
     SalidaPregunta,
@@ -265,6 +265,7 @@ def salida_extraccion(**cambios) -> SalidaExtraccion:
         "excepciones": None,
         "condiciones": None,
         "casos_limite": None,
+        "ejemplos": None,
         "prioridad": None,
         "retirar": [],
         "supuestos": [],
@@ -338,6 +339,7 @@ def test_la_pregunta_ve_el_contexto_y_el_registro_actualizado():
     assert json.loads(contexto["content"])["contexto"][0]["etiqueta"] == "F1"
     datos = json.loads(estado["content"])
     assert datos["pendientes"] == ["confirmacion"]
+    assert datos["resumen_incompleto"] is False
     assert datos["registro"]["rol"] == registro.rol
     assert datos["observaciones_revisor"] == []
 
@@ -693,14 +695,24 @@ def test_resumen_para_confirmar_sale_del_registro():
         "- Para qué: tramitar el cambio en la información del predio y hacerle seguimiento",
         "- Reglas: La solicitud se acepta solo si el número predial existe y el documento "
         "soporte no tiene fecha posterior a la radicación",
-        # Los nombres van como quedaron en el registro (caso 08 de la corrida ampliada).
-        "- Datos que se reciben: numero_predial (obligatorio, 30 dígitos); fecha_documento "
-        "(obligatorio, no posterior a la fecha de radicación)",
-        "- Resultados que se entregan: radicado (RAD-AAAA-NNNNNN)",
+        # Los nombres van como quedaron en el registro (caso 08 de la corrida ampliada), y cada
+        # dato con su tipo (ADR-0015).
+        "- Datos que se reciben: numero_predial (texto, obligatorio, 30 dígitos); fecha_documento "
+        "(fecha, obligatorio, no posterior a la fecha de radicación)",
+        "- Resultados que se entregan: radicado (texto, RAD-AAAA-NNNNNN)",
         "- Casos de error: Si el número predial no existe, la solicitud se rechaza",
         "- Supuestos por confirmar: Prioridad alta",
     ]
     assert "?" not in resumen
+
+
+def test_el_resumen_dice_donde_quedan_los_sistemas_que_lo_usan():
+    # Caso 14: el cliente pedía la tarea programada en «A quién le sirve» hasta agotar los turnos.
+    condicion = "también la usa una tarea programada cada noche"
+    registro = registro_completo().model_copy(update={"condiciones": (condicion,)})
+    lineas = resumen_para_confirmar(registro).splitlines()
+    assert lineas[1] == f"- A quién le sirve: analista de conservación catastral ({AVISO_SISTEMAS})"
+    assert f"- Condiciones ya definidas: {condicion}" in lineas
 
 
 @pytest.mark.parametrize(
@@ -943,6 +955,45 @@ def test_sintesis_une_los_saltos_de_linea_escapados():
     assert regla == "Primera regla. Segunda regla. Tercera."
 
 
+ECO_DE_LA_EXPLORACION = "¿Qué debe pasar si el documento soporte vence durante el trámite?"
+
+
+def salida_con_preguntas(*preguntas: str) -> SalidaSintesis:
+    salida = salida_sintesis()
+    historia = salida.historia.model_copy(update={"preguntas_abiertas": list(preguntas)})
+    return salida.model_copy(update={"historia": historia})
+
+
+def test_con_el_resumen_confirmado_las_preguntas_abiertas_son_las_del_registro():
+    # Corridas de la fase 5: N5 volvía preguntas abiertas los «no sé» de los casos límite, que no
+    # bloquean los requerimientos, y N6 escalaba sin corregir lo demás.
+    abierta = "¿Qué tipos de documento se aceptan?"
+    registro = RegistroCaptura.model_validate(
+        {**registro_completo().model_dump(), "preguntas_abiertas": (abierta,)}
+        | {"resumen_confirmado": True}
+    )
+    conversacion = conversacion_completa().model_copy(update={"registro": registro})
+    sintesis = validar_sintesis(
+        salida_con_preguntas(ECO_DE_LA_EXPLORACION),
+        conversacion,
+        contexto_recuperado(),
+        Requerimientos(),
+        "Catastro",
+    )
+    assert sintesis.historias[0].preguntas_abiertas == [abierta]
+
+
+def test_sin_confirmar_la_sintesis_puede_agregar_preguntas_abiertas():
+    sintesis = validar_sintesis(
+        salida_con_preguntas(ECO_DE_LA_EXPLORACION),
+        conversacion_completa(),
+        contexto_recuperado(),
+        Requerimientos(),
+        "Catastro",
+    )
+    assert sintesis.historias[0].preguntas_abiertas == [ECO_DE_LA_EXPLORACION]
+
+
 def test_preguntas_abiertas_requieren_al_cliente(cliente_falso):
     contexto = contexto_recuperado()
     sintesis = validar_sintesis(
@@ -1174,21 +1225,25 @@ def test_lo_que_define_el_cliente_queda_como_caso_limite_y_va_al_resumen():
     assert f"- Casos especiales acordados: {respuesta}" in resumen_para_confirmar(registro)
 
 
-def test_n3_pregunta_que_falta_si_el_cliente_no_confirma_ni_corrige(
-    cliente_falso, completar_respuesta
-):
-    cliente = cliente_falso(completar_respuesta(salida_extraccion()))
-    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
-        esperando_confirmacion("Falta algo"), contexto_recuperado()
+def test_n3_pregunta_por_lo_que_falta_si_el_cliente_no_lo_da(cliente_falso, completar_respuesta):
+    # Caso 06: «falta el ejemplo con cifras» sin darlo; repetir el resumen no ayuda.
+    especifica = "¿Cuáles son las cifras del ejemplo que usan para verificar?"
+    cliente = cliente_falso(
+        completar_respuesta(salida_extraccion()), completar_respuesta(pregunta(especifica))
     )
-    assert dialogo.siguiente_pregunta == PREGUNTA_QUE_FALTA
-    assert len(cliente.llamadas) == 1
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
+        esperando_confirmacion("Falta incluir que hay un ejemplo con cifras"), contexto_recuperado()
+    )
+    assert dialogo.siguiente_pregunta == especifica
+    estado = json.loads(cliente.llamadas[1]["messages"][-1]["content"])
+    assert estado["resumen_incompleto"] is True
+    assert estado["pendientes"] == ["confirmacion"]
 
 
 def test_n3_vuelve_al_resumen_cuando_el_cliente_dice_que_falta(cliente_falso, completar_respuesta):
     # Tras «¿qué falta?», una respuesta que agrega un dato muestra el resumen actualizado.
     nueva = "Si la fecha del documento es posterior a la radicación, se rechaza"
-    conversacion = con_respuesta(registro_completo(), PREGUNTA_QUE_FALTA, nueva)
+    conversacion = con_respuesta(registro_completo(), "¿Qué falta en el resumen?", nueva)
     cliente = cliente_falso(
         completar_respuesta(salida_extraccion(excepciones=[*COMPLETO["excepciones"], nueva]))
     )
@@ -1375,3 +1430,117 @@ def test_un_no_se_a_un_caso_limite_no_deja_preguntas_abiertas():
     )
     assert registro.preguntas_abiertas == ()
     assert registro.casos_limite == ()
+
+
+def test_una_lista_parcial_de_datos_no_borra_los_demas():
+    previo = registro_completo(casos_limite_cerrados=False)
+    respuesta = "La fecha del documento es obligatoria y no puede ser posterior a hoy"
+    conversacion = con_respuesta(previo, "¿Qué restricciones tiene la fecha?", respuesta)
+    corregida = {
+        "nombre": "fecha_documento",
+        "tipo": "fecha",
+        "obligatorio": True,
+        "restriccion": "no puede ser posterior a hoy",
+    }
+    registro = aplicar_extraccion(salida_extraccion(datos_entrada=[corregida]), conversacion)
+    # El dato mencionado se corrige y el que no se mencionó se conserva.
+    assert [d.nombre for d in registro.datos_entrada] == ["numero_predial", "fecha_documento"]
+    assert registro.datos_entrada[1].restriccion == "no puede ser posterior a hoy"
+
+
+CONDICION_NOCTURNA = "Se ejecuta cada noche como tarea programada"
+
+
+def test_una_lista_parcial_de_textos_conserva_lo_que_la_respuesta_no_menciona():
+    # Caso 15: la extracción devolvía solo la condición nueva y la nocturna se perdía.
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"condiciones": (CONDICION_NOCTURNA,)}
+    )
+    respuesta = "Para las pruebas, el archivo puede leerse de una carpeta local"
+    conversacion = con_respuesta(previo, "¿Cómo se prueba?", respuesta)
+    registro = aplicar_extraccion(salida_extraccion(condiciones=[respuesta]), conversacion)
+    assert registro.condiciones == (CONDICION_NOCTURNA, respuesta)
+
+
+def test_lo_que_la_respuesta_corrige_sale_de_la_lista():
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"condiciones": (CONDICION_NOCTURNA,)}
+    )
+    respuesta = "No es cada noche: se ejecuta cada hora como tarea programada"
+    conversacion = con_respuesta(previo, "¿Cuándo se ejecuta?", respuesta)
+    corregida = "Se ejecuta cada hora como tarea programada"
+    registro = aplicar_extraccion(salida_extraccion(condiciones=[corregida]), conversacion)
+    assert registro.condiciones == (corregida,)
+
+
+def test_lo_que_la_respuesta_quita_sale_aunque_el_modelo_no_lo_retire():
+    local = "Para las pruebas, el archivo puede leerse de una carpeta local"
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"condiciones": (CONDICION_NOCTURNA, local)}
+    )
+    respuesta = "Ya no se ejecuta cada noche como tarea programada: la lanza el analista"
+    conversacion = con_respuesta(previo, "¿Cómo se ejecuta?", respuesta)
+    registro = aplicar_extraccion(salida_extraccion(condiciones=[local]), conversacion)
+    assert registro.condiciones == (local,)
+
+
+REGLAS_DEL_TIPO = (
+    "El tipo en minúsculas se corrige a mayúsculas",
+    "El consecutivo de menos de cinco dígitos se completa con ceros a la izquierda",
+)
+
+
+def test_una_regla_que_solo_comparte_una_palabra_con_la_respuesta_se_conserva():
+    # Caso 14: «falta que el tipo solo puede ser ESC, CER o PAZ» compartía «tipo» con la regla de
+    # las minúsculas, que se perdía y el cliente volvía a pedir en el resumen siguiente.
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"reglas_negocio": REGLAS_DEL_TIPO}
+    )
+    respuesta = "No del todo: falta especificar que el tipo solo puede ser ESC, CER o PAZ"
+    conversacion = respuesta_al_resumen(previo, respuesta)
+    nueva = "El tipo solo puede ser ESC, CER o PAZ"
+    registro = aplicar_extraccion(
+        salida_extraccion(reglas_negocio=[REGLAS_DEL_TIPO[1], nueva]), conversacion
+    )
+    assert registro.reglas_negocio == (*REGLAS_DEL_TIPO, nueva)
+
+
+def test_dos_palabras_frecuentes_no_bastan_para_hablar_de_una_entrada():
+    # Caso 15: la respuesta sobre los valores por defecto comparte «archivo» y «comprimir» con la
+    # regla de los archivos de hoy, pero no habla de ella.
+    hoy = "Un archivo modificado hoy nunca se comprime"
+    compresion = "El límite para comprimir es de 7 días por defecto"
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"reglas_negocio": (hoy, compresion)}
+    )
+    respuesta = (
+        "El límite para comprimir y el límite para purgar van por defecto en 7 y 90 días; el "
+        "estado muestra cada archivo con su tamaño"
+    )
+    purga = "El límite para purgar es de 90 días por defecto"
+    registro = aplicar_extraccion(
+        salida_extraccion(reglas_negocio=[compresion, purga]),
+        respuesta_al_resumen(previo, respuesta),
+    )
+    assert registro.reglas_negocio == (hoy, compresion, purga)
+
+
+def test_una_regla_reformulada_reemplaza_a_la_previa_en_su_lugar():
+    vaga = "Los nombres de los archivos deben seguir la convención definida"
+    previo = registro_completo(casos_limite_cerrados=False).model_copy(
+        update={"reglas_negocio": (vaga, REGLAS_DEL_TIPO[0])}
+    )
+    respuesta = "Los nombres de los archivos siguen la convención exacta TIPO_AAAA_NNNNN.pdf"
+    conversacion = respuesta_al_resumen(previo, respuesta)
+    precisa = "Los nombres de los archivos deben seguir la convención exacta TIPO_AAAA_NNNNN.pdf"
+    registro = aplicar_extraccion(salida_extraccion(reglas_negocio=[precisa]), conversacion)
+    assert registro.reglas_negocio == (precisa, REGLAS_DEL_TIPO[0])
+
+
+def test_los_ejemplos_del_cliente_quedan_en_el_registro_y_en_el_resumen():
+    ejemplo = "Un predio con 30 dígitos radicado hoy recibe el radicado RAD-2026-000123"
+    previo = registro_completo(casos_limite_cerrados=False)
+    conversacion = con_respuesta(previo, "¿Tiene un ejemplo con cifras?", ejemplo)
+    registro = aplicar_extraccion(salida_extraccion(ejemplos=[ejemplo]), conversacion)
+    assert registro.ejemplos == (ejemplo,)
+    assert f"- Ejemplos para verificar: {ejemplo}" in resumen_para_confirmar(registro)

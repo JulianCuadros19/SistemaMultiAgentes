@@ -93,6 +93,7 @@ class ListaDelRegistro(StrEnum):
     EXCEPCIONES = "excepciones"
     CONDICIONES = "condiciones"
     CASOS_LIMITE = "casos_limite"
+    EJEMPLOS = "ejemplos"
 
 
 class RetiroModelo(BaseModel):
@@ -123,6 +124,7 @@ class SalidaExtraccion(BaseModel):
     excepciones: list[str] | None
     condiciones: list[str] | None
     casos_limite: list[str] | None
+    ejemplos: list[str] | None
     prioridad: Prioridad | None
     retirar: list[RetiroModelo]
     supuestos: list[str]
@@ -157,17 +159,24 @@ turnos (ADR-0015).
 ENCABEZADO_RESUMEN = "Le resumo lo que entendí:"
 """Primera línea del resumen que confirma el cliente."""
 
-PREGUNTA_QUE_FALTA = "¿Qué falta o qué debo corregir del resumen?"
-"""Pregunta cuando el cliente no confirma el resumen, pero tampoco dice qué cambiar."""
-
 PREGUNTA_ALGO_MAS = (
     "Antes de resumir, ¿hay algo importante que no le haya preguntado, como la prioridad, los "
     "mensajes exactos de error, el formato de los valores o un ejemplo con cifras para verificar?"
 )
 """Pregunta de cierre de eli-006 antes del resumen: reúne en un turno lo que nadie preguntó."""
 
+AVISO_SISTEMAS = "los sistemas o procesos que lo usan aparecen en «Condiciones ya definidas»"
+"""Aviso del resumen junto al rol: dónde quedan los sistemas o procesos que usan lo pedido."""
+
 MIN_PREGUNTAS_CASOS_LIMITE = 1
 """Preguntas por casos límite antes de que el modelo pueda dar la fase por terminada."""
+
+COBERTURA_MINIMA = 2 / 3
+"""Fracción de las raíces de una entrada que un texto debe repetir para hablar de ella.
+
+Con la mitad, dos palabras frecuentes del dominio bastaban: una respuesta sobre los valores por
+defecto «hablaba» de «un archivo modificado hoy nunca se comprime» (casos 06 y 15, ADR-0015).
+"""
 
 TERMINOS_TECNICOS = re.compile(
     r"\b(?:endpoint|api|esquema|entidad(?:es)?|base de datos|json|backend|frontend"
@@ -220,7 +229,10 @@ def mensajes_extraccion(conversacion: Conversacion) -> list[ChatCompletionMessag
 
 
 def mensajes_pregunta(
-    conversacion: Conversacion, registro: RegistroCaptura, contexto: Contexto
+    conversacion: Conversacion,
+    registro: RegistroCaptura,
+    contexto: Contexto,
+    resumen_incompleto: bool = False,
 ) -> list[ChatCompletionMessageParam]:
     """Arma los mensajes de datos de la pregunta: el contexto etiquetado y el estado del diálogo.
 
@@ -228,12 +240,15 @@ def mensajes_pregunta(
         conversacion: Conversación hasta la respuesta nueva.
         registro: Registro ya actualizado por la extracción.
         contexto: Contexto recuperado en N2.
+        resumen_incompleto: El cliente acaba de responder al resumen que falta algo o que algo
+            no es correcto, sin decir qué.
 
     Returns:
         Dos mensajes de datos que acompañan al prompt de la pregunta.
     """
     estado = {
         "pendientes": registro.por_preguntar,
+        "resumen_incompleto": resumen_incompleto,
         "sin_respuesta": registro.sin_respuesta,
         "categorias_casos_limite_preguntadas": list(registro.categorias_casos_limite),
         "registro": registro.model_dump(mode="json", exclude=CONTROL_DEL_REGISTRO),
@@ -268,14 +283,18 @@ def registro_desde_salida(
     previo: RegistroCaptura,
     fuente: set[str],
     solo_agregar: bool = False,
+    respuesta: str | None = None,
 ) -> RegistroCaptura:
     """Aplica los cambios de la salida al registro, sin perder lo ya capturado.
 
     Un atributo en `null` o vacío conserva el valor previo: el cliente corrige un dato diciendo
-    el nuevo, no callándolo. Un valor nuevo que no está respaldado por lo que dijo el cliente se
-    descarta, y un dato sin respaldo pierde su restricción o su formato; la prioridad también
-    debe decirla el cliente. Los supuestos y las preguntas abiertas se toman tal cual, porque son
-    notas del elicitador para el cliente. Lo que el cliente no supo responder se conserva.
+    el nuevo, no callándolo. Una lista parcial tampoco borra lo que omite: los datos se combinan
+    por nombre, y una entrada de texto que el modelo no devuelve sigue vigente, salvo que una
+    entrada nueva la reformule o que la respuesta hable de ella (ADR-0015). Un valor nuevo que
+    no está respaldado por lo que dijo el cliente se descarta, y un dato sin respaldo pierde su
+    restricción o su formato; la prioridad también debe decirla el cliente. Los supuestos y las
+    preguntas abiertas se toman tal cual, porque son notas del elicitador para el cliente. Lo que
+    el cliente no supo responder se conserva.
 
     Args:
         salida: Salida del modelo.
@@ -284,6 +303,9 @@ def registro_desde_salida(
         solo_agregar: Las listas conservan lo previo y solo suman lo nuevo respaldado. Se usa
             en la respuesta que confirma el resumen, para que una paráfrasis del modelo no
             cuente como cambio.
+        respuesta: Respuesta nueva del cliente; las entradas de las que habla (`_habla_de`)
+            pueden cambiar o salir de la lista. Si se omite, la lista que devuelve el modelo es
+            la vigente.
 
     Returns:
         Registro actualizado, con `resumen_confirmado` en False.
@@ -298,6 +320,7 @@ def registro_desde_salida(
             *previo.excepciones,
             *previo.condiciones,
             *previo.casos_limite,
+            *previo.ejemplos,
             *(dato.nombre for dato in previo.datos_entrada),
             *(dato.nombre for dato in previo.datos_salida),
             *(dato.restriccion for dato in previo.datos_entrada),
@@ -313,28 +336,49 @@ def registro_desde_salida(
 
     def lista(valores: list[str] | None, previos: tuple[str, ...]) -> tuple[str, ...]:
         nuevos = tuple(texto for texto in _textos(valores) if filtro.acepta(texto))
-        if not solo_agregar:
-            return nuevos or previos
-        vistos = {normalizar(texto) for texto in previos}
-        return (*previos, *(texto for texto in nuevos if normalizar(texto) not in vistos))
+        if not nuevos:
+            return previos
+        if solo_agregar:
+            vistos = {normalizar(texto) for texto in previos}
+            return (*previos, *(texto for texto in nuevos if normalizar(texto) not in vistos))
+        if respuesta is None:
+            return nuevos
+        # Una entrada que el modelo no devolvió sigue vigente, salvo que una entrada nueva la
+        # reformule, que la reemplaza en su lugar, o que la respuesta hable de ella: cambió o
+        # salió.
+        previas = {normalizar(texto) for texto in previos}
+        devueltas = {normalizar(texto) for texto in nuevos}
+        agregadas = [texto for texto in nuevos if normalizar(texto) not in previas]
+        vigentes: list[str] = []
+        for texto in previos:
+            if normalizar(texto) in devueltas:
+                vigentes.append(texto)
+            elif reformulada := next((n for n in agregadas if _habla_de(n, texto)), None):
+                if reformulada not in vigentes:
+                    vigentes.append(reformulada)
+            elif not _habla_de(respuesta, texto):
+                vigentes.append(texto)
+        return (*vigentes, *(texto for texto in agregadas if texto not in vigentes))
 
     def datos(nuevos: tuple[D, ...], previos: tuple[D, ...]) -> tuple[D, ...]:
-        if not solo_agregar:
-            return nuevos or previos
-        # Un dato existente conserva todo, salvo la restricción o el formato que la respuesta
-        # precise con respaldo; los datos nuevos se agregan al final.
+        # Los datos se combinan por nombre: una lista parcial no borra los que no menciona, que
+        # solo salen si el cliente los retira (`retirar_rechazados`). Un dato que la respuesta
+        # trae reemplaza al previo; al confirmar, solo precisa su restricción o su formato.
         por_nombre = {normalizar(dato.nombre): dato for dato in nuevos}
         actualizados = []
         for previo_dato in previos:
             nuevo = por_nombre.pop(normalizar(previo_dato.nombre), None)
-            precision = {
-                campo: valor
-                for campo in ("restriccion", "formato")
-                if nuevo is not None
-                and hasattr(previo_dato, campo)
-                and (valor := getattr(nuevo, campo))
-            }
-            actualizados.append(previo_dato.model_copy(update=precision))
+            if nuevo is None:
+                actualizados.append(previo_dato)
+            elif not solo_agregar:
+                actualizados.append(nuevo)
+            else:
+                precision = {
+                    campo: valor
+                    for campo in ("restriccion", "formato")
+                    if hasattr(previo_dato, campo) and (valor := getattr(nuevo, campo))
+                }
+                actualizados.append(previo_dato.model_copy(update=precision))
         return (*actualizados, *por_nombre.values())
 
     datos_entrada = tuple(
@@ -365,6 +409,7 @@ def registro_desde_salida(
         excepciones=lista(salida.excepciones, previo.excepciones),
         condiciones=lista(salida.condiciones, previo.condiciones),
         casos_limite=lista(salida.casos_limite, previo.casos_limite),
+        ejemplos=lista(salida.ejemplos, previo.ejemplos),
         prioridad=prioridad or previo.prioridad,
         supuestos=_textos(salida.supuestos),
         preguntas_abiertas=_textos(salida.preguntas_abiertas),
@@ -391,6 +436,20 @@ def _menciona(respuesta: str, entrada: str) -> bool:
         return bool(propias & raices(respuesta))
     clave = _clave(entrada)
     return bool(clave) and re.search(rf"\b{re.escape(clave)}\b", _clave(respuesta)) is not None
+
+
+def _habla_de(texto: str, entrada: str) -> bool:
+    """Indica si un texto habla de una entrada: repite dos tercios de sus raíces, y al menos dos.
+
+    A una entrada de una sola raíz le basta esa. Con más, compartir una no basta: «el tipo solo
+    puede ser ESC, CER o PAZ» no habla de «el tipo en minúsculas se corrige a mayúsculas». Una
+    entrada sin raíces, como «NIT», cuenta si el texto la dice como palabra.
+    """
+    propias = raices(entrada)
+    if not propias:
+        return _menciona(texto, entrada)
+    comunes = len(propias & raices(texto))
+    return comunes >= max(min(2, len(propias)), COBERTURA_MINIMA * len(propias))
 
 
 def retirar_rechazados(
@@ -473,19 +532,24 @@ def resumen_para_confirmar(registro: RegistroCaptura) -> str:
     def valor(texto: str | None) -> str:
         return texto or SIN_RESPUESTA
 
+    # Cada dato con su tipo: el cliente lo verifica, y sin él pide precisarlo una y otra vez.
     entradas = "; ".join(
-        f"{dato.nombre} ({'obligatorio' if dato.obligatorio else 'opcional'}"
+        f"{dato.nombre} ({dato.tipo}, {'obligatorio' if dato.obligatorio else 'opcional'}"
         f"{f', {dato.restriccion}' if dato.restriccion else ''})"
         for dato in registro.datos_entrada
     )
     salidas = "; ".join(
-        f"{dato.nombre}{f' ({dato.formato})' if dato.formato else ''}"
+        f"{dato.nombre} ({dato.tipo}{f', {dato.formato}' if dato.formato else ''})"
         for dato in registro.datos_salida
     )
+    rol = valor(registro.rol)
+    if registro.condiciones:
+        # El rol es quién obtiene el valor (eli-001); los sistemas que lo usan son condiciones. Sin
+        # decírselo, el cliente pide el sistema en esta línea hasta agotar los turnos (ADR-0015).
+        rol += f" ({AVISO_SISTEMAS})"
     lineas = [
         ENCABEZADO_RESUMEN,
-        # El rol es quién obtiene el valor (eli-001); los sistemas que lo usan son condiciones.
-        f"- A quién le sirve: {valor(registro.rol)}",
+        f"- A quién le sirve: {rol}",
         f"- Qué necesita: {valor(registro.funcionalidad)}",
         f"- Para qué: {valor(registro.beneficio)}",
         f"- Reglas: {valor('; '.join(registro.reglas_negocio))}",
@@ -497,6 +561,8 @@ def resumen_para_confirmar(registro: RegistroCaptura) -> str:
         lineas.append(f"- Condiciones ya definidas: {'; '.join(registro.condiciones)}")
     if registro.casos_limite:
         lineas.append(f"- Casos especiales acordados: {'; '.join(registro.casos_limite)}")
+    if registro.ejemplos:
+        lineas.append(f"- Ejemplos para verificar: {'; '.join(registro.ejemplos)}")
     if registro.prioridad:
         lineas.append(f"- Prioridad: {registro.prioridad}")
     if registro.supuestos:
@@ -544,7 +610,9 @@ def aplicar_extraccion(salida: SalidaExtraccion, conversacion: Conversacion) -> 
         # Una respuesta que confirma solo aporta lo que dice ella misma.
         registro = registro_desde_salida(salida, previo, raices(nueva), solo_agregar=True)
     else:
-        registro = registro_desde_salida(salida, previo, raices_del_cliente(conversacion))
+        registro = registro_desde_salida(
+            salida, previo, raices_del_cliente(conversacion), respuesta=nueva
+        )
         if nueva is not None:
             # Lo que rechaza sin reemplazo no se puede corregir diciendo el valor nuevo.
             registro = retirar_rechazados(registro, salida.retirar, nueva)
@@ -586,12 +654,16 @@ def _problemas_de_pregunta(pregunta: str | None, registro: RegistroCaptura) -> l
     return problemas
 
 
-def validar_pregunta(salida: SalidaPregunta, registro: RegistroCaptura) -> str:
+def validar_pregunta(
+    salida: SalidaPregunta, registro: RegistroCaptura, con_resumen: bool = True
+) -> str:
     """Verifica la pregunta del modelo y antepone el resumen si solo falta confirmar.
 
     Args:
         salida: Salida de la pregunta.
         registro: Registro actualizado del turno.
+        con_resumen: Si se antepone el resumen cuando solo falta confirmar; no, cuando la
+            pregunta pide lo que el cliente dijo que falta en el resumen.
 
     Returns:
         La pregunta que se muestra al cliente.
@@ -604,7 +676,7 @@ def validar_pregunta(salida: SalidaPregunta, registro: RegistroCaptura) -> str:
     problemas = _problemas_de_pregunta(pregunta, registro)
     if problemas or pregunta is None:
         raise ErrorValidacionSalida(problemas)
-    if registro.por_preguntar == ["confirmacion"]:
+    if con_resumen and registro.por_preguntar == ["confirmacion"]:
         return f"{resumen_para_confirmar(registro)}\n{pregunta}"
     return pregunta
 
@@ -708,8 +780,14 @@ def dialogar(
         if anterior.startswith(ENCABEZADO_RESUMEN) and _huella(registro) == _huella(
             conversacion.registro
         ):
-            # «Falta algo» sin decir qué: repetir el mismo resumen no ayuda al cliente.
-            return Dialogo(registro=registro, siguiente_pregunta=PREGUNTA_QUE_FALTA)
+            # «Falta algo» sin darlo: repetir el mismo resumen no ayuda. El modelo pregunta
+            # específicamente por lo que el cliente dijo que falta.
+            especifica = pregunta.invocar_validado(
+                mensajes_pregunta(conversacion, registro, contexto, resumen_incompleto=True),
+                SalidaPregunta,
+                lambda salida: validar_pregunta(salida, registro, con_resumen=False),
+            )
+            return Dialogo(registro=registro, siguiente_pregunta=especifica)
         resumen = f"{resumen_para_confirmar(registro)}\n{PREGUNTA_CIERRE}"
         return Dialogo(registro=registro, siguiente_pregunta=resumen)
     siguiente = pregunta.invocar_validado(
