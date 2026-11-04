@@ -24,8 +24,10 @@ from multiagente.agentes.elicitador.dialogo import (
     SalidaExtraccion,
     SalidaPregunta,
     aplicar_extraccion,
+    dichos_del_cliente,
     mensajes_extraccion,
     mensajes_pregunta,
+    obligatoriedad_dicha,
     registro_desde_salida,
     resumen_para_confirmar,
     validar_caso_limite,
@@ -787,6 +789,49 @@ def test_el_resumen_muestra_solo_los_tipos_que_dijo_el_cliente():
     ]
 
 
+NOMBRES = ["numero_tramite", "tipo_tramite", "fecha_cambio"]
+
+
+@pytest.mark.parametrize(
+    ("dichos", "esperados"),
+    [
+        # Corrida de la fase 7, casos 17 y 18: el cliente objeta con las mismas palabras.
+        (["No quedó definido que los datos de entrada sean obligatorios ni su tipo."], set()),
+        (["También sigue sin quedar definido si los datos son obligatorios."], set()),
+        (["No pondría «obligatorio» en el tipo de trámite; tampoco «opcional»."], set()),
+        (
+            ["El número del trámite es obligatorio y la fecha del cambio es opcional."],
+            {"numero_tramite", "fecha_cambio"},
+        ),
+        (["Todos los datos son obligatorios."], set(NOMBRES)),
+        # La negación de otra cláusula no alcanza a la obligatoriedad (caso 03).
+        (["No se registra si falta la fecha del cambio, porque es obligatoria."], {"fecha_cambio"}),
+        (["El tipo de trámite no es opcional sino obligatorio."], {"tipo_tramite"}),
+        (["Se recibe el número del trámite.", "El tipo de trámite es requerido"], {"tipo_tramite"}),
+    ],
+)
+def test_la_obligatoriedad_cuenta_solo_si_el_cliente_la_dice_sin_negarla(dichos, esperados):
+    assert obligatoriedad_dicha(NOMBRES, dichos) == esperados
+
+
+def test_el_resumen_muestra_la_obligatoriedad_solo_si_el_cliente_la_dijo():
+    registro = registro_completo().model_copy(
+        update={
+            "datos_entrada": (
+                DatoEntrada(nombre="numero_tramite", tipo="texto", obligatorio=True),
+                DatoEntrada(nombre="fecha_cambio", tipo="fecha", obligatorio=False),
+            ),
+        }
+    )
+    dicho = "El número del trámite es obligatorio; no definimos nada sobre la fecha."
+    lineas = resumen_para_confirmar(registro, raices(dicho), [dicho]).splitlines()
+    assert lineas[5] == (
+        "- Datos que se reciben: numero_tramite (obligatorio); fecha_cambio (fecha)"
+    )
+    sin_decirlo = resumen_para_confirmar(registro, raices(dicho), ["Se recibe el trámite."])
+    assert "- Datos que se reciben: numero_tramite; fecha_cambio (fecha)" in sin_decirlo
+
+
 @pytest.mark.parametrize(
     ("pregunta", "mensaje"),
     [
@@ -1231,8 +1276,12 @@ def test_n3_presenta_el_resumen_sin_pedir_pregunta(cliente_falso, completar_resp
     conversacion = casi_completo(casos_limite_cerrados=True)
     dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
     assert len(cliente.llamadas) == 1
-    resumen = resumen_para_confirmar(dialogo.registro, raices_del_cliente(conversacion))
+    resumen = resumen_para_confirmar(
+        dialogo.registro, raices_del_cliente(conversacion), dichos_del_cliente(conversacion)
+    )
     assert dialogo.siguiente_pregunta == f"{resumen}\n{PREGUNTA_CIERRE}"
+    # El cliente no dijo si los datos son obligatorios: el resumen no lo afirma.
+    assert "numero_predial (30 dígitos)" in resumen and "obligatorio" not in resumen
 
 
 def test_n3_con_todo_capturado_pregunta_un_caso_limite(cliente_falso, completar_respuesta):

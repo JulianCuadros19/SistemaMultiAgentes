@@ -34,6 +34,7 @@ El código, no el prompt, garantiza las reglas que deben cumplirse siempre:
 
 import json
 import re
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import TypeVar
 
@@ -536,24 +537,93 @@ def _tipo_dicho(tipo: str, fuente: set[str] | None) -> bool:
     return not propias or bool(propias & fuente)
 
 
-def resumen_para_confirmar(registro: RegistroCaptura, fuente: set[str] | None = None) -> str:
+def dichos_del_cliente(conversacion: Conversacion) -> list[str]:
+    """Intervenciones del cliente, incluida la necesidad inicial, en orden.
+
+    Args:
+        conversacion: Conversación de la sesión.
+
+    Returns:
+        El texto de cada turno del cliente.
+    """
+    return [turno.texto for turno in conversacion.turnos if turno.emisor is Emisor.CLIENTE]
+
+
+OBLIGATORIEDAD = re.compile(
+    r"\b(?:obligatori\w*|opcional\w*|requerid[oa]s?|indispensable\w*|imprescindible\w*)\b"
+)
+"""Palabras con que el cliente dice si un dato es obligatorio u opcional."""
+
+NEGACION = re.compile(r"\b(?:no|ni|sin|tampoco|nunca)\b")
+"""Negaciones que, antes de la obligatoriedad y en su misma cláusula, la desmienten: «no quedó
+definido que sean obligatorios» o «no pondría opcional» (ADR-0015)."""
+
+CONECTORES = re.compile(r"\b(?:porque|pero|aunque|ya que|pues|sino)\b")
+"""Conectores que abren otra cláusula: en «no se puede calcular si falta, porque esos datos son
+obligatorios», la negación no alcanza a la obligatoriedad."""
+
+
+def obligatoriedad_dicha(nombres: Sequence[str], dichos: Sequence[str]) -> set[str]:
+    """Datos cuya obligatoriedad dijo el cliente, sin negarla.
+
+    Cuenta cada oración del cliente que nombra la obligatoriedad sin una negación antes en su
+    misma cláusula. Si la oración habla de datos (`_habla_de`), vale para esos; si no habla de
+    ninguno, como «todos los datos son obligatorios», vale para todos. Una mención negada no
+    cuenta: el cliente objetaba con esas mismas palabras que la obligatoriedad no quedó definida,
+    y el resumen la volvía a mostrar.
+
+    Args:
+        nombres: Nombres de los datos de entrada del registro.
+        dichos: Intervenciones del cliente.
+
+    Returns:
+        Los nombres de los datos cuya obligatoriedad dijo el cliente.
+    """
+    dichas: set[str] = set()
+    for texto in dichos:
+        for oracion in re.split(r"(?<=[.;:!?])\s+", texto):
+            normal = normalizar(oracion)
+            if not any(
+                not NEGACION.search(CONECTORES.split(normal[: palabra.start()])[-1])
+                for palabra in OBLIGATORIEDAD.finditer(normal)
+            ):
+                continue
+            nombrados = {nombre for nombre in nombres if _habla_de(oracion, nombre)}
+            dichas |= nombrados or set(nombres)
+    return dichas
+
+
+def resumen_para_confirmar(
+    registro: RegistroCaptura,
+    fuente: set[str] | None = None,
+    dichos: Sequence[str] | None = None,
+) -> str:
     """Arma el resumen del registro que el cliente confirma antes de cerrar (RNF-08, eli-006).
 
     Los datos se nombran como quedaron en el registro, que es como los nombró el cliente: si dio
     nombres exactos, como `numero_predial`, debe poder reconocerlos para confirmar. Cada dato
     muestra su tipo solo si el cliente lo dijo: un tipo supuesto por la extracción, como «número
-    entero», el cliente lo objetaba por no haberlo definido (ADR-0015). Las condiciones sobre
-    quién o qué usa lo pedido van junto al rol, porque el cliente las busca ahí.
+    entero», el cliente lo objetaba por no haberlo definido (ADR-0015). Lo mismo con la
+    obligatoriedad: «obligatorio» u «opcional» aparece solo si el cliente la dijo sin negarla
+    (`obligatoriedad_dicha`). Las condiciones sobre quién o qué usa lo pedido van junto al rol,
+    porque el cliente las busca ahí.
 
     Args:
         registro: Registro completo, pendiente solo de confirmación; lo que el cliente no supo
             responder se muestra como tal.
         fuente: Raíces de lo que dijo el cliente (`fidelidad.raices_del_cliente`); si se omite,
             se muestran todos los tipos.
+        dichos: Intervenciones del cliente; si se omiten, se muestra la obligatoriedad de todos
+            los datos.
 
     Returns:
         Resumen en varias líneas, sin pregunta; el modelo aporta la pregunta de cierre.
     """
+    con_obligatoriedad = (
+        {dato.nombre for dato in registro.datos_entrada}
+        if dichos is None
+        else obligatoriedad_dicha([dato.nombre for dato in registro.datos_entrada], dichos)
+    )
 
     def valor(texto: str | None) -> str:
         return texto or SIN_RESPUESTA
@@ -562,9 +632,14 @@ def resumen_para_confirmar(registro: RegistroCaptura, fuente: set[str] | None = 
         return [dato.tipo] if _tipo_dicho(dato.tipo, fuente) else []
 
     def entrada(dato: DatoEntrada) -> str:
-        obligatorio = "obligatorio" if dato.obligatorio else "opcional"
+        obligatorio = (
+            ["obligatorio" if dato.obligatorio else "opcional"]
+            if dato.nombre in con_obligatoriedad
+            else []
+        )
         restriccion = [dato.restriccion] if dato.restriccion else []
-        return f"{dato.nombre} ({', '.join([*tipo(dato), obligatorio, *restriccion])})"
+        partes = [*tipo(dato), *obligatorio, *restriccion]
+        return dato.nombre + (f" ({', '.join(partes)})" if partes else "")
 
     def salida(dato: DatoSalida) -> str:
         partes = [*tipo(dato), *([dato.formato] if dato.formato else [])]
@@ -697,6 +772,7 @@ def validar_pregunta(
     registro: RegistroCaptura,
     con_resumen: bool = True,
     fuente: set[str] | None = None,
+    dichos: Sequence[str] | None = None,
 ) -> str:
     """Verifica la pregunta del modelo y antepone el resumen si solo falta confirmar.
 
@@ -706,6 +782,7 @@ def validar_pregunta(
         con_resumen: Si se antepone el resumen cuando solo falta confirmar; no, cuando la
             pregunta pide lo que el cliente dijo que falta en el resumen.
         fuente: Raíces de lo que dijo el cliente, para el resumen.
+        dichos: Intervenciones del cliente, para la obligatoriedad del resumen.
 
     Returns:
         La pregunta que se muestra al cliente.
@@ -719,7 +796,7 @@ def validar_pregunta(
     if problemas or pregunta is None:
         raise ErrorValidacionSalida(problemas)
     if con_resumen and registro.por_preguntar == ["confirmacion"]:
-        return f"{resumen_para_confirmar(registro, fuente)}\n{pregunta}"
+        return f"{resumen_para_confirmar(registro, fuente, dichos)}\n{pregunta}"
     return pregunta
 
 
@@ -830,12 +907,18 @@ def dialogar(
                 lambda salida: validar_pregunta(salida, registro, con_resumen=False),
             )
             return Dialogo(registro=registro, siguiente_pregunta=especifica)
-        resumen = f"{resumen_para_confirmar(registro, raices_del_cliente(conversacion))}\n"
-        resumen += PREGUNTA_CIERRE
-        return Dialogo(registro=registro, siguiente_pregunta=resumen)
+        resumen = resumen_para_confirmar(
+            registro, raices_del_cliente(conversacion), dichos_del_cliente(conversacion)
+        )
+        return Dialogo(registro=registro, siguiente_pregunta=f"{resumen}\n{PREGUNTA_CIERRE}")
     siguiente = pregunta.invocar_validado(
         mensajes_pregunta(conversacion, registro, contexto),
         SalidaPregunta,
-        lambda salida: validar_pregunta(salida, registro, fuente=raices_del_cliente(conversacion)),
+        lambda salida: validar_pregunta(
+            salida,
+            registro,
+            fuente=raices_del_cliente(conversacion),
+            dichos=dichos_del_cliente(conversacion),
+        ),
     )
     return Dialogo(registro=registro, siguiente_pregunta=siguiente)
