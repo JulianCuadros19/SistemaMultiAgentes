@@ -37,7 +37,12 @@ class TipoInterfaz(StrEnum):
 
 
 class InterfazPublica(ModeloEstricto):
-    """Interfaz pública de un módulo con su firma completa."""
+    """Interfaz pública de un módulo con su firma completa.
+
+    Una interfaz de tipo `funcion` llamada `Clase.metodo` es un método de la clase `Clase`, que el
+    mismo módulo declara como interfaz de tipo `clase`. Su firma es la del método, con `self` o
+    `cls` como primer parámetro: `registrar(self, prestamo: Prestamo) -> None`.
+    """
 
     nombre: TextoObligatorio
     tipo: TipoInterfaz
@@ -146,8 +151,9 @@ def firma_como_funcion(interfaz: InterfazPublica) -> ast.FunctionDef:
     """Interpreta la firma de una interfaz como una definición de función, aunque sea de clase.
 
     La firma de una clase es la de su constructor sin `self`, p. ej.
-    `Predio(numero_predial: str, area_terreno: Decimal)`. Se admiten los prefijos `def` y
-    `class` y los dos puntos finales, que el modelo a veces agrega.
+    `Predio(numero_predial: str, area_terreno: Decimal)`; la de un método `Clase.metodo`, la del
+    método con `self`. Se admiten los prefijos `def` y `class`, el de la clase en un método y los
+    dos puntos finales, que el modelo a veces agrega.
 
     Args:
         interfaz: Interfaz pública declarada en la especificación.
@@ -159,6 +165,8 @@ def firma_como_funcion(interfaz: InterfazPublica) -> ast.FunctionDef:
         SyntaxError: Si la firma no es una firma de Python válida.
     """
     firma = interfaz.firma.strip().removeprefix("def ").removeprefix("class ").rstrip(":").strip()
+    if clase := interfaz.nombre.rpartition(".")[0]:
+        firma = firma.removeprefix(f"{clase}.")
     arbol = ast.parse(f"def {firma}: ...")
     funcion = arbol.body[0]
     if len(arbol.body) != 1 or not isinstance(funcion, ast.FunctionDef):

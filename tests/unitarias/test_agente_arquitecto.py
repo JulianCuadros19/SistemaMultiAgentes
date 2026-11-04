@@ -832,3 +832,80 @@ def test_sin_recorridos_completos_la_parametrizacion_se_reintenta(
             "RF-01 ESC-02 (ejecuta; observa su resultado)"
         )
     )
+
+
+def salida_con_registro() -> SalidaEspecificacion:
+    salida = salida_especificacion()
+    salida.modulos[0].interfaces_publicas += [
+        InterfazModelo(
+            nombre="RegistroValores",
+            tipo="clase",
+            firma="RegistroValores()",
+            descripcion="Valores unitarios registrados",
+            excepciones=[],
+        ),
+        InterfazModelo(
+            nombre="RegistroValores.registrar",
+            tipo="funcion",
+            firma="registrar(self, numero_predial: str, valor: Decimal) -> None",
+            descripcion="Registra el valor unitario de un predio",
+            excepciones=[],
+        ),
+        InterfazModelo(
+            nombre="RegistroValores.consultar",
+            tipo="funcion",
+            firma="consultar(self, numero_predial: str) -> Decimal",
+            descripcion="Consulta el valor unitario de un predio",
+            excepciones=[],
+        ),
+    ]
+    return salida
+
+
+def test_los_recorridos_nombran_metodos():
+    salida = salida_con_registro()
+    recorridos = [
+        recorrido(
+            "RF-01",
+            "ESC-01",
+            "calcular_avaluo",
+            preparar=["RegistroValores", "RegistroValores.registrar"],
+        ),
+        recorrido(
+            "RF-01",
+            "ESC-02",
+            "calcular_avaluo",
+            observar=["calcular_avaluo", "dominio.avaluo.RegistroValores.consultar"],
+        ),
+        # El nombre corto de un método vale si no es ambiguo.
+        recorrido("RF-02", "ESC-01", "liquidar", preparar=["registrar"]),
+        recorrido("RF-02", "ESC-02", "liquidar"),
+    ]
+    assert errores_con(recorridos, salida) == []
+    anotada = anotar_escenarios(
+        especificacion_base(salida),
+        recorridos_desde_salida(salida_especificacion(recorridos=recorridos).recorridos),
+    )
+    registrar = next(
+        i for i in anotada.modulos[0].interfaces_publicas if i.nombre == "RegistroValores.registrar"
+    )
+    assert registrar.descripcion.endswith(
+        "· Escenarios: RF-01 ESC-01 (prepara), RF-02 ESC-01 (prepara)"
+    )
+
+
+def test_un_metodo_de_otra_clase_no_vale():
+    errores = errores_con(
+        [
+            recorrido("RF-01", "ESC-01", "calcular_avaluo", preparar=["Predio.registrar"]),
+            recorrido("RF-01", "ESC-02", "calcular_avaluo"),
+            recorrido("RF-02", "ESC-01", "liquidar"),
+            recorrido("RF-02", "ESC-02", "liquidar"),
+        ],
+        salida_con_registro(),
+    )
+    assert errores == [
+        "Escenarios ejecutables: RF-01 ESC-01: en preparar, «Predio.registrar» no es una "
+        "interfaz declarada ni una entidad del modelo de datos; usa el nombre exacto de una "
+        "interfaz pública de la especificación o declárala"
+    ]

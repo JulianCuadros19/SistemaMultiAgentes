@@ -95,22 +95,56 @@ def recorridos_desde_salida(salida: list[RecorridoModelo]) -> tuple[RecorridoEsc
 def _declaradas(
     nombre: str, especificacion: EspecificacionDiseno
 ) -> list[tuple[str, InterfazPublica]]:
-    """Interfaces que nombra el texto: la última parte del nombre, en el módulo si lo califica."""
-    prefijo, _, ultimo = nombre.rpartition(".")
-    candidatas = [
+    """Interfaces que nombra el texto.
+
+    Primero por el nombre completo, con o sin el módulo: `Registro.registrar`,
+    `infraestructura.registro.Registro.registrar` o `aplicacion.prestamos.prestar`. Si no hay,
+    por la última parte, en el módulo que lo califique. Con una clase delante, la interfaz es un
+    método de esa clase o una función suelta de su módulo, como las que reciben `self` en las
+    especificaciones anteriores a los métodos.
+    """
+    interfaces = [
         (modulo.nombre, interfaz)
         for modulo in especificacion.modulos
         for interfaz in modulo.interfaces_publicas
-        if interfaz.nombre == ultimo
     ]
+    if exactas := [
+        (modulo, interfaz)
+        for modulo, interfaz in interfaces
+        if nombre in (interfaz.nombre, f"{modulo}.{interfaz.nombre}")
+    ]:
+        return exactas
+    prefijo, _, ultimo = nombre.rpartition(".")
     calificadores = [
         modulo.nombre
         for modulo in especificacion.modulos
         if prefijo == modulo.nombre or prefijo.startswith(f"{modulo.nombre}.")
     ]
-    if calificadores:
-        modulo = max(calificadores, key=len)
-        candidatas = [(m, interfaz) for m, interfaz in candidatas if m == modulo]
+    modulo = max(calificadores, key=len) if calificadores else None
+    clase = prefijo.removeprefix(f"{modulo}.") if modulo and prefijo != modulo else ""
+    if modulo is None:
+        clase = prefijo
+    candidatas = [
+        (m, interfaz)
+        for m, interfaz in interfaces
+        if interfaz.nombre.rpartition(".")[2] == ultimo and modulo in (None, m)
+    ]
+    if clase:
+        # Con una clase delante, un método solo vale si es de esa clase. Una función suelta vale
+        # si la clase es de su módulo o si lo de delante no es una clase declarada.
+        modulos_de_la_clase = {
+            m
+            for m, interfaz in interfaces
+            if interfaz.tipo is TipoInterfaz.CLASE and interfaz.nombre == clase
+        }
+        candidatas = [
+            (m, interfaz)
+            for m, interfaz in candidatas
+            if interfaz.nombre == f"{clase}.{ultimo}"
+            or (
+                "." not in interfaz.nombre and (not modulos_de_la_clase or m in modulos_de_la_clase)
+            )
+        ]
     return candidatas
 
 

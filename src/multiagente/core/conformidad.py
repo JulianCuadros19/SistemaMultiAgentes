@@ -301,6 +301,27 @@ def _firma(parametros: list[_Parametro]) -> str:
     return f"({', '.join(str(parametro) for parametro in parametros)})"
 
 
+def _funcion_declarada(
+    ruta: str, interfaz: InterfazPublica, definiciones: dict[str, ast.stmt]
+) -> Funcion | str:
+    """Definición de la función o del método que declara la interfaz, o por qué falta."""
+    clase, _, metodo = interfaz.nombre.rpartition(".")
+    if not clase:
+        definicion = definiciones.get(interfaz.nombre)
+        if isinstance(definicion, ast.FunctionDef | ast.AsyncFunctionDef):
+            return definicion
+        return f"{ruta} no define la función {interfaz.firma} en su nivel superior"
+    contenedora = definiciones.get(clase)
+    if not isinstance(contenedora, ast.ClassDef):
+        return f"{ruta} no define en su nivel superior la clase {clase} del método {metodo}"
+    for sentencia in contenedora.body:
+        if isinstance(sentencia, ast.FunctionDef | ast.AsyncFunctionDef) and (
+            sentencia.name == metodo
+        ):
+            return sentencia
+    return f"{ruta} no define el método {interfaz.firma} en la clase {clase}"
+
+
 def _divergencias_de_interfaz(
     ruta: str, interfaz: InterfazPublica, definiciones: dict[str, ast.stmt]
 ) -> list[str]:
@@ -310,10 +331,10 @@ def _divergencias_de_interfaz(
     except SyntaxError:
         return []  # N9 ya rechaza las firmas inválidas; aquí no hay contra qué comparar.
     esperados = _parametros(declarada)
-    definicion = definiciones.get(interfaz.nombre)
     if interfaz.tipo is TipoInterfaz.FUNCION:
-        if not isinstance(definicion, ast.FunctionDef | ast.AsyncFunctionDef):
-            return [f"{ruta} no define la función {interfaz.firma} en su nivel superior"]
+        definicion = _funcion_declarada(ruta, interfaz, definiciones)
+        if isinstance(definicion, str):
+            return [definicion]
         implementados = _parametros(definicion)
         divergencias = []
         if not _compatibles(esperados, implementados):
@@ -327,6 +348,7 @@ def _divergencias_de_interfaz(
                 f"especificación declara {tipo_normalizado(declarada.returns)}"
             )
         return divergencias
+    definicion = definiciones.get(interfaz.nombre)
     if not isinstance(definicion, ast.ClassDef):
         return [f"{ruta} no define la clase {interfaz.nombre} en su nivel superior"]
     constructor = next(
@@ -495,6 +517,11 @@ def _atributos_de_clases(
                 except SyntaxError:
                     parametros = []
                 atributos.setdefault(interfaz.nombre, set()).update(p.nombre for p in parametros)
+    for modulo in especificacion.modulos:
+        for interfaz in modulo.interfaces_publicas:
+            clase, _, metodo = interfaz.nombre.rpartition(".")
+            if clase and interfaz.tipo is TipoInterfaz.FUNCION:
+                atributos.setdefault(clase, set()).add(metodo)
     for entidad in especificacion.modelo_datos:
         atributos.setdefault(entidad.nombre, set()).update(c.nombre for c in entidad.campos)
     for arbol in modulos.values():
@@ -507,8 +534,13 @@ def _atributos_de_clases(
 def _retornos_de_clases(
     especificacion: EspecificacionDiseno, clases: Mapping[str, frozenset[str]]
 ) -> dict[str, str]:
-    """Clase declarada que devuelve cada interfaz: la clase misma o el retorno de una función."""
+    """Clase declarada que devuelve cada interfaz: la clase misma o el retorno de una función.
+
+    Un método `Clase.metodo` cuenta también por su nombre corto, que es lo que se ve en una
+    llamada `objeto.metodo(…)`, salvo que otra interfaz con ese nombre devuelva otra clase.
+    """
     retornos = {clase: clase for clase in clases}
+    cortos: dict[str, set[str]] = {}
     for modulo in especificacion.modulos:
         for interfaz in modulo.interfaces_publicas:
             if interfaz.tipo is TipoInterfaz.FUNCION:
@@ -516,8 +548,17 @@ def _retornos_de_clases(
                     tipo = tipo_normalizado(firma_como_funcion(interfaz).returns)
                 except SyntaxError:
                     continue
+                corto = interfaz.nombre.rpartition(".")[2]
+                cortos.setdefault(corto, set()).add(tipo or "")
                 if tipo in clases:
                     retornos[interfaz.nombre] = tipo
+    for corto, tipos in cortos.items():
+        if len(tipos) > 1:
+            # `objeto.consultar(…)` no dice de qué clase es el método: mejor no seguir al objeto
+            # que suponerle una clase que no es.
+            retornos.pop(corto, None)
+        elif (tipo := next(iter(tipos))) in clases:
+            retornos.setdefault(corto, tipo)
     return retornos
 
 

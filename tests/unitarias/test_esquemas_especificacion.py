@@ -215,3 +215,14 @@ def test_diferencias_entre_versiones_de_la_especificacion(especificacion):
         "Dependencia externa retirada: pydantic",
     ]
     assert diferencias(previa, previa) == []
+
+
+def test_firma_de_un_metodo_con_o_sin_el_nombre_de_la_clase():
+    for firma in (
+        "registrar(self, valor: int) -> None",
+        "Registro.registrar(self, valor: int) -> None",
+    ):
+        metodo = InterfazPublica(
+            nombre="Registro.registrar", tipo=TipoInterfaz.FUNCION, firma=firma, descripcion="x"
+        )
+        assert firma_como_funcion(metodo).name == "registrar"

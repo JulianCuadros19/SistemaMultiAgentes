@@ -4,9 +4,10 @@ Aplica las tres validaciones del Anexo B, de forma determinística:
 
 1. Conformidad con el esquema y ausencia de dependencias circulares, más las reglas de la
    plantilla arq-002 que el código necesita para verificar la conformidad en N12: firmas
-   completas con tipos (sin funciones como `callable` en lugar de un tipo), rutas coherentes con
-   la capa y con el nombre del módulo, y paquetes que no tapen un módulo de la biblioteca
-   estándar ni una dependencia (un paquete `io` rompería `import io`).
+   completas con tipos (sin funciones como `callable` en lugar de un tipo), métodos `Clase.metodo`
+   de una clase del mismo módulo y con `self` o `cls`, rutas coherentes con la capa y con el
+   nombre del módulo, y paquetes que no tapen un módulo de la biblioteca estándar ni una
+   dependencia (un paquete `io` rompería `import io`).
 2. Cobertura: todo requerimiento aprobado queda asignado al menos a un módulo.
 3. Catálogo tecnológico: toda dependencia externa pertenece al catálogo autorizado (arq-004) y
    la arquitectura base es una del catálogo de referencia.
@@ -24,6 +25,7 @@ from multiagente.core.dinero import es_monetario
 from multiagente.core.esquemas.especificacion_diseno import (
     EspecificacionDiseno,
     InterfazPublica,
+    Modulo,
     TipoInterfaz,
     firma_como_funcion,
 )
@@ -41,15 +43,46 @@ FUNCIONES_COMO_TIPO = {
 """Funciones integradas que el modelo escribe en lugar de un tipo, con el tipo que corresponde."""
 
 
-def _errores_de_firma(modulo: str, interfaz: InterfazPublica) -> list[str]:
-    ubicacion = f"{modulo}.{interfaz.nombre}"
+def _errores_de_metodo(
+    modulo: Modulo, interfaz: InterfazPublica, funcion: ast.FunctionDef
+) -> list[str]:
+    """Reglas de un método `Clase.metodo`: su clase en el mismo módulo y `self` o `cls`."""
+    ubicacion = f"{modulo.nombre}.{interfaz.nombre}"
+    clase = interfaz.nombre.rpartition(".")[0]
+    if interfaz.tipo is not TipoInterfaz.FUNCION:
+        return [
+            f"{ESQUEMA}: la clase {ubicacion} se declara en el nivel superior, con su nombre sin "
+            "punto"
+        ]
+    if "." in clase:
+        return [f"{ESQUEMA}: el método {ubicacion} se declara como Clase.metodo, con un solo punto"]
+    errores = []
+    clases = {i.nombre for i in modulo.interfaces_publicas if i.tipo is TipoInterfaz.CLASE}
+    if clase not in clases:
+        errores.append(
+            f"{ESQUEMA}: el método {ubicacion} es de la clase {clase}, que {modulo.nombre} no "
+            "declara; declárala como interfaz de tipo clase en el mismo módulo"
+        )
+    primero = [*funcion.args.posonlyargs, *funcion.args.args][:1]
+    if not primero or primero[0].arg not in ("self", "cls"):
+        errores.append(
+            f"{ESQUEMA}: el método {ubicacion} recibe self (o cls) como primer parámetro de su "
+            "firma"
+        )
+    return errores
+
+
+def _errores_de_firma(modulo: Modulo, interfaz: InterfazPublica) -> list[str]:
+    ubicacion = f"{modulo.nombre}.{interfaz.nombre}"
     try:
         funcion = firma_como_funcion(interfaz)
     except SyntaxError:
         return [f"{ESQUEMA}: la firma de {ubicacion} no es una firma de Python válida"]
     errores = []
-    if funcion.name != interfaz.nombre:
+    if funcion.name != interfaz.nombre.rpartition(".")[2]:
         errores.append(f"{ESQUEMA}: la firma de {ubicacion} declara el nombre {funcion.name}")
+    if "." in interfaz.nombre:
+        errores.extend(_errores_de_metodo(modulo, interfaz, funcion))
     argumentos = funcion.args
     todos = [*argumentos.posonlyargs, *argumentos.args, *argumentos.kwonlyargs]
     todos += [a for a in (argumentos.vararg, argumentos.kwarg) if a is not None]
@@ -129,7 +162,7 @@ def validar_especificacion(
     for modulo in especificacion.modulos:
         errores.extend(_errores_de_ruta(modulo.nombre, modulo.ruta, modulo.capa, reservados))
         for interfaz in modulo.interfaces_publicas:
-            errores.extend(_errores_de_firma(modulo.nombre, interfaz))
+            errores.extend(_errores_de_firma(modulo, interfaz))
 
     aprobados = {r.id_requerimiento for r in requerimientos.requerimientos}
     asignados = {rf for modulo in especificacion.modulos for rf in modulo.requerimientos}

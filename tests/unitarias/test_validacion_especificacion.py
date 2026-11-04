@@ -268,3 +268,46 @@ def test_callable_de_collections_abc_se_admite():
         }
     )
     assert validar(espec) == []
+
+
+def con_metodo(nombre: str, firma: str, tipo: str = "funcion") -> EspecificacionDiseno:
+    datos = especificacion().model_dump(mode="json")
+    datos["modulos"][0]["interfaces_publicas"].append(
+        {
+            "nombre": nombre,
+            "tipo": tipo,
+            "firma": firma,
+            "descripcion": "Operación del predio",
+            "excepciones": [],
+        }
+    )
+    return EspecificacionDiseno.model_validate(datos)
+
+
+def test_un_metodo_de_una_clase_declarada_se_admite():
+    assert validar(con_metodo("Predio.area_total", "area_total(self) -> Decimal")) == []
+    # El modelo a veces repite la clase en la firma; se admite, como el prefijo `def`.
+    assert validar(con_metodo("Predio.area_total", "Predio.area_total(self) -> Decimal")) == []
+    assert validar(con_metodo("Predio.desde_texto", "desde_texto(cls, texto: str) -> Predio")) == []
+
+
+@pytest.mark.parametrize(
+    ("nombre", "firma", "tipo", "esperado"),
+    [
+        (
+            "Avaluo.calcular",
+            "calcular(self) -> Decimal",
+            "funcion",
+            "el método dominio.predio.Avaluo.calcular es de la clase Avaluo, que dominio.predio no "
+            "declara",
+        ),
+        ("Predio.area_total", "area_total() -> Decimal", "funcion", "recibe self (o cls)"),
+        ("Predio.Lote.area", "area(self) -> Decimal", "funcion", "con un solo punto"),
+        ("Predio.Lote", "Lote(area: Decimal)", "clase", "se declara en el nivel superior"),
+        ("Predio.area_total", "area(self) -> Decimal", "funcion", "declara el nombre area"),
+        ("Predio.area_total", "area_total(self)", "funcion", "no declara el tipo de retorno"),
+    ],
+)
+def test_reglas_de_los_metodos(nombre, firma, tipo, esperado):
+    errores = validar(con_metodo(nombre, firma, tipo))
+    assert any(esperado in error for error in errores), errores

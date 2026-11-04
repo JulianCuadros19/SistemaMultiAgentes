@@ -531,3 +531,118 @@ def test_la_verificacion_pide_corregir_la_prueba_que_simula():
     }
     problemas = verificar(archivos)
     assert any(p.startswith("RF-18 · pruebas: tests/test_simulacion.py:") for p in problemas)
+
+
+# Métodos como interfaces ----------------------------------------------------------------------
+
+REGISTRO = '''
+
+class RegistroPredios:
+    """Predios registrados, por número predial."""
+
+    def __init__(self) -> None:
+        """Crea el registro vacío."""
+        self._predios: dict[str, Predio] = {}
+
+    def registrar(self, predio: Predio) -> None:
+        """Registra un predio."""
+        self._predios[predio.numero_predial] = predio
+
+    def consultar(self, numero_predial: str) -> Predio:
+        """Devuelve el predio registrado con ese número."""
+        return self._predios[numero_predial]
+'''
+
+
+def especificacion_con_metodos() -> EspecificacionDiseno:
+    datos = especificacion().model_dump(mode="json")
+    datos["modulos"][0]["interfaces_publicas"] += [
+        {
+            "nombre": "RegistroPredios",
+            "tipo": "clase",
+            "firma": "RegistroPredios()",
+            "descripcion": "Registro de predios",
+        },
+        {
+            "nombre": "RegistroPredios.registrar",
+            "tipo": "funcion",
+            "firma": "registrar(self, predio: Predio) -> None",
+            "descripcion": "Registra un predio",
+        },
+        {
+            "nombre": "RegistroPredios.consultar",
+            "tipo": "funcion",
+            "firma": "consultar(self, numero_predial: str) -> Predio",
+            "descripcion": "Consulta un predio",
+        },
+    ]
+    return EspecificacionDiseno.model_validate(datos)
+
+
+def con_registro(cambio=None) -> dict[str, str]:
+    archivos = archivos_validos()
+    archivos["src/dominio/predio.py"] += REGISTRO
+    if cambio:
+        cambio(archivos)
+    return archivos
+
+
+def problemas_de_metodos(archivos) -> list[str]:
+    return verificar_version(archivos, especificacion_con_metodos(), REQUERIMIENTOS)
+
+
+def test_los_metodos_declarados_se_buscan_en_su_clase():
+    assert problemas_de_metodos(con_registro()) == []
+
+
+@pytest.mark.parametrize(
+    ("cambio", "esperado"),
+    [
+        (
+            reemplazar("src/dominio/predio.py", "    def consultar(", "    def buscar("),
+            "no define el método consultar(self, numero_predial: str) -> Predio en la clase "
+            "RegistroPredios",
+        ),
+        (
+            reemplazar(
+                "src/dominio/predio.py", "def registrar(self, predio", "def registrar(self, p"
+            ),
+            "implementa (self, p: Predio) y la especificación declara (self, predio: Predio)",
+        ),
+        (
+            reemplazar(
+                "src/dominio/predio.py",
+                "def registrar(self, predio",
+                "def registrar(self: object, predio",
+            ),
+            "RegistroPredios.registrar implementa (self: object, predio: Predio)",
+        ),
+        (
+            reemplazar(
+                "src/dominio/predio.py",
+                "def consultar(self, numero_predial: str) -> Predio:",
+                "def consultar(self, numero_predial: str) -> Predio | None:",
+            ),
+            "retorna Predio | None y la especificación declara Predio",
+        ),
+        (
+            reemplazar("src/dominio/predio.py", "class RegistroPredios:", "class Registro:"),
+            "no define en su nivel superior la clase RegistroPredios del método registrar",
+        ),
+    ],
+)
+def test_detecta_los_metodos_que_no_cumplen(cambio, esperado):
+    problemas = problemas_de_metodos(con_registro(cambio))
+    assert any(esperado in problema for problema in problemas), problemas
+
+
+def test_sigue_a_los_objetos_que_devuelve_un_metodo():
+    pruebas = (
+        "from dominio.predio import Predio, RegistroPredios\n\n\n"
+        "def test_x():\n    registro = RegistroPredios()\n"
+        "    predio = registro.consultar('1')\n    predio.zona = 'A'\n"
+    )
+    archivos = con_registro() | {"tests/test_registro.py": pruebas}
+    informe = analizar_conformidad(archivos, especificacion_con_metodos(), (RF1,))
+    [problema] = informe.de_tipo(TipoProblema.PRUEBA_SIMULADA)
+    assert "le agrega a `predio` el atributo `zona`, que Predio no tiene" in problema.mensaje

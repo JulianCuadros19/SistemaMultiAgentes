@@ -4,8 +4,8 @@ titulo: Esquema de la especificación de diseño
 fuente: Formato del Anexo B del documento de tesis
 tipo_fuente: elaboracion_propia
 tags: [especificacion, esquema, diseño, modulos, anexo_b]
-version: 1.2
-fecha: 2026-11-03
+version: 1.3
+fecha: 2026-11-04
 agente_consumidor: arquitecto
 segmentacion: por_unidad_conceptual
 coleccion: arquitecturas_referencia
@@ -72,6 +72,7 @@ desarrollador no dispone de ninguna otra fuente de información.
 | Sin dependencias circulares | El grafo de `dependencias_permitidas` es acíclico |
 | Interfaces declaradas | Todo módulo expone al menos una interfaz pública |
 | Firmas completas | Toda interfaz declara tipos de parámetros y de retorno |
+| Métodos | Un método se declara como interfaz de tipo `funcion` llamada `Clase.metodo`, con `self` o `cls` como primer parámetro de su firma; su clase se declara en el mismo módulo |
 | Stack autorizado | Toda dependencia externa pertenece al catálogo tecnológico |
 | Rutas coherentes | La ruta del archivo corresponde a la capa declarada |
 | Escenarios ejecutables | Todo escenario aprobado tiene un recorrido que lo prepara, lo ejecuta y lo observa con interfaces declaradas. El recorrido acompaña a la especificación, fuera del Anexo B |
