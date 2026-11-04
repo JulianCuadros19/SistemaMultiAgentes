@@ -2,7 +2,7 @@
 id: elicitador.dialogo
 agente: elicitador
 nodo: N3
-version: 1.9
+version: 1.10
 descripcion: Pregunta de N3. Formula la siguiente pregunta estratégica con el contexto recuperado.
 ---
 
@@ -46,8 +46,8 @@ pregunta. Lo que el cliente ya dijo está en el registro.
 - Para el rol, pregunta a qué persona o cargo del negocio le sirve el resultado, no quién opera
   un sistema o un equipo.
 - Si el cliente pide que un sistema o un proceso figure en «A quién le sirve», explícale que ahí
-  va el cargo de la persona del negocio que obtiene el valor y que el sistema o el proceso queda
-  en las condiciones, y pregúntale si así está bien.
+  va el cargo de la persona del negocio que obtiene el valor y que el sistema o el proceso
+  aparece en «Quién lo usa y cómo», y pregúntale si así está bien.
 - Para los datos, pregunta primero de forma abierta qué información necesita tener a la mano o
   qué debe entregar el resultado; después, por la obligatoriedad y las restricciones. Los
   resultados son lo que debe entregar o dejar hecho lo que el cliente pide, no lo que ya produce

@@ -18,7 +18,6 @@ from multiagente.agentes.elicitador.contexto import (
     recuperar_contexto,
 )
 from multiagente.agentes.elicitador.dialogo import (
-    AVISO_SISTEMAS,
     PREGUNTA_ALGO_MAS,
     PREGUNTA_CIERRE,
     SIN_RESPUESTA,
@@ -32,7 +31,7 @@ from multiagente.agentes.elicitador.dialogo import (
     validar_caso_limite,
     validar_pregunta,
 )
-from multiagente.agentes.elicitador.fidelidad import raices, respaldado
+from multiagente.agentes.elicitador.fidelidad import raices, raices_del_cliente, respaldado
 from multiagente.agentes.elicitador.servicio import AgenteElicitador
 from multiagente.agentes.elicitador.sintesis import (
     AUTOR,
@@ -707,13 +706,42 @@ def test_resumen_para_confirmar_sale_del_registro():
     assert "?" not in resumen
 
 
-def test_el_resumen_dice_donde_quedan_los_sistemas_que_lo_usan():
-    # Caso 14: el cliente pedía la tarea programada en «A quién le sirve» hasta agotar los turnos.
-    condicion = "también la usa una tarea programada cada noche"
-    registro = registro_completo().model_copy(update={"condiciones": (condicion,)})
+def test_el_resumen_muestra_junto_al_rol_quien_lo_usa():
+    # Caso 14: el cliente buscaba la tarea programada junto al rol y la pedía hasta agotar los
+    # turnos; un aviso que lo remitía a las condiciones lo objetaba por sí mismo (ADR-0015).
+    uso = "también la usa una tarea programada cada noche"
+    prueba = "para las pruebas, la carpeta puede ser local"
+    registro = registro_completo().model_copy(update={"condiciones": (uso, prueba)})
     lineas = resumen_para_confirmar(registro).splitlines()
-    assert lineas[1] == f"- A quién le sirve: analista de conservación catastral ({AVISO_SISTEMAS})"
-    assert f"- Condiciones ya definidas: {condicion}" in lineas
+    assert lineas[1:3] == [
+        "- A quién le sirve: analista de conservación catastral",
+        f"- Quién lo usa y cómo: {uso}",
+    ]
+    assert f"- Condiciones ya definidas: {prueba}" in lineas
+
+
+def test_el_resumen_muestra_solo_los_tipos_que_dijo_el_cliente():
+    # Caso 17: el cliente objetaba tipos que la extracción supuso, como «número entero».
+    registro = registro_completo().model_copy(
+        update={
+            "datos_entrada": (
+                DatoEntrada(nombre="tiempo de respuesta", tipo="número entero", obligatorio=True),
+                DatoEntrada(nombre="valor", tipo="número decimal", obligatorio=False),
+            ),
+            "datos_salida": (DatoSalida(nombre="promedio", tipo="número decimal"),),
+        }
+    )
+    lineas = resumen_para_confirmar(registro, raices("El valor lleva dos decimales")).splitlines()
+    assert lineas[5:7] == [
+        "- Datos que se reciben: tiempo de respuesta (obligatorio); valor (número decimal, "
+        "opcional)",
+        "- Resultados que se entregan: promedio (número decimal)",
+    ]
+    sin_tipos = resumen_para_confirmar(registro, raices("Se registra cada trámite")).splitlines()
+    assert sin_tipos[5:7] == [
+        "- Datos que se reciben: tiempo de respuesta (obligatorio); valor (opcional)",
+        "- Resultados que se entregan: promedio",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1151,13 +1179,11 @@ def test_n3_presenta_el_resumen_sin_pedir_pregunta(cliente_falso, completar_resp
     cliente = cliente_falso(
         completar_respuesta(salida_extraccion(excepciones=COMPLETO["excepciones"]))
     )
-    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(
-        casi_completo(casos_limite_cerrados=True), contexto_recuperado()
-    )
+    conversacion = casi_completo(casos_limite_cerrados=True)
+    dialogo = agente(cliente, RegistroEnMemoria()).dialogar(conversacion, contexto_recuperado())
     assert len(cliente.llamadas) == 1
-    assert dialogo.siguiente_pregunta == (
-        f"{resumen_para_confirmar(dialogo.registro)}\n{PREGUNTA_CIERRE}"
-    )
+    resumen = resumen_para_confirmar(dialogo.registro, raices_del_cliente(conversacion))
+    assert dialogo.siguiente_pregunta == f"{resumen}\n{PREGUNTA_CIERRE}"
 
 
 def test_n3_con_todo_capturado_pregunta_un_caso_limite(cliente_falso, completar_respuesta):

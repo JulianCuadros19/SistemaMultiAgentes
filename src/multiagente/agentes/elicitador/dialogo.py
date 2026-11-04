@@ -165,8 +165,14 @@ PREGUNTA_ALGO_MAS = (
 )
 """Pregunta de cierre de eli-006 antes del resumen: reúne en un turno lo que nadie preguntó."""
 
-AVISO_SISTEMAS = "los sistemas o procesos que lo usan aparecen en «Condiciones ya definidas»"
-"""Aviso del resumen junto al rol: dónde quedan los sistemas o procesos que usan lo pedido."""
+USO_DE_LO_PEDIDO = re.compile(
+    r"\b(?:usa|usan|utiliza|utilizan|ejecuta|ejecutan|consume|consumen|invoca|invocan)\b"
+)
+"""Verbos con que una condición dice quién o qué usa lo pedido, como «la usa una tarea
+programada cada noche»: el resumen la muestra junto al rol, donde el cliente la busca."""
+
+RAIZ_GENERICA_DE_TIPO = "numer"
+"""Raíz de «número», que no distingue un tipo de otro: «número entero» se dice con «entero»."""
 
 MIN_PREGUNTAS_CASOS_LIMITE = 1
 """Preguntas por casos límite antes de que el modelo pueda dar la fase por terminada."""
@@ -511,19 +517,35 @@ def anotar_desconocimiento(
     return registro.model_copy(update={"no_sabe": (*registro.no_sabe, preguntado)})
 
 
-SIN_RESPUESTA = "sin respuesta del cliente"
-"""Lo que muestra el resumen en un atributo que el cliente no supo responder."""
+SIN_RESPUESTA = "sin definir"
+"""Lo que muestra el resumen en un atributo que el cliente no supo responder.
+
+«Sin respuesta del cliente» sonaba a reproche, y el cliente pedía cambiarlo (ADR-0015).
+"""
 
 
-def resumen_para_confirmar(registro: RegistroCaptura) -> str:
+def _tipo_dicho(tipo: str, fuente: set[str] | None) -> bool:
+    """Indica si el cliente dijo el tipo de un dato, sin contar la palabra genérica «número»."""
+    if fuente is None:
+        return True
+    propias = raices(tipo) - {RAIZ_GENERICA_DE_TIPO}
+    return not propias or bool(propias & fuente)
+
+
+def resumen_para_confirmar(registro: RegistroCaptura, fuente: set[str] | None = None) -> str:
     """Arma el resumen del registro que el cliente confirma antes de cerrar (RNF-08, eli-006).
 
     Los datos se nombran como quedaron en el registro, que es como los nombró el cliente: si dio
-    nombres exactos, como `numero_predial`, debe poder reconocerlos para confirmar.
+    nombres exactos, como `numero_predial`, debe poder reconocerlos para confirmar. Cada dato
+    muestra su tipo solo si el cliente lo dijo: un tipo supuesto por la extracción, como «número
+    entero», el cliente lo objetaba por no haberlo definido (ADR-0015). Las condiciones sobre
+    quién o qué usa lo pedido van junto al rol, porque el cliente las busca ahí.
 
     Args:
         registro: Registro completo, pendiente solo de confirmación; lo que el cliente no supo
             responder se muestra como tal.
+        fuente: Raíces de lo que dijo el cliente (`fidelidad.raices_del_cliente`); si se omite,
+            se muestran todos los tipos.
 
     Returns:
         Resumen en varias líneas, sin pregunta; el modelo aporta la pregunta de cierre.
@@ -532,24 +554,28 @@ def resumen_para_confirmar(registro: RegistroCaptura) -> str:
     def valor(texto: str | None) -> str:
         return texto or SIN_RESPUESTA
 
-    # Cada dato con su tipo: el cliente lo verifica, y sin él pide precisarlo una y otra vez.
-    entradas = "; ".join(
-        f"{dato.nombre} ({dato.tipo}, {'obligatorio' if dato.obligatorio else 'opcional'}"
-        f"{f', {dato.restriccion}' if dato.restriccion else ''})"
-        for dato in registro.datos_entrada
-    )
-    salidas = "; ".join(
-        f"{dato.nombre} ({dato.tipo}{f', {dato.formato}' if dato.formato else ''})"
-        for dato in registro.datos_salida
-    )
-    rol = valor(registro.rol)
-    if registro.condiciones:
-        # El rol es quién obtiene el valor (eli-001); los sistemas que lo usan son condiciones. Sin
-        # decírselo, el cliente pide el sistema en esta línea hasta agotar los turnos (ADR-0015).
-        rol += f" ({AVISO_SISTEMAS})"
+    def tipo(dato: DatoEntrada | DatoSalida) -> list[str]:
+        return [dato.tipo] if _tipo_dicho(dato.tipo, fuente) else []
+
+    def entrada(dato: DatoEntrada) -> str:
+        obligatorio = "obligatorio" if dato.obligatorio else "opcional"
+        restriccion = [dato.restriccion] if dato.restriccion else []
+        return f"{dato.nombre} ({', '.join([*tipo(dato), obligatorio, *restriccion])})"
+
+    def salida(dato: DatoSalida) -> str:
+        partes = [*tipo(dato), *([dato.formato] if dato.formato else [])]
+        return dato.nombre + (f" ({', '.join(partes)})" if partes else "")
+
+    entradas = "; ".join(map(entrada, registro.datos_entrada))
+    salidas = "; ".join(map(salida, registro.datos_salida))
+    # El rol es quién obtiene el valor (eli-001); los sistemas o procesos que lo usan son
+    # condiciones, pero el cliente los busca junto al rol (caso 14, ADR-0015).
+    usos = [c for c in registro.condiciones if USO_DE_LO_PEDIDO.search(normalizar(c))]
+    condiciones = [c for c in registro.condiciones if c not in usos]
     lineas = [
         ENCABEZADO_RESUMEN,
-        f"- A quién le sirve: {rol}",
+        f"- A quién le sirve: {valor(registro.rol)}",
+        *([f"- Quién lo usa y cómo: {'; '.join(usos)}"] if usos else []),
         f"- Qué necesita: {valor(registro.funcionalidad)}",
         f"- Para qué: {valor(registro.beneficio)}",
         f"- Reglas: {valor('; '.join(registro.reglas_negocio))}",
@@ -557,8 +583,8 @@ def resumen_para_confirmar(registro: RegistroCaptura) -> str:
         f"- Resultados que se entregan: {valor(salidas)}",
         f"- Casos de error: {valor('; '.join(registro.excepciones))}",
     ]
-    if registro.condiciones:
-        lineas.append(f"- Condiciones ya definidas: {'; '.join(registro.condiciones)}")
+    if condiciones:
+        lineas.append(f"- Condiciones ya definidas: {'; '.join(condiciones)}")
     if registro.casos_limite:
         lineas.append(f"- Casos especiales acordados: {'; '.join(registro.casos_limite)}")
     if registro.ejemplos:
@@ -655,7 +681,10 @@ def _problemas_de_pregunta(pregunta: str | None, registro: RegistroCaptura) -> l
 
 
 def validar_pregunta(
-    salida: SalidaPregunta, registro: RegistroCaptura, con_resumen: bool = True
+    salida: SalidaPregunta,
+    registro: RegistroCaptura,
+    con_resumen: bool = True,
+    fuente: set[str] | None = None,
 ) -> str:
     """Verifica la pregunta del modelo y antepone el resumen si solo falta confirmar.
 
@@ -664,6 +693,7 @@ def validar_pregunta(
         registro: Registro actualizado del turno.
         con_resumen: Si se antepone el resumen cuando solo falta confirmar; no, cuando la
             pregunta pide lo que el cliente dijo que falta en el resumen.
+        fuente: Raíces de lo que dijo el cliente, para el resumen.
 
     Returns:
         La pregunta que se muestra al cliente.
@@ -677,7 +707,7 @@ def validar_pregunta(
     if problemas or pregunta is None:
         raise ErrorValidacionSalida(problemas)
     if con_resumen and registro.por_preguntar == ["confirmacion"]:
-        return f"{resumen_para_confirmar(registro)}\n{pregunta}"
+        return f"{resumen_para_confirmar(registro, fuente)}\n{pregunta}"
     return pregunta
 
 
@@ -788,11 +818,12 @@ def dialogar(
                 lambda salida: validar_pregunta(salida, registro, con_resumen=False),
             )
             return Dialogo(registro=registro, siguiente_pregunta=especifica)
-        resumen = f"{resumen_para_confirmar(registro)}\n{PREGUNTA_CIERRE}"
+        resumen = f"{resumen_para_confirmar(registro, raices_del_cliente(conversacion))}\n"
+        resumen += PREGUNTA_CIERRE
         return Dialogo(registro=registro, siguiente_pregunta=resumen)
     siguiente = pregunta.invocar_validado(
         mensajes_pregunta(conversacion, registro, contexto),
         SalidaPregunta,
-        lambda salida: validar_pregunta(salida, registro),
+        lambda salida: validar_pregunta(salida, registro, fuente=raices_del_cliente(conversacion)),
     )
     return Dialogo(registro=registro, siguiente_pregunta=siguiente)
