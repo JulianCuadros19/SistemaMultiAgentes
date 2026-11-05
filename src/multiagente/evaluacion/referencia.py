@@ -303,7 +303,7 @@ def clasificar(caso: CasoReferencia, corrida: ResultadoPruebas) -> ResultadoRefe
             )
         elif prueba.resultado == "paso":
             verificaciones.append(ResultadoVerificacion(nombre=nombre, resultado="paso"))
-        elif MARCA_AUSENTE in prueba.mensaje or "Ausente:" in prueba.mensaje:
+        elif MARCA_AUSENTE in prueba.mensaje:
             verificaciones.append(
                 ResultadoVerificacion(
                     nombre=nombre, resultado="ausente", detalle=prueba.mensaje[-800:]

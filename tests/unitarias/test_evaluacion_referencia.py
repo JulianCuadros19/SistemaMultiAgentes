@@ -132,6 +132,21 @@ def test_clasifica_pasa_falla_ausente_y_no_ejecutada():
     assert resultado.tasa_errores == pytest.approx(0.3)
 
 
+def test_un_fallo_que_cita_la_docstring_de_rechaza_no_cuenta_como_ausente():
+    caso = cargar_caso_referencia("caso-ampliada-02")
+    primera, *resto = caso.verificaciones
+    traza = (
+        "Raises:\n    Ausente: Si la implementación no ofrece el comportamiento.\n"
+        "E   AssertionError: Se rechazó con otro mensaje"
+    )
+    resultado = clasificar(
+        caso,
+        corrida([reportada(primera, "fallo", traza), *(reportada(n, "paso") for n in resto)]),
+    )
+    assert resultado.verificaciones[0].resultado == "fallo"
+    assert resultado.cuenta("ausente") == 0
+
+
 def test_si_el_adaptador_no_importa_todo_cuenta_como_error():
     caso = cargar_caso_referencia("caso-ampliada-02")
     resultado = clasificar(
