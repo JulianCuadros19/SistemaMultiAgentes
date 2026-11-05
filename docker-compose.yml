@@ -1,12 +1,32 @@
-# Infraestructura local del sistema. Las credenciales se leen de .env (plantilla en .env.example).
-# Base de datos, embeddings y la imagen del entorno aislado; los demás servicios de la vista de
-# despliegue se agregan en sus pasos. Ver docs/decisiones/0002-postgresql-en-contenedor.md.
+# Composición del sistema completo (ADR-0017). Las credenciales se leen de .env (plantilla en
+# .env.example). Un solo comando lo levanta y deja la web en http://127.0.0.1:8000/:
+#
+#   docker compose up -d --build --wait
+#
+# Para desarrollar con el .venv basta la infraestructura: docker compose up -d --wait db embeddings
+# Ver docs/decisiones/0002-postgresql-en-contenedor.md y
+# docs/decisiones/0017-entrega-en-contenedores-con-azure-openai.md.
 
 name: multiagente
 
+# Configuración común de la aplicación y de la ingesta: la misma imagen, el archivo .env y, encima,
+# las direcciones internas de la composición, que reemplazan las del anfitrión.
+x-aplicacion: &aplicacion
+  build:
+    context: .
+    dockerfile: docker/aplicacion/Dockerfile
+  image: multiagente-aplicacion:1
+  env_file: .env
+  environment:
+    POSTGRES_HOST: db
+    POSTGRES_PORT: "5432"
+    EMBEDDINGS_URL: http://embeddings:80
+    INTERFAZ_HOST_WEB: 0.0.0.0
+    INTERFAZ_PUERTO_WEB: "8000"
+
 services:
   db:
-    image: pgvector/pgvector:0.8.6-pg16
+    image: pgvector/pgvector:0.8.6-pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB en .env}
       POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER en .env}
@@ -27,7 +47,7 @@ services:
   # en segundos si ya están verificados. El descargador interno de TEI corta los archivos
   # grandes, por eso se usa curl con reanudación (ADR-0007).
   descarga-modelo:
-    image: curlimages/curl:8.22.0
+    image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
     user: "0:0"
     entrypoint: ["sh", "/config/descargar_modelo.sh"]
     volumes:
@@ -38,7 +58,7 @@ services:
   # Embeddings locales (RNF-04, decisión 8). TEI carga el modelo desde el volumen y no contacta
   # a Hugging Face; los textos del corpus y las consultas nunca salen del equipo.
   embeddings:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9.4@sha256:2538ea1c9640d3763b15af668039d24172d063b42337b0c27796fc2be180c78d
     command: ["--model-id", "/data/bge-m3"]
     environment:
       HF_HUB_OFFLINE: "1"
@@ -57,16 +77,62 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  # Imagen del entorno aislado del código generado (RF-20, RNF-03). No es un servicio que se
-  # levante: la aplicación crea con ella un contenedor efímero por ejecución, sin red y de solo
-  # lectura (ADR-0011). Se construye con `docker compose --profile sandbox build sandbox`.
+  # Imagen del entorno aislado del código generado (RF-20, RNF-03). La aplicación crea con ella un
+  # contenedor efímero por ejecución, sin red y de solo lectura (ADR-0011). La composición la
+  # construye con las demás y la ejecuta una vez, sin red, antes de arrancar la aplicación;
+  # `docker compose build sandbox` la reconstruye sola.
   sandbox:
     build: ./docker/sandbox
     image: multiagente-sandbox:1
-    profiles: ["sandbox"]
+    command: ["python", "-c", "print('Entorno aislado listo')"]
     network_mode: none
     read_only: true
     restart: "no"
+
+  # Migra la base e ingiere el corpus antes de que arranque la aplicación (ADR-0017). Es
+  # idempotente: solo reindexa lo nuevo o modificado.
+  ingesta:
+    <<: *aplicacion
+    command: ["python", "scripts/ingestar_conocimiento.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+      embeddings:
+        condition: service_healthy
+    restart: "no"
+
+  # Orquestador, agentes e interfaces (ADR-0017). Sirve la web, publicada solo en la máquina. La
+  # consola corre en otro contenedor de la misma imagen: docker compose run --rm aplicacion
+  # multiagente nueva. Crea el entorno aislado con el Docker del anfitrión, por su socket, y deja
+  # la traza, las carpetas de trabajo y las exportaciones en ./data/local.
+  aplicacion:
+    <<: *aplicacion
+    command: ["multiagente", "web"]
+    depends_on:
+      db:
+        condition: service_healthy
+      embeddings:
+        condition: service_healthy
+      ingesta:
+        condition: service_completed_successfully
+      sandbox:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${INTERFAZ_PUERTO_WEB:-8000}:8000"
+    volumes:
+      - ./data/local:/app/data/local
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/', timeout=5)
+      interval: 10s
+      timeout: 6s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
 
 volumes:
   datos_postgres:

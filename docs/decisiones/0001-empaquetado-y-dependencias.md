@@ -7,6 +7,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 # ADR-0001 · Empaquetado del sistema y gestión de dependencias
 
 > El ADR-0016 retira Langfuse de las dependencias: la traza por nodo vive en PostgreSQL.
+> El ADR-0017 instala el paquete en la imagen de la aplicación, editable y con las versiones
+> exactas del `.venv` como restricciones (`docker/aplicacion/versiones.txt`).
 
 ## Contexto y planteamiento del problema
 

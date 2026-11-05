@@ -6,7 +6,7 @@ la imagen; este guion deja versionado lo que quedó instalado y el cierre de cad
 que el paquete exportado de un módulo fije las mismas versiones con que se probó.
 
 Uso, desde la raíz del proyecto:
-    docker compose --profile sandbox build sandbox
+    docker compose build sandbox
     python scripts/congelar_entorno_aislado.py
 """
 

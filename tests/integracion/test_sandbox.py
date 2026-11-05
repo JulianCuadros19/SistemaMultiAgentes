@@ -1,10 +1,11 @@
 """Entorno aislado con Docker real: aislamiento, importación y tiempo límite (RF-20, RNF-03).
 
-Requiere Docker y la imagen: `docker compose --profile sandbox build sandbox`, y luego
+Requiere Docker y la imagen: `docker compose build sandbox`, y luego
 `pytest -m sandbox`.
 """
 
 import json
+import re
 import subprocess
 
 import pytest
@@ -92,13 +93,20 @@ def test_tiempo_vencido_mata_y_elimina_el_contenedor(entorno_aislado):
         {}, ["python", "-c", "import time; time.sleep(60)"], tiempo_limite_s=3
     )
     assert resultado.vencido
-    restantes = subprocess.run(
+    listados = subprocess.run(
         ["docker", "ps", "-a", "--filter", "name=multiagente-sandbox-", "--format", "{{.Names}}"],
         capture_output=True,
         text=True,
         check=True,
     )
-    assert restantes.stdout.strip() == ""
+    # Solo los efímeros: la composición deja detenido `multiagente-sandbox-1`, el contenedor que
+    # comprueba la imagen al arrancar (ADR-0017).
+    efimeros = [
+        nombre
+        for nombre in listados.stdout.split()
+        if re.fullmatch(r"multiagente-sandbox-[0-9a-f]{12}", nombre)
+    ]
+    assert efimeros == []
 
 
 def test_corre_las_pruebas_y_reporta_cada_resultado(entorno_aislado):

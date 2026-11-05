@@ -174,8 +174,8 @@ class ConfiguracionTester(BaseSettings):
 class ConfiguracionSandbox(BaseSettings):
     """Entorno aislado del código generado, tomado de las variables SANDBOX_* (RNF-03).
 
-    La imagen se construye con `docker compose --profile sandbox build sandbox`. Los límites
-    acotan lo que puede consumir una ejecución; el tiempo límite es por ejecución.
+    La imagen la construye la composición; `docker compose build sandbox` la reconstruye sola.
+    Los límites acotan lo que puede consumir una ejecución; el tiempo límite es por ejecución.
     """
 
     model_config = SettingsConfigDict(

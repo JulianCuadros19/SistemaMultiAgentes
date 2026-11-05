@@ -24,8 +24,10 @@ htmlcov/
 evaluacion/resultados/*
 !evaluacion/resultados/.gitkeep
 
-# Datos locales y modelos descargados
-data/local/
+# Datos locales y modelos descargados. La carpeta existe en un clon limpio, para que la
+# composición la monte con su dueño (ADR-0017).
+data/local/*
+!data/local/.gitkeep
 modelos/
 *.log
 

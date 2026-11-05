@@ -1,0 +1,40 @@
+# Lo que no entra en la imagen de la aplicación (ADR-0017): secretos, entornos, datos locales, el
+# PDF de la tesis, resultados que se regeneran y cachés.
+
+# Secretos: llegan al arrancar como variables de entorno desde .env.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Entornos, control de versiones y herramientas
+.venv/
+venv/
+.git/
+.claude/
+.vscode/
+.idea/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Datos locales: data/local se monta al arrancar; los modelos viven en su volumen.
+data/
+modelos/
+*.log
+
+# Documento de tesis en PDF: solo local.
+docs/anexos/
+Confirmar_informacion_y_anexos.pdf
+*Zone.Identifier
+
+# Resultados de las corridas de evaluación
+evaluacion/resultados/

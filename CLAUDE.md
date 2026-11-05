@@ -86,6 +86,10 @@ PostgreSQL (ADR-0016) · pytest · Ruff.
   **Nunca trabajar desde `/mnt/c/`**, que es lento y genera problemas de permisos.
 - Docker Desktop corre en Windows con la integración WSL habilitada para Ubuntu. Los comandos
   `docker` se ejecutan desde la terminal de Ubuntu.
+- `docker compose up -d --build --wait` levanta el sistema completo, con la web en
+  `http://127.0.0.1:8000/` (ADR-0017). Para desarrollar con el `.venv` basta la infraestructura:
+  `docker compose up -d --wait db embeddings`. La web del contenedor y `multiagente web` usan el
+  mismo puerto: para usar la del `.venv`, `docker compose stop aplicacion`.
 - Git y su configuración son los de Ubuntu, independientes de los de Windows.
 - Entorno virtual en `.venv` en la raíz. Se activa con `source .venv/bin/activate`.
 - Finales de línea LF forzados por `.gitattributes`.

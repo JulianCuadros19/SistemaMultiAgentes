@@ -2,7 +2,7 @@
 estado: aceptada
 fecha: 2026-11-04
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
-modifica: ADR-0003 (sin modelos de lenguaje locales), ADR-0007 (los embeddings siguen locales sin el factor del RF-37), ADR-0011 (acceso de la aplicación a Docker), ADR-0014 (acceso a la web) y ADR-0016 (factor del paso 14)
+modifica: ADR-0001 (imagen con versiones exactas), ADR-0002 (composición completa), ADR-0003 (sin modelos de lenguaje locales), ADR-0007 (los embeddings siguen locales sin el factor del RF-37), ADR-0011 (acceso de la aplicación a Docker), ADR-0014 (acceso a la web) y ADR-0016 (factor del paso 14)
 ---
 
 # ADR-0017 · Entrega en contenedores con Azure OpenAI
@@ -106,6 +106,71 @@ Para la web:
      solo en `127.0.0.1` del anfitrión.
    - El acceso remoto exigiría TLS, autenticación del equipo y un enlace por sesión para el
      cliente. Queda como trabajo futuro.
+
+### Decisiones de implementación
+
+6. **Imagen de la aplicación** (`docker/aplicacion/Dockerfile`).
+   - **Base:** Python 3.14.4 slim, la versión con que corren las pruebas, con etiqueta y digest
+     fijados.
+   - **Instalación editable:** la imagen copia el repositorio, porque las rutas a los prompts, la
+     configuración, el corpus, las migraciones, la imagen del entorno aislado y los casos se
+     calculan desde la raíz.
+   - **Versiones exactas:**
+     - las dependencias van en su propia capa, con `versiones.txt` como restricciones, y la
+       construcción corre `pip check`;
+     - el archivo es el `pip freeze` del `.venv` donde pasan las pruebas, y lo regenera
+       `scripts/congelar_aplicacion.py`.
+   - **CLI de Docker 29.8.0:** se copia de la imagen oficial, para crear el entorno aislado.
+   - **`.dockerignore`:** deja fuera `.env`, `.venv/`, `.git/`, `data/`, `docs/anexos/` y
+     `evaluacion/resultados/`.
+7. **Usuario sin root, elegido al arrancar** (`docker/aplicacion/entrada.sh`).
+   - **Cómo:** el contenedor arranca como root solo para elegir el usuario: el dueño de
+     `data/local`, con el grupo del socket de Docker. Después le cede el proceso con `setpriv`.
+   - **Para qué:** los archivos de `data/local` quedan a nombre de la persona y la aplicación crea
+     el entorno aislado sin root.
+   - **Sin configuración:** los identificadores cambian de una máquina a otra y se leen al
+     arrancar. En esta, el socket es del grupo 1001.
+   - **Si `data/local` es de root,** el comando corre como root.
+8. **Composición** (`docker-compose.yml`).
+   - **`aplicacion`:**
+     - sirve la web con `env_file: .env` y, encima, las direcciones internas: `db`, `embeddings`
+       y `0.0.0.0`, en el puerto 8000;
+     - monta `./data/local` y el socket de Docker;
+     - su comprobación de salud pide el panel.
+   - **`ingesta`:** con la misma imagen, migra la base e ingiere el corpus antes de que arranque la
+     aplicación. Es idempotente: sin cambios, tarda menos de un segundo.
+   - **`sandbox`:** sale de su perfil. La composición construye su imagen con las demás y la
+     ejecuta una vez, sin red y de solo lectura, antes de la aplicación.
+     - Su contenedor queda detenido con el nombre `multiagente-sandbox-1`.
+     - Los contenedores efímeros del entorno aislado llevan, en cambio, un sufijo hexadecimal de 12
+       caracteres. La prueba que verifica que se borran filtra por ese formato.
+   - **Imágenes descargadas** (`db`, `descarga-modelo` y `embeddings`): quedan fijadas por versión
+     y digest.
+   - **`data/local/.gitkeep`:** hace que la carpeta exista en un clon limpio, con el dueño de quien
+     clona.
+9. **Uso.**
+   - **Entrega:** `docker compose up -d --build --wait` levanta todo, y la web queda en
+     `http://127.0.0.1:8000/`.
+   - **Consola:** `docker compose run --rm aplicacion multiagente …` corre en otro contenedor de la
+     misma imagen, que pasa por el punto de entrada. Antes de arrancar comprueba otra vez el
+     modelo, el corpus y el entorno aislado, en unos 10 s; `--no-deps` lo omite.
+   - **Desarrollo:** `docker compose up -d --wait db embeddings` levanta solo la infraestructura
+     para el `.venv`.
+10. **Prueba sin Docker** (`tests/unitarias/test_empaquetado.py`). Comprueba:
+    - que los puertos se publiquen solo en `127.0.0.1`;
+    - las direcciones internas y las dependencias de arranque;
+    - que el socket llegue solo a la aplicación;
+    - la imagen del entorno aislado y `.dockerignore`;
+    - la versión y el digest de cada imagen, la versión de Python y las versiones congeladas.
+
+### Límites
+
+- **`docker compose exec` entra como root.** Lo que escriba en `data/local` queda a nombre de root;
+  por eso la consola se usa con `run`.
+- **El código va dentro de la imagen.** Un cambio exige reconstruirla con `--build`.
+- **macOS no se verificó** (RNF-07). Se verificó en Windows, con Docker Desktop y WSL2.
+- **Dos procesos sobre la misma sesión,** como en el ADR-0014: la web y la consola no se
+  coordinan.
 
 ### Consecuencias
 

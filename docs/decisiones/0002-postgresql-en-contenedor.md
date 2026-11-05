@@ -6,6 +6,9 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 # ADR-0002 · PostgreSQL 16 con pgvector en contenedor
 
+> El ADR-0017 (paso 14) fija la imagen también por digest y agrega a la composición la
+> aplicación, la ingesta y la comprobación del entorno aislado.
+
 ## Contexto y planteamiento del problema
 
 El paso 2 del plan exige que PostgreSQL acepte conexiones y que la extensión pgvector esté

@@ -426,7 +426,7 @@ class EntornoAislado:
         if proceso.returncode == CODIGO_ERROR_DOCKER:
             raise ErrorEntornoAislado(
                 "El contenedor no se pudo crear. ¿Docker está activo y la imagen construida "
-                f"(docker compose --profile sandbox build sandbox)? {errores.strip()}"
+                f"(docker compose build sandbox)? {errores.strip()}"
             )
         return ResultadoEjecucion(
             codigo_salida=proceso.returncode,
