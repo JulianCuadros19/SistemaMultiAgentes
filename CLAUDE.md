@@ -431,9 +431,27 @@ Mantener esta sección actualizada al cerrar cada paso.
   Verificado: 771 pruebas unitarias, 34 de integración, 19 de embeddings y 33 del entorno aislado;
   capturas en claro, en oscuro y a 390 px con Edge sin ventana. La imagen de la aplicación se
   reconstruye con `docker compose up -d --build --wait` para ver la web nueva en el puerto 8000.
-- **Paso actual: 15, casos de referencia y líneas base.** Terminado cuando hay métricas calculadas
-  contra la implementación manual y contra un modelo único, que también es un despliegue de Azure
-  OpenAI. Sus corridas pueden medir las decisiones 37 a 39 del ADR-0015.
+- **Paso actual: 15, casos de referencia y líneas base, en curso** (ADR-0019 en borrador). Terminado
+  cuando hay métricas calculadas contra la implementación manual y contra un modelo único, que
+  también es un despliegue de Azure OpenAI. **El estado exacto, las decisiones y los comandos para
+  retomarlo están en `docs/evaluacion/estado-paso-15.md`: leerlo antes de seguir.**
+  - **Decisiones del equipo (2026-11-05):**
+    - implementación manual por Julián y Laura, cronometrada;
+    - tres casos sintéticos: 02, 12 y 16;
+    - modelo único `gpt-6.1-sol`, que conversa con el mismo cliente simulado y entrega todo;
+    - métricas RAGs y una corrida ampliada para las decisiones 37 a 39;
+    - tope de 17 USD para todo el paso.
+  - **Fase 1, cerrada:** el oráculo de pruebas de aceptación de referencia (`evaluacion/referencia/`),
+    validado con control y mutantes; el paquete `multiagente.evaluacion` y sus guiones; la plantilla
+    `evaluacion/manual/`. Pasan 790 pruebas unitarias, 34 de integración, 19 de embeddings y 38 del
+    entorno aislado.
+  - **Fase 3, en curso:** la corrida ampliada de 20 casos se lanzó el 2026-11-05 a las 08:52. A las
+    09:23 iba en 4 de 20 y 1,72 USD; el caso 16 escaló en la v3.
+  - **Pendiente:**
+    - la implementación manual (fase 2, del equipo);
+    - el modelo único, la corrida adicional y la revisión humana;
+    - los adaptadores, la evaluación de referencia y las RAGs;
+    - el informe `docs/evaluacion/informe-objetivo-4.md` y el cierre.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en

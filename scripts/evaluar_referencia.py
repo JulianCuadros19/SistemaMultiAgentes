@@ -17,20 +17,34 @@ implementación manual. Corren en el entorno aislado, así que no tienen costo d
   El resultado queda en `<salida>/<etiqueta>.json`. Una implementación con resultado se salta, salvo
   con `--rehacer`.
 - `--resumen` imprime la tabla de los resultados de la carpeta de salida.
+- `--recolectar` reúne las implementaciones de los casos de referencia en
+  `evaluacion/referencia/<caso>/implementaciones/<etiqueta>/`, versionadas con su origen, y escribe
+  el manifiesto `evaluacion/referencia/implementaciones.json`. Reúne cuatro fuentes:
+  - el sistema: la última versión de cada sesión de las corridas automáticas y de la revisión
+    humana;
+  - el modelo único: la entrega de cada corrida;
+  - la implementación manual, que ya está versionada en `evaluacion/manual/<caso>/`.
 
-Requiere Docker y la imagen del entorno aislado (`docker compose build sandbox`).
+  Cada entrada espera su adaptador en `evaluacion/referencia/<caso>/adaptadores/<etiqueta>.py`. La
+  evaluación salta las que todavía no lo tienen.
+
+Requiere Docker y la imagen del entorno aislado (`docker compose build sandbox`), salvo
+`--recolectar` y `--resumen`.
 
 Uso:
     python scripts/evaluar_referencia.py --oraculo
+    python scripts/evaluar_referencia.py --recolectar
     python scripts/evaluar_referencia.py --manifiesto evaluacion/referencia/implementaciones.json
     python scripts/evaluar_referencia.py --resumen
 """
 
 import argparse
 import json
+import shutil
 from pathlib import Path
 
 from multiagente.evaluacion.referencia import (
+    RAIZ_REFERENCIA,
     ErrorReferencia,
     ResultadoReferencia,
     cargar_caso_referencia,
@@ -44,7 +58,13 @@ from multiagente.evaluacion.referencia import (
 from multiagente.sandbox.ejecutor import EntornoAislado
 
 RAIZ = Path(__file__).resolve().parents[1]
-SALIDA = RAIZ / "evaluacion" / "resultados" / "paso-15" / "referencia"
+RESULTADOS = RAIZ / "evaluacion" / "resultados" / "paso-15"
+SALIDA = RESULTADOS / "referencia"
+MANIFIESTO = RAIZ_REFERENCIA / "implementaciones.json"
+CORRIDAS_DEL_SISTEMA = ("corrida-ampliada", "sistema-2")
+"""Carpetas de las corridas automáticas del sistema, en orden: la ampliada y la adicional."""
+REVISION_HUMANA = RESULTADOS / "revision-humana"
+"""Corridas con revisión humana; `sesiones.json` dice la sesión de cada caso."""
 
 
 def oraculo(entorno: EntornoAislado, salida: Path) -> bool:
@@ -99,6 +119,9 @@ def evaluar_manifiesto(
         if destino.exists() and not rehacer:
             print(f"{entrada['etiqueta']}: ya evaluada")
             continue
+        if not (RAIZ / entrada["adaptador"]).exists():
+            print(f"{entrada['etiqueta']}: sin adaptador todavía")
+            continue
         caso = cargar_caso_referencia(entrada["caso"])
         implementacion = leer_implementacion(RAIZ / entrada["carpeta"])
         adaptador = (RAIZ / entrada["adaptador"]).read_text(encoding="utf-8")
@@ -148,6 +171,87 @@ def resumen(salida: Path) -> None:
         )
 
 
+def _relativa(ruta: Path) -> str:
+    return ruta.relative_to(RAIZ).as_posix()
+
+
+def _ultima_version(sesion: Path) -> Path | None:
+    """Carpeta de la última versión de una sesión, `v<n>`, o None si no hay versiones."""
+    versiones = [p for p in sesion.glob("v*") if p.is_dir() and p.name[1:].isdigit()]
+    return max(versiones, key=lambda p: int(p.name[1:])) if versiones else None
+
+
+def _entrada(etiqueta: str, enfoque: str, caso: str, codigo: Path, origen: Path) -> dict[str, str]:
+    """Copia una implementación y su origen a la carpeta versionada del caso."""
+    destino = RAIZ_REFERENCIA / caso / "implementaciones" / etiqueta
+    if destino.exists():
+        shutil.rmtree(destino)
+    shutil.copytree(
+        codigo, destino / "codigo", ignore=shutil.ignore_patterns("__pycache__", "*.pyc")
+    )
+    shutil.copy(origen, destino / f"origen{origen.suffix}")
+    return {
+        "etiqueta": etiqueta,
+        "enfoque": enfoque,
+        "caso": caso,
+        "carpeta": _relativa(destino / "codigo"),
+        "origen": _relativa(destino / f"origen{origen.suffix}"),
+        "adaptador": _relativa(RAIZ_REFERENCIA / caso / "adaptadores" / f"{etiqueta}.py"),
+    }
+
+
+def recolectar() -> list[dict[str, str]]:
+    """Reúne las implementaciones de los casos de referencia y escribe el manifiesto."""
+    entradas = []
+    humanas = REVISION_HUMANA / "sesiones.json"
+    mapa = json.loads(humanas.read_text(encoding="utf-8")) if humanas.exists() else {}
+    for caso in casos_de_referencia():
+        numero = caso.rsplit("-", 1)[-1]
+        for orden, nombre in enumerate(CORRIDAS_DEL_SISTEMA, start=1):
+            resultado = RESULTADOS / nombre / f"{caso}.json"
+            if not resultado.exists():
+                continue
+            sesion = json.loads(resultado.read_text(encoding="utf-8"))["sesion"]
+            if (version := _ultima_version(RESULTADOS / nombre / sesion)) is not None:
+                etiqueta = f"sistema-{numero}-{orden}"
+                entradas.append(_entrada(etiqueta, "sistema", caso, version, resultado))
+        if caso in mapa:
+            sesion = mapa[caso]
+            if (version := _ultima_version(REVISION_HUMANA / sesion)) is not None:
+                entradas.append(
+                    _entrada(f"sistema-humano-{numero}", "sistema_humano", caso, version, humanas)
+                )
+        for resultado in sorted(
+            (RESULTADOS / "modelo-unico" / caso).glob("corrida-*/resultado.json")
+        ):
+            corrida = resultado.parent.name.removeprefix("corrida-")
+            archivos = resultado.parent / "archivos"
+            if archivos.is_dir():
+                etiqueta = f"modelo-unico-{numero}-{corrida}"
+                entradas.append(_entrada(etiqueta, "modelo_unico", caso, archivos, resultado))
+        manual = RAIZ / "evaluacion" / "manual" / caso
+        if (manual / "src").is_dir():
+            entradas.append(
+                {
+                    "etiqueta": f"manual-{numero}",
+                    "enfoque": "manual",
+                    "caso": caso,
+                    "carpeta": _relativa(manual),
+                    "origen": _relativa(manual / "tiempos.csv"),
+                    "adaptador": _relativa(
+                        RAIZ_REFERENCIA / caso / "adaptadores" / f"manual-{numero}.py"
+                    ),
+                }
+            )
+    MANIFIESTO.write_text(
+        json.dumps(entradas, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    for entrada in entradas:
+        tiene = "con adaptador" if (RAIZ / entrada["adaptador"]).exists() else "sin adaptador"
+        print(f"{entrada['etiqueta']}: {entrada['carpeta']} ({tiene})")
+    return entradas
+
+
 def main() -> None:
     """Punto de entrada del guion."""
     argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -155,11 +259,15 @@ def main() -> None:
     accion.add_argument("--oraculo", action="store_true", help="valida el oráculo de cada caso")
     accion.add_argument("--manifiesto", type=Path, help="lista JSON de implementaciones")
     accion.add_argument("--resumen", action="store_true", help="tabla de los resultados")
+    accion.add_argument("--recolectar", action="store_true", help="reúne las implementaciones")
     argumentos.add_argument("--salida", type=Path, default=SALIDA, help="carpeta de resultados")
     argumentos.add_argument("--rehacer", action="store_true", help="evalúa también las evaluadas")
     opciones = argumentos.parse_args()
     if opciones.oraculo:
         raise SystemExit(0 if oraculo(EntornoAislado(), opciones.salida) else 1)
+    if opciones.recolectar:
+        recolectar()
+        return
     if opciones.manifiesto:
         evaluar_manifiesto(EntornoAislado(), opciones.manifiesto, opciones.salida, opciones.rehacer)
     else:
