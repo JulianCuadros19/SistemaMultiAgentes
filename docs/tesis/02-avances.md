@@ -596,6 +596,7 @@ En el texto de las entradas:
 - las métricas RAGs, sobre las 20 sesiones de la corrida ampliada;
 - la medición de las decisiones 37 a 39 del ADR-0015;
 - la matriz del tester frente a las pruebas de referencia;
+- las mediciones del aporte del sistema, con la calidad del código de las 36 implementaciones;
 - el despliegue de demostración en Azure.
 
 **Queda como trabajo futuro:**

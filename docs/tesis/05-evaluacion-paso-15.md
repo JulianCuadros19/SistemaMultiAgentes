@@ -110,7 +110,7 @@ su código.
 
 | Nivel | Qué verifica | Casos y corridas | Criterio |
 |---|---|---|---|
-| Comparación con líneas base | Errores, tiempo y costo con un mismo oráculo | 9 casos; 36 implementaciones de los 3 enfoques | Descriptivo, sin criterio de aprobación |
+| Comparación con líneas base | Errores, tiempo, costo y calidad del código, con un mismo oráculo y las mismas reglas | 9 casos; 36 implementaciones de los 3 enfoques | Descriptivo, sin criterio de aprobación |
 | Tester frente al oráculo | Coincidencia del veredicto con las pruebas de referencia | 21 versiones de módulos reales | Descriptivo |
 | Métricas RAGs | Fidelidad y relevancias | 20 sesiones, 60 muestras | Descriptivo |
 | Despliegue en Azure | Flujo completo en la nube | 1 módulo real | Módulo validado en la revisión final |
@@ -522,14 +522,16 @@ no permitía comparar enfoques. Además, quedaban sin calcular las métricas RAG
 **Decisión.** Se eligió la opción A para el oráculo, porque el tester mide contra los requerimientos del propio sistema y un juez de modelo no ejecuta el
 código. Como referencia de comparación se eligió la opción D: Realtix no pudo compartir su código, por el acuerdo de confidencialidad; una implementación de
 los autores no habría sido independiente, y el código abierto no implementa estas fichas ni registra tiempos ni costos. Se usaron como líneas base las
-opciones A y B del modelo de comparación, con el mismo modelo del agente desarrollador. Se usaron nueve casos sintéticos, con las seis arquitecturas, y un tope de 17 USD para todo el paso.
+opciones A y B del modelo de comparación, con el mismo modelo del agente desarrollador. Después de ver esos resultados se agregaron mediciones exploratorias de
+la calidad del código, con las reglas de la base de conocimiento y fijadas antes de calcularlas. Se usaron nueve casos sintéticos, con las seis arquitecturas, y un tope de 17 USD para todo el paso.
 
 **Consecuencias.** Favorables: los tres enfoques se midieron con el mismo instrumento, las tablas se regeneran desde los resultados guardados y se
 precisó dónde está el valor del sistema. Desfavorables: el sistema no tuvo menos errores y costó el doble o más, cada implementación necesitó un adaptador
 escrito a mano, seis de los nueve casos tuvieron una sola corrida por enfoque y el ahorro frente al trabajo manual queda por cuantificar.
 
 **Verificación.** En cada caso, la implementación de control pasó todas las verificaciones y cada uno de los 35 mutantes falló al menos una. Los oráculos
-de los casos nuevos se versionaron antes de correr las líneas base. Un autor revisó los oráculos frente a las fichas y cinco juicios de las métricas RAGs.
+de los casos nuevos se versionaron antes de correr las líneas base. Un autor revisó los oráculos frente a las fichas y cinco juicios de las métricas RAGs. Las métricas de calidad se versionaron antes de calcularlas, y sus
+resultados se revisaron a mano en dos implementaciones.
 Todo el paso costó 16,74 USD de inferencia.
 
 ### ADR-0020. Despliegue de demostración en una máquina de Azure

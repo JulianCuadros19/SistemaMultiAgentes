@@ -28,7 +28,8 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   - la corrida ampliada de 20 casos se hizo en tres momentos. En la línea base, 10 de 19 módulos se validaron en
     la primera versión; tras el pulido, 20 de 20, 18 en la primera, y en la última, con el sistema final, 16 de 20,
     11 en la primera;
-  - el sistema se comparó con un solo modelo de lenguaje en nueve casos, y se calcularon las métricas RAGs (ADR-0019).
+  - el sistema se comparó con un solo modelo de lenguaje en nueve casos, se midió la calidad del código de las 36
+    implementaciones y se calcularon las métricas RAGs (ADR-0019).
 - **Entrega:** el sistema se entrega en contenedores, con un solo comando, verificado desde un clon
   limpio (ADR-0017). Además, hay un despliegue de demostración en Azure (ADR-0020).
 
