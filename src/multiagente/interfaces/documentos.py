@@ -7,12 +7,14 @@ escribe junto con los mismos artefactos en JSON validado contra esquema (requeri
 import json
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 
 from multiagente.agentes.desarrollador.uso import PYTHON, componer_uso
 from multiagente.core.conformidad import RUTA_USO
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.esquemas.requerimiento import HistoriaUsuario, RequerimientoFormal
 from multiagente.orquestador.estado import (
+    Control,
     Emisor,
     Enmienda,
     EstadoGrafo,
@@ -24,7 +26,30 @@ from multiagente.orquestador.estado import (
     Validacion,
     VersionCodigo,
 )
+from multiagente.orquestador.grafo import Nodo
+from multiagente.orquestador.traza import EjecucionNodo
 from multiagente.sandbox.requisitos import VersionesProbadas, nombre_canonico
+
+NOMBRES_DE_NODO = {
+    Nodo.N1: "N1 · apertura de la sesión",
+    Nodo.N2: "N2 · contexto de elicitación",
+    Nodo.N3: "N3 · diálogo con el cliente",
+    Nodo.N4: "N4 · control de suficiencia",
+    Nodo.N5: "N5 · síntesis de requerimientos",
+    Nodo.N6: "N6 · aprobación de requerimientos",
+    Nodo.N7: "N7 · catálogo de arquitecturas",
+    Nodo.N8: "N8 · diseño de la arquitectura",
+    Nodo.N9: "N9 · aprobación de la especificación",
+    Nodo.N10: "N10 · generación del módulo",
+    Nodo.N11: "N11 · ejecución en el entorno aislado",
+    Nodo.N12: "N12 · análisis estático",
+    Nodo.N13: "N13 · criterios de calidad",
+    Nodo.N14: "N14 · veredicto del tester",
+    Nodo.N15: "N15 · decisión del ciclo de corrección",
+    Nodo.N16: "N16 · plan de pruebas de aceptación",
+    Nodo.N17: "N17 · aprobación final",
+}
+"""Nombre legible de cada nodo, para mostrar dónde está o dónde se detuvo una sesión."""
 
 
 class ErrorExportacion(ValueError):
@@ -360,6 +385,110 @@ def trazabilidad_md(
         lineas += [f"  - Atiende: {defecto}" for defecto in version.defectos_atendidos]
     if not historial:
         lineas.append("Aún no hay versiones dictaminadas.")
+    return "\n".join(lineas) + "\n"
+
+
+def _segundos(milisegundos: int) -> str:
+    return f"{milisegundos / 1000:.1f}"
+
+
+def gasto_md(control: Control) -> list[str]:
+    """Líneas con lo gastado, el presupuesto y sus ampliaciones (RNF-10).
+
+    Args:
+        control: Control de la sesión.
+
+    Returns:
+        Una línea de Markdown por dato, en lista.
+    """
+    presupuesto = (
+        f"{control.presupuesto_usd} USD" if control.presupuesto_usd is not None else "sin tope"
+    )
+    lineas = [f"- Gastado: {control.costo_acumulado_usd:.4f} USD · presupuesto: {presupuesto}"]
+    lineas += [
+        f"  - Ampliado por {_linea(a.revisor)} el {a.fecha:%Y-%m-%d %H:%M} UTC, de {a.anterior} a "
+        f"{a.nuevo} USD, con {a.gastado:.4f} USD gastados"
+        + (f": {_linea(a.motivo)}" if a.motivo else "")
+        for a in control.ampliaciones
+    ]
+    return lineas
+
+
+def traza_md(
+    id_sesion: str, ejecuciones: Sequence[EjecucionNodo], control: Control | None = None
+) -> str:
+    """Traza de una sesión por nodo del grafo: tiempos, prompts, tokens y costo (RF-34).
+
+    Args:
+        id_sesion: Identificador de la sesión.
+        ejecuciones: Ejecuciones de sus nodos, en orden (`TrazaDeNodos.consultar`).
+        control: Control de la sesión, con lo gastado y el presupuesto, si se conoce.
+
+    Returns:
+        El documento en Markdown: el resumen por nodo, cada ejecución y cada llamada al modelo.
+    """
+    llamadas = [(e, llamada) for e in ejecuciones for llamada in e.llamadas]
+    costo = sum((e.costo_usd for e in ejecuciones), Decimal(0))
+    lineas = [f"# Traza de la sesión {id_sesion}", ""]
+    if control is not None:
+        lineas += gasto_md(control)
+    lineas.append(
+        f"- Nodos ejecutados: {len(ejecuciones)} · llamadas al modelo: {len(llamadas)} · costo "
+        f"registrado: {costo:.4f} USD · tiempo de los nodos: "
+        f"{_segundos(sum(e.duracion_ms for e in ejecuciones))} s"
+    )
+    if not ejecuciones:
+        return "\n".join([*lineas, "", "Aún no hay nodos en la traza."]) + "\n"
+    lineas += [
+        "",
+        "## Por nodo",
+        "",
+        "| Nodo | Ejecuciones | Tiempo (s) | Llamadas | Entrada | Salida (razonamiento) | "
+        "Costo (USD) |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for nodo in Nodo:
+        propias = [e for e in ejecuciones if e.nodo == nodo.value]
+        if not propias:
+            continue
+        suyas = [llamada for e in propias for llamada in e.llamadas]
+        lineas.append(
+            f"| {NOMBRES_DE_NODO[nodo]} | {len(propias)} | "
+            f"{_segundos(sum(e.duracion_ms for e in propias))} | {len(suyas)} | "
+            f"{sum(llamada.consumo.entrada for llamada in suyas)} | "
+            f"{sum(llamada.consumo.salida for llamada in suyas)} "
+            f"({sum(llamada.consumo.razonamiento for llamada in suyas)}) | "
+            f"{sum((e.costo_usd for e in propias), Decimal(0)):.4f} |"
+        )
+    lineas += [
+        "",
+        "## Ejecuciones",
+        "",
+        "| Inicio (UTC) | Nodo | Tiempo (s) | Llamadas | Costo (USD) | Error |",
+        "|---|---|---|---|---|---|",
+    ]
+    lineas += [
+        f"| {e.inicio:%Y-%m-%d %H:%M:%S} | {e.nodo} | {_segundos(e.duracion_ms)} | "
+        f"{len(e.llamadas)} | {e.costo_usd:.4f} | {_celda(e.error)} |"
+        for e in ejecuciones
+    ]
+    if llamadas:
+        lineas += [
+            "",
+            "## Llamadas al modelo",
+            "",
+            "| Fecha (UTC) | Nodo | Prompt | Modelo | Entrada (caché) | Salida (razonamiento) | "
+            "Latencia (s) | Costo (USD) | Fin | Error |",
+            "|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        lineas += [
+            f"| {llamada.fecha:%Y-%m-%d %H:%M:%S} | {e.nodo} | {llamada.prompt} | "
+            f"{llamada.modelo} | {llamada.consumo.entrada} ({llamada.consumo.entrada_cacheada}) | "
+            f"{llamada.consumo.salida} ({llamada.consumo.razonamiento}) | "
+            f"{_segundos(llamada.latencia_ms)} | {llamada.costo_usd:.4f} | {llamada.motivo_fin} | "
+            f"{_celda(llamada.error)} |"
+            for e, llamada in llamadas
+        ]
     return "\n".join(lineas) + "\n"
 
 

@@ -20,7 +20,12 @@ from multiagente.core.configuracion import (
     ConfiguracionInterfaces,
     ConfiguracionTester,
 )
-from multiagente.interfaces.documentos import paquete_del_modulo, trazabilidad_md
+from multiagente.interfaces.documentos import (
+    NOMBRES_DE_NODO,
+    paquete_del_modulo,
+    traza_md,
+    trazabilidad_md,
+)
 from multiagente.llm.traza import RegistroPorSesion
 from multiagente.orquestador.ejecucion import (
     Avance,
@@ -46,6 +51,7 @@ from multiagente.orquestador.estado import (
     VersionCodigo,
 )
 from multiagente.orquestador.grafo import Nodo, construir_grafo
+from multiagente.orquestador.traza import EjecucionNodo, TrazaDeNodos
 from multiagente.persistencia.bloqueos import (
     Bloqueos,
     BloqueosEnMemoria,
@@ -54,6 +60,8 @@ from multiagente.persistencia.bloqueos import (
     clave,
 )
 from multiagente.persistencia.conexiones import ConexionDePool, abrir_pool
+from multiagente.persistencia.ejecuciones import TrazaEjecuciones
+from multiagente.persistencia.migraciones import migrar
 from multiagente.persistencia.puntos_control import (
     abrir_checkpointer_compartido,
     identificadores_de_sesion,
@@ -63,27 +71,6 @@ from multiagente.sandbox.requisitos import versiones_probadas
 
 PUNTOS_DE_CONTROL = tuple(punto.value for punto in PuntoControl)
 """Pausas en que decide una persona del equipo: N6, N9 y N17."""
-
-NOMBRES_DE_NODO = {
-    Nodo.N1: "N1 · apertura de la sesión",
-    Nodo.N2: "N2 · contexto de elicitación",
-    Nodo.N3: "N3 · diálogo con el cliente",
-    Nodo.N4: "N4 · control de suficiencia",
-    Nodo.N5: "N5 · síntesis de requerimientos",
-    Nodo.N6: "N6 · aprobación de requerimientos",
-    Nodo.N7: "N7 · catálogo de arquitecturas",
-    Nodo.N8: "N8 · diseño de la arquitectura",
-    Nodo.N9: "N9 · aprobación de la especificación",
-    Nodo.N10: "N10 · generación del módulo",
-    Nodo.N11: "N11 · ejecución en el entorno aislado",
-    Nodo.N12: "N12 · análisis estático",
-    Nodo.N13: "N13 · criterios de calidad",
-    Nodo.N14: "N14 · veredicto del tester",
-    Nodo.N15: "N15 · decisión del ciclo de corrección",
-    Nodo.N16: "N16 · plan de pruebas de aceptación",
-    Nodo.N17: "N17 · aprobación final",
-}
-"""Nombre legible de cada nodo, para mostrar dónde está o dónde se detuvo una sesión."""
 
 ACUSE_CONFIRMACION = (
     "Gracias. Reviso su respuesta al resumen: si lo confirma, redacto los requerimientos con lo "
@@ -181,6 +168,7 @@ class Operador:
         registro: RegistroPorSesion | None = None,
         tester: ConfiguracionTester | None = None,
         bloqueos: Bloqueos | None = None,
+        traza: TrazaDeNodos | None = None,
     ) -> None:
         """Prepara el operador.
 
@@ -191,12 +179,15 @@ class Operador:
             tester: Tiempo límite de las pruebas; si se omite, el configurado.
             bloqueos: Una corrida a la vez por sesión; si se omiten, los de este proceso. Con
                 PostgreSQL, `BloqueosPostgres` los comparte con los demás procesos.
+            traza: Traza por nodo que el grafo va dejando (RF-34); debe ser la misma que recibió
+                `construir_grafo`. Sin ella, la traza de una sesión sale vacía.
         """
         self.app = app
         self.entorno = entorno or EntornoAislado()
         self.registro = registro
         self.tester = tester or ConfiguracionTester()
         self.bloqueos = bloqueos or BloqueosEnMemoria()
+        self.traza_de_nodos = traza
 
     def _en_sesion(self, id_sesion: str) -> AbstractContextManager[None]:
         return self.registro.en_sesion(id_sesion) if self.registro else nullcontext()
@@ -449,6 +440,23 @@ class Operador:
         """Cadena completa de artefactos de la sesión, en Markdown (RF-33)."""
         return trazabilidad_md(self.estado(id_sesion), self.historial(id_sesion))
 
+    def ejecuciones(self, id_sesion: str) -> list[EjecucionNodo]:
+        """Cada ejecución de un nodo de la sesión, con sus llamadas al modelo (RF-34).
+
+        Raises:
+            ErrorOperacion: Si la sesión no existe.
+        """
+        self.estado(id_sesion)
+        return self.traza_de_nodos.consultar(id_sesion) if self.traza_de_nodos else []
+
+    def traza(self, id_sesion: str) -> str:
+        """Traza de la sesión por nodo: tiempos, prompts, tokens y costo, en Markdown (RF-34).
+
+        Raises:
+            ErrorOperacion: Si la sesión no existe.
+        """
+        return traza_md(id_sesion, self.ejecuciones(id_sesion), self.estado(id_sesion)["control"])
+
     def exportar(self, id_sesion: str) -> dict[str, str]:
         """Entregables del módulo validado, por ruta relativa (RF-35).
 
@@ -559,9 +567,10 @@ def abrir_operador(configuracion: ConfiguracionInterfaces | None = None) -> Iter
     """Abre el operador del sistema completo: base de conocimiento, puntos de control y agentes.
 
     Requiere `docker compose up -d --wait`, el corpus ingerido, la imagen del entorno aislado y
-    el archivo .env. Cada llamada a un modelo queda en la traza con su sesión. Las conexiones a
-    PostgreSQL van por pools que se reconectan, para que un reinicio de la base no detenga una
-    web abierta durante horas.
+    el archivo .env. Aplica las migraciones pendientes, como la de la traza por nodo. Cada
+    llamada a un modelo queda en el JSONL con su sesión, y cada nodo en la traza de PostgreSQL
+    (RF-34). Las conexiones a PostgreSQL van por pools que se reconectan, para que un reinicio de
+    la base no detenga una web abierta durante horas.
 
     Args:
         configuracion: Traza y carpeta de trabajo; si se omite, se lee del entorno.
@@ -576,6 +585,8 @@ def abrir_operador(configuracion: ConfiguracionInterfaces | None = None) -> Iter
         abrir_pool(aplicacion="multiagente-conocimiento") as pool,
         abrir_checkpointer_compartido() as puntos,
     ):
+        migrar(pool)
+        traza = TrazaEjecuciones(pool)
         servicios = crear_servicios(ConexionDePool(pool), registro, entorno=entorno)
-        app = construir_grafo(servicios).compile(checkpointer=puntos)
-        yield Operador(app, entorno, registro, bloqueos=BloqueosPostgres(pool))
+        app = construir_grafo(servicios, observador=traza).compile(checkpointer=puntos)
+        yield Operador(app, entorno, registro, bloqueos=BloqueosPostgres(pool), traza=traza)

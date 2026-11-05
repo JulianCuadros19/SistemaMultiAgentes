@@ -50,6 +50,14 @@ class ObservadorNodos(Protocol):
         ...
 
 
+class TrazaDeNodos(ObservadorNodos, Protocol):
+    """Traza de los nodos que además se consulta por sesión, como la de las interfaces."""
+
+    def consultar(self, sesion: str) -> list[EjecucionNodo]:
+        """Devuelve las ejecuciones de una sesión, en el orden en que ocurrieron."""
+        ...
+
+
 class TrazaEnMemoria:
     """Guarda la traza de los nodos en memoria, para las pruebas."""
 

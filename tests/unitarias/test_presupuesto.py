@@ -6,6 +6,7 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
+from multiagente.interfaces.operacion import Operador
 from multiagente.orquestador.ejecucion import avanzar, configuracion_hilo, iniciar_sesion
 from multiagente.orquestador.estado import PAUSA_PRESUPUESTO, Control, Fase
 from multiagente.orquestador.grafo import NODOS_CON_MODELO, Nodo, construir_grafo
@@ -162,3 +163,32 @@ def test_la_traza_registra_el_error_del_nodo_que_falla_y_su_reanudacion():
     n11 = [e for e in traza.consultar("sesion-caida") if e.nodo == Nodo.N11]
     assert [e.error is not None for e in n11] == [True, False]
     assert "ErrorSimulado" in n11[0].error
+
+
+def test_la_traza_de_la_sesion_muestra_por_nodo_los_prompts_tokens_costos_y_tiempos():
+    # Criterio del RF-34: dada una ejecución finalizada, su traza tiene los prompts, los tokens,
+    # los costos y los tiempos por nodo del grafo.
+    simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=CENTAVO)
+    traza = TrazaEnMemoria()
+    app = compilar(simulacion, observador=traza)
+    recorrido = recorrer(app, guion())
+    operador = Operador(app, traza=traza)
+
+    documento = operador.traza(recorrido.id_sesion)
+    trabajos = sum(simulacion.llamadas[trabajo] for trabajo in TRABAJOS_CON_MODELO)
+    assert documento.startswith(f"# Traza de la sesión {recorrido.id_sesion}\n")
+    assert f"- Gastado: {CENTAVO * trabajos:.4f} USD · presupuesto: 1.50 USD" in documento
+    assert f"llamadas al modelo: {trabajos} · costo registrado: {CENTAVO * trabajos:.4f} USD" in (
+        documento
+    )
+    dialogos = simulacion.llamadas["dialogar"]
+    assert f"| N3 · diálogo con el cliente | {dialogos} | " in documento
+    # Cada turno simulado hace una llamada de un token de entrada y uno de salida.
+    assert f"| {dialogos} | {dialogos} | {dialogos} (0) | {CENTAVO * dialogos:.4f} |" in documento
+    assert "| N1 · apertura de la sesión | 1 | " in documento
+    assert "| n10_generacion | simulado@0.0 | simulado | 1 (0) | 1 (0) | 0.0 | 0.0100 | stop |" in (
+        documento
+    )
+    assert len(operador.ejecuciones(recorrido.id_sesion)) == len(traza.ejecuciones)
+    # Sin traza configurada, el operador la entrega vacía.
+    assert "Aún no hay nodos en la traza." in Operador(app).traza(recorrido.id_sesion)

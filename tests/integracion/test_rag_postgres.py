@@ -35,7 +35,10 @@ def base_con_corpus(conexion_aislada, vectorizador_prueba):
 
 
 def test_migraciones_idempotentes(conexion_aislada):
-    assert aplicar_migraciones(conexion_aislada) == ["0001_bases_conocimiento"]
+    assert aplicar_migraciones(conexion_aislada) == [
+        "0001_bases_conocimiento",
+        "0002_ejecuciones",
+    ]
     assert aplicar_migraciones(conexion_aislada) == []
 
 

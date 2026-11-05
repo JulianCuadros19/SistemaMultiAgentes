@@ -4,6 +4,7 @@ import hashlib
 from pathlib import Path
 
 from psycopg import Connection
+from psycopg_pool import ConnectionPool
 
 CARPETA_MIGRACIONES = Path(__file__).resolve().parents[3] / "db" / "migraciones"
 """Carpeta de migraciones del repositorio."""
@@ -15,6 +16,10 @@ CREATE TABLE IF NOT EXISTS migraciones_esquema (
     aplicada    timestamptz NOT NULL DEFAULT now()
 )
 """
+
+
+CLAVE_BLOQUEO = 1_212_013
+"""Bloqueo consultivo que deja migrar a un solo proceso a la vez, como la consola y la web."""
 
 
 class ErrorMigracionModificada(RuntimeError):
@@ -67,3 +72,23 @@ def aplicar_migraciones(conexion: Connection, carpeta: Path = CARPETA_MIGRACIONE
         )
         nuevas.append(version)
     return nuevas
+
+
+def migrar(pool: ConnectionPool) -> list[str]:
+    """Aplica las migraciones pendientes en una transacción, un proceso a la vez.
+
+    Los procesos que operan sesiones migran al arrancar; el bloqueo consultivo evita que dos que
+    arrancan juntos apliquen la misma migración.
+
+    Args:
+        pool: Pool de conexiones a la base.
+
+    Returns:
+        Versiones aplicadas en esta llamada, en orden.
+
+    Raises:
+        ErrorMigracionModificada: Si el contenido de una migración ya aplicada cambió.
+    """
+    with pool.connection() as conexion, conexion.transaction():
+        conexion.execute("SELECT pg_advisory_xact_lock(%s)", (CLAVE_BLOQUEO,))
+        return aplicar_migraciones(conexion)
