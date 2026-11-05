@@ -4,15 +4,13 @@ Cada prueba crea un esquema temporal, migra en él y lo borra al terminar, sin t
 reales. Requiere el contenedor levantado con `docker compose up -d --wait` y el archivo .env.
 """
 
-import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import psycopg
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
-from multiagente.core.configuracion import ConfiguracionBaseDatos, ConfiguracionOrquestador
+from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.operacion import Operador
 from multiagente.llm.costos import ConsumoTokens
 from multiagente.llm.traza import RegistroLlamada
@@ -24,33 +22,12 @@ from multiagente.orquestador.simulacion import (
     recorrer,
 )
 from multiagente.orquestador.traza import EjecucionNodo
-from multiagente.persistencia.conexiones import abrir_pool
 from multiagente.persistencia.ejecuciones import TrazaEjecuciones
-from multiagente.persistencia.migraciones import migrar
 from multiagente.persistencia.puntos_control import abrir_checkpointer, serializador
 
 pytestmark = pytest.mark.integracion
 
 AHORA = datetime(2026, 11, 4, 12, 0, tzinfo=UTC)
-
-
-@pytest.fixture
-def pool():
-    """Pool cuyas conexiones usan un esquema temporal, ya migrado, que se borra al terminar."""
-    cadena = ConfiguracionBaseDatos().cadena_conexion()
-    esquema = f"prueba_{uuid.uuid4().hex[:12]}"
-    with psycopg.connect(cadena, autocommit=True) as administracion:
-        administracion.execute(f'CREATE SCHEMA "{esquema}"')
-    try:
-        with abrir_pool(
-            aplicacion="multiagente-pruebas", options=f"-c search_path={esquema},public"
-        ) as abierto:
-            assert migrar(abierto) == ["0001_bases_conocimiento", "0002_ejecuciones"]
-            assert migrar(abierto) == []
-            yield abierto
-    finally:
-        with psycopg.connect(cadena, autocommit=True) as administracion:
-            administracion.execute(f'DROP SCHEMA "{esquema}" CASCADE')
 
 
 def llamada(prompt: str, costo: str, error: str | None = None) -> RegistroLlamada:
@@ -78,8 +55,8 @@ def llamada(prompt: str, costo: str, error: str | None = None) -> RegistroLlamad
     )
 
 
-def test_la_traza_guarda_cada_nodo_con_sus_llamadas_y_el_costo_exacto(pool):
-    traza = TrazaEjecuciones(pool)
+def test_la_traza_guarda_cada_nodo_con_sus_llamadas_y_el_costo_exacto(pool_traza):
+    traza = TrazaEjecuciones(pool_traza)
     generacion = EjecucionNodo(
         sesion="s-1",
         nodo=Nodo.N10.value,
@@ -104,15 +81,15 @@ def test_la_traza_guarda_cada_nodo_con_sus_llamadas_y_el_costo_exacto(pool):
     assert traza.consultar("s-1") == [generacion, caida]
     assert traza.consultar("s-2") == [otra]
     assert traza.consultar("no-existe") == []
-    with pool.connection() as conexion:
+    with pool_traza.connection() as conexion:
         costo = conexion.execute(
             "SELECT costo_usd FROM ejecuciones WHERE nodo = %s", (Nodo.N10.value,)
         ).fetchone()[0]
     assert costo == Decimal("0.103826525")
 
 
-def test_el_grafo_deja_su_traza_en_postgresql(pool):
-    traza = TrazaEjecuciones(pool)
+def test_el_grafo_deja_su_traza_en_postgresql(pool_traza):
+    traza = TrazaEjecuciones(pool_traza)
     simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=Decimal("0.01"))
     app = construir_grafo(
         simulacion.como_servicios(), ConfiguracionOrquestador(_env_file=None), traza
@@ -138,12 +115,12 @@ def test_el_grafo_deja_su_traza_en_postgresql(pool):
     assert sum(e.costo_usd for e in ejecuciones) == estado["control"].costo_acumulado_usd
 
 
-def test_el_operador_con_postgresql_pausa_por_presupuesto_y_lo_amplia(pool):
+def test_el_operador_con_postgresql_pausa_por_presupuesto_y_lo_amplia(pool_traza):
     simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=Decimal("0.01"))
     configuracion = ConfiguracionOrquestador(
         _env_file=None, presupuesto_maximo_por_modulo_usd=Decimal("0.03")
     )
-    traza = TrazaEjecuciones(pool)
+    traza = TrazaEjecuciones(pool_traza)
     with abrir_checkpointer() as checkpointer:
         app = construir_grafo(simulacion.como_servicios(), configuracion, traza).compile(
             checkpointer=checkpointer

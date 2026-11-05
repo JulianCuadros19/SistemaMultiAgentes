@@ -6,7 +6,8 @@ import psycopg
 import pytest
 
 from multiagente.core.configuracion import ConfiguracionBaseDatos
-from multiagente.persistencia.migraciones import aplicar_migraciones
+from multiagente.persistencia.conexiones import abrir_pool
+from multiagente.persistencia.migraciones import aplicar_migraciones, migrar
 from multiagente.rag.documentos import cargar_corpus
 from multiagente.rag.embeddings import VectorizadorTEI
 from multiagente.rag.ingesta import ingestar
@@ -66,3 +67,25 @@ def entorno_aislado():
     resultado = entorno.ejecutar({}, ["true"])
     assert resultado.exito, resultado.errores
     return entorno
+
+
+@pytest.fixture
+def pool_traza():
+    """Pool cuyas conexiones usan un esquema temporal ya migrado, que se borra al terminar.
+
+    Sirve para la traza por nodo (tablas de la migración 0002) sin tocar las tablas reales.
+    """
+    cadena = ConfiguracionBaseDatos().cadena_conexion()
+    esquema = f"prueba_{uuid.uuid4().hex[:12]}"
+    with psycopg.connect(cadena, autocommit=True) as administracion:
+        administracion.execute(f'CREATE SCHEMA "{esquema}"')
+    try:
+        with abrir_pool(
+            aplicacion="multiagente-pruebas", options=f"-c search_path={esquema},public"
+        ) as pool:
+            assert migrar(pool) == ["0001_bases_conocimiento", "0002_ejecuciones"]
+            assert migrar(pool) == []
+            yield pool
+    finally:
+        with psycopg.connect(cadena, autocommit=True) as administracion:
+            administracion.execute(f'DROP SCHEMA "{esquema}" CASCADE')
