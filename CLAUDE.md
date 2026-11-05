@@ -418,6 +418,19 @@ Mantener esta sección actualizada al cerrar cada paso.
     repetir el comando la retoma;
   - `docker compose exec` entra como root;
   - macOS no se verificó.
+- **Rediseño de la interfaz web: 2026-11-05** (ADR-0018), antes del paso 15:
+  - la sesión se organiza en cinco etapas con la línea del flujo, con rombos en N6, N9 y N17;
+    se ve una etapa a la vez y cada una conserva lo ya aprobado;
+  - el panel agrupa las sesiones según quién debe actuar, con la línea en miniatura; el cliente ve
+    «Equipo» y su avance en cuatro pasos; la trazabilidad y la traza se leen en HTML;
+  - IBM Plex servida por la aplicación (OFL), sin recursos externos, y huella `?v=` en los
+    estáticos;
+  - `python scripts/web_demostracion.py` levanta la web en `127.0.0.1:8010` con nueve sesiones
+    simuladas, sin costo.
+
+  Verificado: 771 pruebas unitarias, 34 de integración, 19 de embeddings y 33 del entorno aislado;
+  capturas en claro, en oscuro y a 390 px con Edge sin ventana. La imagen de la aplicación se
+  reconstruye con `docker compose up -d --build --wait` para ver la web nueva en el puerto 8000.
 - **Paso actual: 15, casos de referencia y líneas base.** Terminado cuando hay métricas calculadas
   contra la implementación manual y contra un modelo único, que también es un despliegue de Azure
   OpenAI. Sus corridas pueden medir las decisiones 37 a 39 del ADR-0015.
