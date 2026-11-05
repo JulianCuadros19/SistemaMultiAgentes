@@ -1,0 +1,30 @@
+[
+  {
+    "nombre": "cuenta_el_fin_de_semana",
+    "descripcion": "Cuenta los días calendario en lugar de los hábiles.",
+    "cambios": [
+      {"buscar": "if actual.weekday() < 5:", "reemplazar": "if actual.weekday() < 7:"}
+    ]
+  },
+  {
+    "nombre": "acepta_transiciones_invalidas",
+    "descripcion": "Procesa cualquier transición como válida.",
+    "cambios": [
+      {"buscar": "valido = (aviso[\"estado_anterior\"], nuevo) in TRANSICIONES", "reemplazar": "valido = nuevo in MENSAJES"}
+    ]
+  },
+  {
+    "nombre": "mensaje_de_rechazo_incompleto",
+    "descripcion": "El mensaje de rechazo no indica dónde consultar el motivo.",
+    "cambios": [
+      {"buscar": "fue rechazado; puede consultar el motivo en la oficina", "reemplazar": "fue rechazado"}
+    ]
+  },
+  {
+    "nombre": "promedio_sin_separar_por_tipo",
+    "descripcion": "Lleva un solo promedio para todos los tipos de trámite.",
+    "cambios": [
+      {"buscar": "dias_por_tipo[str(aviso[\"tipo\"])].append(dias)", "reemplazar": "dias_por_tipo[\"mutación\"].append(dias)"}
+    ]
+  }
+]

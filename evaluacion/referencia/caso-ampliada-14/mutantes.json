@@ -1,0 +1,37 @@
+[
+  {
+    "nombre": "no_completa_el_consecutivo",
+    "descripcion": "No completa con ceros el consecutivo.",
+    "cambios": [
+      {"buscar": "{int(consecutivo):05d}", "reemplazar": "{int(consecutivo)}"}
+    ]
+  },
+  {
+    "nombre": "la_simulacion_renombra",
+    "descripcion": "Renombra aunque esté en modo de simulación.",
+    "cambios": [
+      {"buscar": "if not simulacion:", "reemplazar": "if simulacion or not simulacion:"}
+    ]
+  },
+  {
+    "nombre": "sin_conflicto",
+    "descripcion": "Renombra sobre un archivo que ya existe, sin reportar el conflicto.",
+    "cambios": [
+      {"buscar": "if nuevo in nombres:", "reemplazar": "if nuevo in ():"}
+    ]
+  },
+  {
+    "nombre": "acepta_anio_antiguo",
+    "descripcion": "Acepta años anteriores a 1950.",
+    "cambios": [
+      {"buscar": "ANIO_MINIMO = 1950", "reemplazar": "ANIO_MINIMO = 1900"}
+    ]
+  },
+  {
+    "nombre": "carpeta_inexistente_sin_error",
+    "descripcion": "Termina con código cero aunque la carpeta no exista.",
+    "cambios": [
+      {"buscar": "    except FileNotFoundError:\n        return 1", "reemplazar": "    except FileNotFoundError:\n        return 0"}
+    ]
+  }
+]

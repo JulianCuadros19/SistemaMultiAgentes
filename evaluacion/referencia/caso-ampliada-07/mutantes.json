@@ -1,0 +1,31 @@
+[
+  {
+    "nombre": "no_compara_el_valor",
+    "descripcion": "Da por conciliado todo pago con una factura, sin comparar el valor.",
+    "cambios": [
+      {"buscar": "elif facturado == pagado:", "reemplazar": "elif facturado > 0:"}
+    ]
+  },
+  {
+    "nombre": "omite_las_pendientes",
+    "descripcion": "No reporta las facturas sin pago.",
+    "cambios": [
+      {"buscar": "if referencia not in con_pago:", "reemplazar": "if referencia in ():"}
+    ]
+  },
+  {
+    "nombre": "valor_no_numerico_detiene_el_lote",
+    "descripcion": "Una fila con un valor que no es un número detiene el proceso.",
+    "cambios": [
+      {"buscar": "if fila[valor].strip().isdigit():", "reemplazar": "if int(fila[valor]) >= 0:"}
+    ]
+  },
+  {
+    "nombre": "no_exige_las_columnas",
+    "descripcion": "No rechaza un archivo al que le falta una columna, y la fila se descarta.",
+    "cambios": [
+      {"buscar": "            if columna not in (lector.fieldnames or ()):\n                raise ValueError(f\"Al archivo {ruta} le falta la columna {columna}\")\n", "reemplazar": "            pass\n"},
+      {"buscar": "if fila[valor].strip().isdigit():", "reemplazar": "if fila.get(valor, \"\").strip().isdigit():"}
+    ]
+  }
+]

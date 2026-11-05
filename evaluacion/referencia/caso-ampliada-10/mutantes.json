@@ -1,0 +1,31 @@
+[
+  {
+    "nombre": "mitades_al_par",
+    "descripcion": "Redondea las mitades al par en lugar de hacia arriba.",
+    "cambios": [
+      {"buscar": "from decimal import ROUND_HALF_UP, Decimal", "reemplazar": "from decimal import ROUND_HALF_EVEN, Decimal"},
+      {"buscar": "rounding=ROUND_HALF_UP", "reemplazar": "rounding=ROUND_HALF_EVEN"}
+    ]
+  },
+  {
+    "nombre": "tarifa_equivocada_estrato_cuatro",
+    "descripcion": "Usa 9 por mil en el estrato 4, en lugar de 10.",
+    "cambios": [
+      {"buscar": "3: 8, 4: 10, 5: 12", "reemplazar": "3: 8, 4: 9, 5: 12"}
+    ]
+  },
+  {
+    "nombre": "acepta_avaluo_cero",
+    "descripcion": "No rechaza un avalúo de cero.",
+    "cambios": [
+      {"buscar": "if avaluo <= 0:", "reemplazar": "if avaluo < 0:"}
+    ]
+  },
+  {
+    "nombre": "sin_rechazo_de_destino",
+    "descripcion": "Trata un destino desconocido como comercial.",
+    "cambios": [
+      {"buscar": "    raise ValueError(\"Destino económico no reconocido\")", "reemplazar": "    return OTROS[\"comercial\"]"}
+    ]
+  }
+]

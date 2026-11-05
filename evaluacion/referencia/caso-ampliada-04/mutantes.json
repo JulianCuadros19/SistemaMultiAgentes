@@ -1,0 +1,37 @@
+[
+  {
+    "nombre": "permite_cruce_de_periodos",
+    "descripcion": "Activa un contrato aunque otro vigente se cruce con su periodo.",
+    "cambios": [
+      {"buscar": "and otro.estado == \"vigente\"", "reemplazar": "and otro.estado == \"nunca\""}
+    ]
+  },
+  {
+    "nombre": "sin_duracion_minima",
+    "descripcion": "No exige la duración mínima de seis meses.",
+    "cambios": [
+      {"buscar": "MESES_MINIMOS = 6", "reemplazar": "MESES_MINIMOS = 0"}
+    ]
+  },
+  {
+    "nombre": "termina_sin_motivo",
+    "descripcion": "Permite terminar un contrato sin motivo.",
+    "cambios": [
+      {"buscar": "if not motivo:", "reemplazar": "if motivo == \"nunca\":"}
+    ]
+  },
+  {
+    "nombre": "terminado_se_puede_anular",
+    "descripcion": "Permite anular un contrato en cualquier estado.",
+    "cambios": [
+      {"buscar": "        self._exigir(contrato, \"borrador\")\n        contrato.estado = \"anulado\"", "reemplazar": "        contrato.estado = \"anulado\""}
+    ]
+  },
+  {
+    "nombre": "no_registra_el_usuario",
+    "descripcion": "No registra quién termina el contrato.",
+    "cambios": [
+      {"buscar": "        contrato.estado = \"terminado\"\n        contrato.cambios.append(usuario)", "reemplazar": "        contrato.estado = \"terminado\""}
+    ]
+  }
+]

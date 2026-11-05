@@ -1,0 +1,31 @@
+[
+  {
+    "nombre": "sin_minimo_por_asesor",
+    "descripcion": "No aplica el mínimo de 300.000 pesos por asesor.",
+    "cambios": [
+      {"buscar": "max(_pesos(por_asesor), MINIMO_POR_ASESOR)", "reemplazar": "_pesos(por_asesor)"}
+    ]
+  },
+  {
+    "nombre": "sin_reparto_entre_asesores",
+    "descripcion": "Cada asesor recibe el 40 % completo, sin repartirlo.",
+    "cambios": [
+      {"buscar": "comision * PORCENTAJE_ASESORES / numero_asesores", "reemplazar": "comision * PORCENTAJE_ASESORES"}
+    ]
+  },
+  {
+    "nombre": "acepta_negocio_abierto",
+    "descripcion": "Liquida aunque el negocio no esté cerrado.",
+    "cambios": [
+      {"buscar": "if estado != \"cerrado\":", "reemplazar": "if estado == \"nunca\":"}
+    ]
+  },
+  {
+    "nombre": "trunca_en_lugar_de_redondear",
+    "descripcion": "Trunca al peso en lugar de redondear al más cercano.",
+    "cambios": [
+      {"buscar": "from decimal import ROUND_HALF_UP, Decimal", "reemplazar": "from decimal import ROUND_DOWN, Decimal"},
+      {"buscar": "rounding=ROUND_HALF_UP", "reemplazar": "rounding=ROUND_DOWN"}
+    ]
+  }
+]

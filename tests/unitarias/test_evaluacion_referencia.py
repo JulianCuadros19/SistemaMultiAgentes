@@ -38,17 +38,22 @@ def reportada(nombre, resultado, mensaje=""):
     )
 
 
-def test_los_tres_casos_cargan_con_sus_verificaciones_y_mutantes():
-    assert casos_de_referencia() == ["caso-ampliada-02", "caso-ampliada-12", "caso-ampliada-16"]
+def test_los_nueve_casos_cargan_con_sus_verificaciones_y_mutantes():
     conteos = {
         id_caso: (len(caso.verificaciones), len(caso.mutantes))
         for id_caso in casos_de_referencia()
         for caso in [cargar_caso_referencia(id_caso)]
     }
     assert conteos == {
+        "caso-ampliada-01": (9, 4),
         "caso-ampliada-02": (9, 3),
+        "caso-ampliada-04": (13, 5),
+        "caso-ampliada-07": (9, 4),
+        "caso-ampliada-10": (10, 4),
         "caso-ampliada-12": (10, 3),
+        "caso-ampliada-14": (11, 5),
         "caso-ampliada-16": (10, 3),
+        "caso-ampliada-17": (9, 4),
     }
     caso = cargar_caso_referencia("caso-ampliada-12")
     assert all(mutante.codigo != caso.control for mutante in caso.mutantes)
