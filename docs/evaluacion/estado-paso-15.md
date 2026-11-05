@@ -1,7 +1,7 @@
 # Estado del paso 15 · casos de referencia y líneas base
 
-Documento de traspaso, actualizado el 2026-11-05 a las 12:25, tras investigar la corrida ampliada.
-Sirve para retomar el paso desde otra sesión. El diseño, las métricas y las hipótesis, fijados antes
+Documento de traspaso, actualizado el 2026-11-05 a las 13:00, al terminar el modelo único. Sirve
+para retomar el paso desde otra sesión. El diseño, las métricas y las hipótesis, fijados antes
 de medir, están en el ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en
 borrador).
 
@@ -64,8 +64,8 @@ diseño ni contenido de las entregas (`evaluacion/manual/LEEME.md`).
   empieza por los 10 casos impares (unos 1,65 USD), que cubren las seis arquitecturas.
 - **Alternativa sin decidir:** el equipo puede elegir `gpt-6-luna` como juez, que cubriría las 20
   sesiones por ~0,2 USD. A cambio, es el modelo de N14. Mientras no decidan, sigue `gpt-6.1-sol`.
-  - Tras la corrida ampliada, con lo estimado para lo demás, al juez le quedan unos 1,1 USD. Con
-    `gpt-6.1-sol` alcanza para unas 6 sesiones; con `gpt-6-luna`, para las 20.
+  - Tras el modelo único, con lo estimado para lo demás, al juez le quedan unos 3,9 USD. Con
+    `gpt-6.1-sol` alcanza para las 20 sesiones, así que el presupuesto ya no obliga a cambiarlo.
 
 ## Fase 2 · a cargo de Julián y Laura (pendiente)
 
@@ -84,15 +84,18 @@ Orden de prioridad y tope de cada guion:
 | Orden | Corrida | Estado | Tope del guion |
 |---|---|---|---|
 | 1 | Corrida ampliada de 20 casos | **Terminada**: de 08:52 a 11:20, 20 de 20 casos, 8,8153 USD | 8,5 USD |
-| 2 | Modelo único, 3 corridas × 3 casos | En curso, con el visto bueno del equipo: primero un piloto del caso 12 | 4,6 USD |
-| 3 | Una corrida automática más × 3 casos (`sistema-2`) | Pendiente | 1,3 USD |
+| 2 | Modelo único, 3 corridas × 3 casos | **Terminado**: de 12:23 a 12:55, 9 de 9 corridas, 1,7485 USD | 4,6 USD |
+| 3 | Una corrida automática más × 3 casos (`sistema-2`) | Pendiente: es lo siguiente, con el visto bueno del equipo | 1,3 USD |
 | 4 | Corrida con revisión humana × 3 casos | Pendiente; va después de la manual de cada caso | ~1,2 USD |
-| 5 | Juez de las métricas RAGs | Pendiente; va en la fase 4 | Lo que quede: ~1,1 USD si lo demás cuesta lo estimado |
+| 5 | Juez de las métricas RAGs | Pendiente; va en la fase 4 | Lo que quede: ~3,9 USD si lo demás cuesta lo estimado |
+
+**Gastado en el paso:** 10,5638 USD de 17; quedan **6,4362 USD**.
 
 ### Resultado de la corrida ampliada (2026-11-05, de 08:52 a 11:20)
 
 **Costo:** 8,8153 USD, de ellos 8,0572 del sistema y 0,7580 del cliente simulado. Pasó en 0,32 USD
-el tope del guion, porque el tope se revisa antes de cada caso. Quedan **8,18 USD** del tope de 17.
+el tope del guion, porque el tope se revisa antes de cada caso. Tras ella quedaban 8,18 USD del tope
+de 17.
 
 **Criterios del ADR-0015,** con las mismas metas:
 
@@ -182,6 +185,27 @@ versiones. El consumo por nodo es casi igual. En los agentes solo cambiaron las 
 - 16: escalada.
 
 Cada una es la corrida 1 del sistema para su caso.
+
+### Resultado del modelo único (2026-11-05, de 12:23 a 12:55)
+
+**Costo:** 1,7485 USD, de ellos 1,4900 del modelo y 0,2585 del cliente simulado. Se estimaban ~4,5:
+cada corrida costó 0,166 USD de media, sin el cliente, no 0,5.
+
+**Entregas:** 9 de 9, sin errores ni reintentos. Una corrida llegó al límite de turnos.
+
+| Caso | Costo medio del modelo (USD) | Tiempo medio sin el cliente (min) | Turnos del cliente |
+|---|---|---|---|
+| 02 | 0,165 | 2,6 | 15,3 |
+| 12 | 0,152 | 2,8 | 12,0 |
+| 16 | 0,180 | 3,0 | 15,3 |
+
+- **Frente al sistema:** la corrida ampliada gastó en estos tres casos 0,375 USD y 6,2 min de media,
+  sin el cliente.
+- **Lo que falta:** la tasa de errores, que da la evaluación de referencia (fase 4). Por la fase 2,
+  nadie ha mirado el contenido de las entregas.
+- **Dónde quedan:** en `evaluacion/resultados/paso-15/modelo-unico/<caso>/corrida-<n>/`, solo en esta
+  máquina, porque `.gitignore` excluye `evaluacion/resultados/*`. Se versionan al recolectarlas en la
+  fase 4. La traza es `docs/mediciones/paso-15-modelo-unico.jsonl`.
 
 ### Comandos
 

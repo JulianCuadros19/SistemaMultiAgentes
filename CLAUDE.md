@@ -445,8 +445,12 @@ Mantener esta sección actualizada al cerrar cada paso.
     validado con control y mutantes; el paquete `multiagente.evaluacion` y sus guiones; la plantilla
     `evaluacion/manual/`. Pasan 790 pruebas unitarias, 34 de integración, 19 de embeddings y 38 del
     entorno aislado.
-  - **Fase 3, en curso.** La corrida ampliada de 20 casos terminó el 2026-11-05 a las 11:20:
-    - costó 8,82 USD; del tope de 17 quedan 8,18;
+  - **Fase 3, en curso.** Gastados 10,56 USD del tope de 17; quedan 6,44.
+    - **Modelo único, terminado:** 9 de 9 entregas, sin errores, por 1,75 USD. Cada corrida costó
+      0,166 USD y 2,8 min de media, sin el cliente. Su tasa de errores la da la fase 4.
+
+    La corrida ampliada de 20 casos terminó el 2026-11-05 a las 11:20:
+    - costó 8,82 USD;
     - 16 validados, 11 en la v1, y 4 escalados (02, 03, 14 y 16);
     - resúmenes confirmados: 19 de 20.
 
@@ -463,7 +467,7 @@ Mantener esta sección actualizada al cerrar cada paso.
     - **Dónde está el detalle:** en el documento de estado.
   - **Pendiente:**
     - la implementación manual (fase 2, del equipo);
-    - el modelo único, la corrida adicional y la revisión humana;
+    - la corrida adicional y la revisión humana;
     - los adaptadores, la evaluación de referencia y las RAGs;
     - el informe `docs/evaluacion/informe-objetivo-4.md` y el cierre.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
