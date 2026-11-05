@@ -78,6 +78,28 @@ tendría sus propias pruebas.
    El benchmark de modelos en N3 y N5 queda fuera.
 5. **Tope de 17 USD** para todo el paso.
 
+### Ajuste del alcance (2026-11-05, decisión del equipo)
+
+La entrega es hoy y solo Julián hace la implementación manual. El oráculo no cambia. Se ajusta lo
+siguiente:
+
+- **Implementación manual:** un solo autor y dos casos como máximo, 02 y 12, con un tope de 1 h 30 por
+  caso. El 12 se hace solo si a las 15:15 terminó el 02. Sin requerimientos ni especificación de
+  diseño: solo código, pruebas y `USO.md`.
+- **Revisión humana:** en el caso 16, que no se implementa a mano. Su tiempo sirve de referencia para
+  los otros dos.
+- **Tarifa:** 9 USD por hora, fijada antes de medir (`evaluacion/manual/LEEME.md`). El informe muestra
+  también 5 y 20 USD por hora.
+- **Matriz adicional:** el tester frente al oráculo, en cada versión dictaminada de los casos de
+  referencia. Lo positivo es que el oráculo falle; la predicción positiva, que el tester rechace.
+- **Código abierto de GitHub:** se descartó como línea base, porque no implementa estas fichas y no
+  trae tiempos ni costos.
+- **Sistema:** no cambia hasta terminar de medir.
+
+Los dos recortes favorecen a la implementación manual: no escribe los requerimientos ni el diseño, y
+la revisión se mide en un caso mayor. Por eso, la comparación sirve para el orden de magnitud, no
+para un porcentaje de ahorro.
+
 ### Decisiones de implementación (fase 1)
 
 6. **Oráculo: pruebas de aceptación de referencia** (opción 1, `evaluacion/referencia/`).

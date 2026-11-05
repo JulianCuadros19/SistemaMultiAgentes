@@ -1,26 +1,31 @@
 # Implementación manual de los casos de referencia (paso 15, ADR-0019)
 
-Es la línea base humana de la comparación del objetivo 4. Cada caso de referencia lo implementa
-a mano uno de los autores, cronometrando cada fase. Después, las mismas pruebas de aceptación de
-referencia que evalúan al sistema y al modelo único evalúan su implementación.
+Es la línea base humana de la comparación del objetivo 4. Los casos los implementa a mano uno de los
+autores, cronometrando cada fase. Después, las mismas pruebas de aceptación de referencia que evalúan
+al sistema y al modelo único evalúan su implementación.
+
+**Alcance reducido el 2026-11-05 por la fecha de entrega** (ADR-0019, ajuste del alcance): un solo
+autor, dos casos como máximo, con un tope de 1 h 30 por caso.
 
 ## Antes de empezar
 
-1. **Asignen los casos.** Quien implementa un caso no revisa sus pruebas de referencia, y quien las
-   revisa no lo implementa.
+1. **Asignación.** Quien implementa un caso no revisa sus pruebas de referencia, y quien las revisa
+   no lo implementa. Así, nadie programa para pasar unas pruebas que conoce.
 
    | Caso | Implementa | Revisa las pruebas de referencia |
    |---|---|---|
-   | `caso-ampliada-02`, reajuste anual del canon | | |
-   | `caso-ampliada-12`, dígito de verificación del NIT | | |
-   | `caso-ampliada-16`, simulador de amortización | | |
+   | `caso-ampliada-02`, reajuste anual del canon | Julián | Laura, si puede; si no, queda sin revisión independiente |
+   | `caso-ampliada-12`, dígito de verificación del NIT | Julián, solo si a las 15:15 terminó el 02 | Laura, si puede; si no, queda sin revisión independiente |
+   | `caso-ampliada-16`, simulador de amortización | Nadie: es el caso de la revisión humana | Julián |
 
-2. **Fijen la tarifa por hora antes de medir.** Con ella se calcula el costo de la implementación
-   manual y el de la revisión humana del sistema.
+2. **Tarifa por hora, fijada antes de medir.** Convierte las horas en dinero, para comparar el costo
+   de la implementación manual y de la revisión humana con el de la inferencia.
 
    | Tarifa por hora (USD) | Fuente | Fijada el |
    |---|---|---|
-   | | | |
+   | 9 | 3,5 M COP de salario de un desarrollador junior × 1,5 de carga laboral ÷ 180 h al mes ÷ 3.300 COP por dólar. Salario: entre los 2,8 M COP de Indeed y los 3 a 4,5 M COP de Colombia Move, consultados el 2026-11-05. La carga laboral, las horas y el cambio son supuestos | 2026-11-05 |
+
+   El informe muestra también el costo con 5 y con 20 USD por hora.
 
 ## Qué pueden ver y qué no
 
@@ -39,12 +44,12 @@ referencia que evalúan al sistema y al modelo único evalúan su implementació
 
 ## Entregables
 
-En `evaluacion/manual/<caso>/`, partiendo de `plantilla/`:
+En `evaluacion/manual/<caso>/`, con el `tiempos.csv` de `plantilla/`. Por la fecha de entrega, no se
+escriben los requerimientos ni la especificación de diseño. El sistema sí los produce, así que este
+recorte favorece a la implementación manual, y el informe lo dice.
 
 | Archivo | Contenido |
 |---|---|
-| `requerimientos.md` | Historias de usuario y requerimientos formales con el formato del Anexo A |
-| `diseno.md` | Especificación de diseño con el formato del Anexo B |
 | `src/<paquete>/` | El código, con `__init__.py` |
 | `tests/` | Pruebas con pytest de cada regla, ejemplo y caso de error |
 | `USO.md` | Qué hace el módulo, cómo se usa, sus entradas, salidas y errores |
@@ -67,19 +72,19 @@ En `tiempos.csv`, una fila por tramo de trabajo, con la hora de inicio y de fin 
 `AAAA-MM-DD HH:MM`.
 
 - **Fases:**
-  - `analisis`: leer la ficha y decidir qué falta;
-  - `requerimientos`;
-  - `diseno`;
+  - `analisis`: leer la ficha y decidir cómo hacerlo;
   - `codigo`;
   - `pruebas`;
   - `documentacion`.
 - **Interrupciones:** si paran, cierren la fila y abran otra al volver. Las pausas no cuentan.
 - **Minutos:** si se deja vacía, la columna `minutos` se calcula del inicio y el fin.
+- **Tope:** al llegar a 1 h 30 del caso, se detiene el trabajo y se evalúa lo que haya. Lo que falte
+  cuenta como error.
 
 ```csv
 fase,inicio,fin,minutos,notas
-analisis,2026-11-06 09:00,2026-11-06 09:20,,
-requerimientos,2026-11-06 09:20,2026-11-06 10:05,,dos historias y un RF
+analisis,2026-11-05 13:55,2026-11-05 14:05,,
+codigo,2026-11-05 14:05,2026-11-05 14:40,,
 ```
 
 Al terminar un caso, avisen: se evalúa con `python scripts/evaluar_referencia.py`.
