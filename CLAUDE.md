@@ -445,8 +445,15 @@ Mantener esta sección actualizada al cerrar cada paso.
     validado con control y mutantes; el paquete `multiagente.evaluacion` y sus guiones; la plantilla
     `evaluacion/manual/`. Pasan 790 pruebas unitarias, 34 de integración, 19 de embeddings y 38 del
     entorno aislado.
-  - **Fase 3, en curso:** la corrida ampliada de 20 casos se lanzó el 2026-11-05 a las 08:52. A las
-    09:23 iba en 4 de 20 y 1,72 USD; el caso 16 escaló en la v3.
+  - **Fase 3, en curso.** La corrida ampliada de 20 casos terminó el 2026-11-05 a las 11:20:
+    - costó 8,82 USD; del tope de 17 quedan 8,18;
+    - 16 validados, 11 en la v1, y 4 escalados (02, 03, 14 y 16);
+    - resúmenes confirmados: 19 de 20.
+
+    El retroceso frente a la corrida final del ADR-0015 es un resultado inesperado, todavía sin
+    investigar.
+    - **En la corrida final del ADR-0015:** 20 validados, 18 en la v1, y 16 resúmenes confirmados.
+    - **Dónde está el detalle:** en el documento de estado.
   - **Pendiente:**
     - la implementación manual (fase 2, del equipo);
     - el modelo único, la corrida adicional y la revisión humana;

@@ -1,6 +1,6 @@
 # Estado del paso 15 · casos de referencia y líneas base
 
-Documento de traspaso, actualizado el 2026-11-05 a las 09:30. Sirve para retomar el paso desde
+Documento de traspaso, actualizado el 2026-11-05 a las 11:25, al terminar la corrida ampliada. Sirve para retomar el paso desde
 otra sesión. El diseño, las métricas y las hipótesis, fijados antes de medir, están en el
 ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en borrador).
 
@@ -56,6 +56,8 @@ ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en borrad
   empieza por los 10 casos impares (unos 1,65 USD), que cubren las seis arquitecturas.
 - **Alternativa sin decidir:** el equipo puede elegir `gpt-6-luna` como juez, que cubriría las 20
   sesiones por ~0,2 USD. A cambio, es el modelo de N14. Mientras no decidan, sigue `gpt-6.1-sol`.
+  - Tras la corrida ampliada, con lo estimado para lo demás, al juez le quedan unos 1,1 USD. Con
+    `gpt-6.1-sol` alcanza para unas 6 sesiones; con `gpt-6-luna`, para las 20.
 
 ## Fase 2 · a cargo de Julián y Laura (pendiente)
 
@@ -73,17 +75,63 @@ Orden de prioridad y tope de cada guion:
 
 | Orden | Corrida | Estado | Tope del guion |
 |---|---|---|---|
-| 1 | Corrida ampliada de 20 casos | **En curso**: lanzada el 2026-11-05 a las 08:52 | 8,5 USD |
-| 2 | Modelo único, 3 corridas × 3 casos | Pendiente | 4,6 USD |
+| 1 | Corrida ampliada de 20 casos | **Terminada**: de 08:52 a 11:20, 20 de 20 casos, 8,8153 USD | 8,5 USD |
+| 2 | Modelo único, 3 corridas × 3 casos | Pendiente: es lo siguiente | 4,6 USD |
 | 3 | Una corrida automática más × 3 casos (`sistema-2`) | Pendiente | 1,3 USD |
 | 4 | Corrida con revisión humana × 3 casos | Pendiente; va después de la manual de cada caso | ~1,2 USD |
-| 5 | Juez de las métricas RAGs | Pendiente; va en la fase 4 | Lo que quede del tope de 17 |
+| 5 | Juez de las métricas RAGs | Pendiente; va en la fase 4 | Lo que quede: ~1,1 USD si lo demás cuesta lo estimado |
 
-**Avance de la corrida ampliada a las 09:23:** 4 de 20 casos, 1,72 USD, unos 8 minutos por caso,
-con el final estimado hacia las 11:30.
-- 01, 07 y 11: validados en la v1.
-- **16, uno de los casos de referencia: escaló en la iteración 3,** con 18 turnos del cliente. En la
-  corrida final del ADR-0015 se había validado en la v1.
+### Resultado de la corrida ampliada (2026-11-05, de 08:52 a 11:20)
+
+**Costo:** 8,8153 USD, de ellos 8,0572 del sistema y 0,7580 del cliente simulado. Pasó en 0,32 USD
+el tope del guion, porque el tope se revisa antes de cada caso. Quedan **8,18 USD** del tope de 17.
+
+**Criterios del ADR-0015,** con las mismas metas:
+
+| Criterio | Meta | Corrida final del ADR-0015 | Paso 15 | ¿Cumple? |
+|---|---|---|---|---|
+| Validados en la v1 | al menos 15 de 19 | 18 de 20 | **11 de 20** | no |
+| Primeros intentos de N10 rechazados | como máximo 2 de 29 | 7 de 23 | 4 de 35 | no |
+| Sesiones escaladas | 0 | 0 | **4** | no |
+| Costo medio por módulo validado | como máximo 0,35 USD | 0,342 | 0,391 | no |
+| Hallazgos CAL-FS-006, pruebas que simulan el efecto | 0 | 0 | 0 | sí |
+| Turnos sin exploración, en la primera pausa de N6 | como máximo 211 | 210 | 205 | sí |
+| Resúmenes confirmados | al menos 17 de 20 | 16 | **19** | sí |
+
+**Otros resultados:**
+- **Arquitectura:** coincide con la esperada en 20 de 20; antes, 19 de 20.
+- **Sesiones en el límite de 18 turnos:** 1; antes, 5.
+- **Tiempo del sistema:** 6,6 min de media y 10,3 como máximo, frente a los 20 del RNF-01.
+
+**Lectura preliminar:**
+- **Decisiones 38 y 39:** cumplieron su objetivo. Los resúmenes confirmados suben de 16 a 19 y las
+  sesiones en el límite bajan de 5 a 1.
+- **Decisión 37:** los primeros intentos rechazados de N10 bajan de 7 de 23 a 4 de 35.
+
+**Resultado inesperado, sin investigar todavía:** la calidad de la primera salida retrocede.
+- **Validados en la v1:** bajan de 18 a 11.
+- **Escaladas:** 4 sesiones, tras 3 iteraciones, en los casos 02, 03, 14 y 16. Dos de ellas, 02 y
+  16, son casos de referencia.
+- **Patrones:**
+  - **02 y 03 (ARQ-01):** la v1 sale rechazada por CAL-FS-001, la cobertura de los criterios de
+    aceptación. La v2 y la v3, por CAL-FS-002, una prueba que falla en el entorno aislado.
+  - **14 y 16 (ARQ-05):** solo CAL-FS-001, que baja de 5 a 2 a 1 y de 3 a 1 a 1, sin llegar a cero.
+- **Fuentes para investigarlo sin costo:**
+  - los reportes de cada versión, en
+    `evaluacion/resultados/paso-15/corrida-ampliada/<sesión>/v<n>/`;
+  - la traza, `docs/mediciones/paso-15-corrida-ampliada.jsonl`;
+  - la web, en cada sesión.
+- **Lo que no se puede concluir sin investigar:** si es variabilidad del modelo, un efecto de la
+  decisión 38 sobre los escenarios o un juez de N14 más estricto.
+- **Efecto en la evaluación de referencia:** dirá si los módulos escalados de 02 y 16 tienen errores
+  reales.
+
+**Sesiones de los casos de referencia en esta corrida:**
+- 02: `caso-ampliada-02.json`, escalada;
+- 12: validada en la v1;
+- 16: escalada.
+
+Cada una es la corrida 1 del sistema para su caso.
 
 ### Comandos
 
