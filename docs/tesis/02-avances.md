@@ -2,7 +2,8 @@
 
 Corte: 4 de noviembre de 2026, al cierre del paso 14. La versión del documento del 4 de noviembre
 cuenta el desarrollo hasta el ADR-0014: las interfaces, la verificación con el equipo y la corrida
-de 3 casos tras los ajustes de robustez. Falta lo que vino después.
+de 3 casos tras los ajustes de robustez. Falta lo que vino después. El paso 15 está en
+`05-evaluacion-paso-15.md`.
 
 **Contenido de este archivo:**
 - **Secciones 2 a 6:** material de redacción, con las cifras exactas. El documento lo redacta con
@@ -22,7 +23,7 @@ Toda cifra está también en `03-cifras.md`, con su fuente.
 | Entrega en contenedores con Azure OpenAI (sección 5) | Capítulo 4, sección nueva, antes de «Producto obtenido» |
 | Ajustes de las interfaces (sección 6) | Sección 4.9 |
 | ADR-0015, ADR-0016 y ADR-0017 (sección 7) | Tabla 21 de la sección 4.3 y Tabla 34 del Anexo D |
-| Pendientes (sección 8) | Capítulo 6, como limitaciones, y capítulo 8, como recomendaciones |
+| Paso 15 (sección 8) | `05-evaluacion-paso-15.md` indica dónde va cada parte |
 
 ## 2. Corrida ampliada de línea base (ADR-0014, 31 de octubre de 2026)
 
@@ -363,7 +364,7 @@ medidas:
 
 **Costo total:** 0,40 USD por las dos sesiones de la verificación, cliente simulado incluido.
 
-**Pruebas sin costo:** 754 unitarias, 34 de integración, 19 de embeddings y 33 del entorno
+**Pruebas sin costo, al cierre de ese paso:** 754 unitarias, 34 de integración, 19 de embeddings y 33 del entorno
 aislado, en total 840. Una prueba nueva protege lo que promete la composición:
 - puertos solo locales;
 - direcciones internas;

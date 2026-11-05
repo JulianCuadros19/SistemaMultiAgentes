@@ -1,6 +1,6 @@
 # Cifras del sistema y de su evaluación
 
-Corte: 4 de noviembre de 2026, al cierre del paso 14. Es la referencia única de cifras para el
+Corte: 5 de noviembre de 2026, al cierre del paso 15. Es la referencia única de cifras para el
 documento de tesis. Cada valor indica su fuente:
 - un registro de decisión (ADR) de `docs/decisiones/`;
 - un archivo de `docs/mediciones/`;
@@ -18,7 +18,7 @@ del sistema, sin la espera humana ni el cliente simulado, salvo que se diga otra
 | Requerimientos no funcionales | 10 (RNF-01 a RNF-10) | `docs/requerimientos.md` 1.3 |
 | Nodos del grafo | 17, de ellos 5 con modelo de lenguaje (N3, N5, N8, N10 y N14) | `docs/arquitectura.md` 1.5 |
 | Puntos de control humano | 3: N6, N9 y N17 | `docs/arquitectura.md` 1.5 |
-| Registros de decisión | 17 (ADR-0001 a ADR-0017) | `docs/decisiones/` |
+| Registros de decisión | 20 (ADR-0001 a ADR-0020) | `docs/decisiones/` |
 | Colecciones de conocimiento | 4 | ADR-0007 |
 | Documentos del corpus | 36 | ingesta del 2026-11-04 |
 | Fragmentos del corpus | 187: elicitación 62, dominio de negocio 40, arquitecturas de referencia 33 y criterios de calidad 52 | base de datos, 2026-11-04 |
@@ -84,7 +84,8 @@ desarrollador.
 | Verificación del ADR-0014, cifra de la tesis | 507 | 30 | 19 | 26 | 582 | ADR-0014 |
 | Cierre del paso 12 | 731 | 31 | 19 | 33 | 814 | ADR-0015 |
 | Cierre del paso 13 | 741 | 34 | 19 | 33 | 827 | ADR-0016 |
-| **Cierre del paso 14 (vigente)** | **754** | **34** | **19** | **33** | **840** | ADR-0017 |
+| Cierre del paso 14 | 754 | 34 | 19 | 33 | 840 | ADR-0017 |
+| **Cierre del paso 15 (vigente)** | **812** | **34** | **19** | **44** | **909** | ADR-0019 |
 
 ## 5. Pruebas de cada agente (sin cambios frente a la Tabla 22 del documento)
 
@@ -340,7 +341,7 @@ Fuente: `docs/evaluacion/informe-objetivo-4.md`. Regenerables con `scripts/tabla
 
 ### Pruebas sin costo al cierre
 
-812 unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado.
+812 unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado, en total 909.
 
 ### Costo del paso
 

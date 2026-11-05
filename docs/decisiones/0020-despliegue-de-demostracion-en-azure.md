@@ -50,8 +50,8 @@ Se elige la opción 1.
    - el puerto 22 solo desde la IP del equipo.
 4. **Publicación:** `scripts/desplegar_azure.sh` instala Docker si falta, copia `HEAD` con `git archive`,
    sin credenciales de GitHub en la máquina, copia `.env` por `scp` y levanta la composición.
-5. **Costo:** se apaga con «Detener» en el portal, porque apagarla desde adentro sigue cobrando. Tiene
-   apagado automático a las 23:30 de Bogotá.
+5. **Costo:** se apaga con «Detener» en el portal, porque apagarla desde adentro sigue cobrando. No tiene
+   apagado automático, por decisión del equipo: quien la enciende la detiene.
 
 ### Consecuencias
 
@@ -59,6 +59,7 @@ Se elige la opción 1.
 - **Desfavorable:** una sola contraseña para todos y sin enlace por sesión para el cliente, como pedía el
   ADR-0017 para un acceso remoto completo.
 - **Desfavorable:** la clave de Azure OpenAI queda también en esa máquina. Conviene rotarla al terminar.
+- **Desfavorable:** si queda encendida por olvido, sigue cobrando unos 0,23 USD por hora, porque no se apaga sola.
 - **Desfavorable:** no hay un tope global de gasto: cada sesión tiene el suyo, pero quien tenga la
   contraseña puede abrir varias.
 - **Solo datos sintéticos.** La máquina está en la suscripción de los autores, no bajo control de Realtix
@@ -86,8 +87,7 @@ En la máquina, el 2026-11-05:
   (`docs/mediciones/paso-15-despliegue-azure.jsonl`).
 - **Reinicio:** tras `sudo reboot`, el enlace volvió en 32 s y conservó la sesión.
 
-Sin verificar, a cargo del equipo: el ciclo completo de detener e iniciar desde el portal, y el apagado
-automático.
+Sin verificar, a cargo del equipo: el ciclo completo de detener e iniciar desde el portal.
 
 ## Cambios para el documento de tesis
 

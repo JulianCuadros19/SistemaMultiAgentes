@@ -259,7 +259,7 @@ Las 20 sesiones de la corrida ampliada, por 2,84 USD. Cada métrica va de 0 a 1.
 - **Fidelidad del tester:** el 0,47 subestima. Sus afirmaciones más frecuentes vienen de la ejecución («se ejecutaron
   39 pruebas y todas pasaron»), que no se le entregó al juez. Apartándolas con un filtro de texto aproximado, sube a
   cerca de 0,68. Es un límite del instrumento.
-- **Revisión humana de 5 juicios:** pendiente al escribir este informe.
+- **Revisión humana de 5 juicios:** un autor los revisó y los validó.
 
 ## 7. Requerimientos no funcionales
 
@@ -295,7 +295,7 @@ Las 20 sesiones de la corrida ampliada, por 2,84 USD. Cada métrica va de 0 a 1.
 - **Oráculo del propio equipo,** derivado de las fichas, que el LLM de un solo prompt recibe casi textuales: su 100 % es
   un techo, no una expectativa realista.
 - **Alcance del oráculo:** no cubre la capa HTTP, la documentación ni el reintento por etapas.
-- **Revisión de los oráculos por un autor:** pendiente al escribir este informe.
+- **Revisión de los oráculos:** un autor los revisó frente a cada ficha y los validó.
 - **Sin personas:** el analista simulado aprueba sin leer, así que no se mide el valor de los puntos de control humano.
 
 ## 10. Recomendaciones

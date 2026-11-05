@@ -3,12 +3,10 @@
 Texto listo para llevar al documento, redactado como él: voz impersonal, tiempo pasado, coma decimal y cifras con su
 unidad. La fuente es `docs/evaluacion/informe-objetivo-4.md`.
 
-**Cuando este archivo y `01-correcciones.md` o `02-avances.md` traten lo mismo, manda este archivo.** En especial, reemplaza
-lo que esos dos dicen de 5.2 a 5.6, 6.4, 6.5, las conclusiones y las recomendaciones.
+**Cuando este archivo y `01-correcciones.md` o `02-avances.md` traten lo mismo, manda este archivo.** El Resumen y el Abstract
+están en `01-correcciones.md`, C-01 a C-03.
 
 **Antes de entregar:**
-- **`[CONFIRMAR]`:** marca lo que depende de una acción de los autores. Si no se hizo, se quita la frase o se dice que no
-  se hizo.
 - **`[Tabla A]`, `[Tabla B]`…:** son tablas nuevas. Se numeran al insertarlas en el documento.
 - **La sección 5.3 es nueva.** Las actuales 5.3 a 5.6 pasan a ser 5.4 a 5.7.
 
@@ -24,8 +22,8 @@ lo que esos dos dicen de 5.2 a 5.6, 6.4, 6.5, las conclusiones y las recomendaci
 **Reemplazar en los entregables de 1.6.4.2:**
 
 - Informe de evaluación con métricas y conclusiones.
-- Producto en local del sistema multiagente de IA, empaquetado en contenedores, y un despliegue de demostración en Azure
-  con datos sintéticos.
+- Producto del sistema multiagente de IA empaquetado en contenedores, ejecutable en la infraestructura de Realtix con los
+  modelos de lenguaje de Azure OpenAI, y un despliegue de demostración en Azure con datos sintéticos.
 - Manual y documentos técnicos del sistema multiagente de IA.
 
 ---
@@ -60,7 +58,20 @@ aplicación y de los embeddings no respondieron, y un módulo real quedó valida
 
 ---
 
+## Capítulo 5: párrafo inicial
+
+**Reemplazar por:**
+
+Este capítulo presenta la evaluación del desempeño del sistema multiagente. Se describen el diseño de la evaluación con su plan
+de pruebas, los resultados de las corridas de extremo a extremo, la comparación con un solo modelo de lenguaje, el desempeño del
+agente tester, las métricas de la generación aumentada por recuperación, el cumplimiento de los requerimientos no funcionales y
+los hallazgos que orientaron los ajustes iterativos.
+
+---
+
 ## 5.1 Diseño de la evaluación
+
+**En el primer párrafo:** «con seis niveles» pasa a «con once niveles». Lo demás de la Tabla 24 está en `01-correcciones.md`, C-28.
 
 **Agregar al final de la sección:**
 
@@ -69,8 +80,8 @@ pruebas y el tester juzga contra los requerimientos que el mismo sistema elicit�
 **pruebas de aceptación de referencia**, escritas desde la ficha de cada caso sintético y comunes a todos los enfoques. Cada
 prueba verifica solo lo que la ficha dice sin ambigüedad: ejemplos con cifras, reglas, rangos y mensajes textuales. El oráculo
 se validó antes de medir: en cada caso, una implementación de control pasó todas las verificaciones y cada uno de los 35
-mutantes, variantes con un defecto a propósito, falló al menos una. `[CONFIRMAR: un autor revisó las verificaciones frente a
-cada ficha.]`
+mutantes, variantes con un defecto a propósito, falló al menos una. Un autor revisó las verificaciones frente a
+cada ficha.
 
 No se hizo una comparación con desarrollo humano. Realtix no pudo compartir sus desarrollos por el acuerdo de
 confidencialidad, y una implementación hecha por los autores no habría sido independiente, porque construyeron el sistema y
@@ -92,11 +103,10 @@ de medir; los otros seis fueron el primer caso de cada arquitectura, por número
 se versionaron antes de abrir sus implementaciones y de correr las líneas base; de dos de ellos ya se conocían hallazgos del tester, no
 su código.
 
-**Niveles que se agregan a la Tabla 24:**
+**Niveles que se agregan a la Tabla 24.** Con ellos y con los de C-28, queda en once:
 
 | Nivel | Qué verifica | Casos y corridas | Criterio |
 |---|---|---|---|
-| Corrida ampliada | Flujo completo sobre todas las arquitecturas | 20 casos sintéticos, 1 corrida | Criterios fijados en el ADR-0015 |
 | Comparación con líneas base | Errores, tiempo y costo con un mismo oráculo | 9 casos; 36 implementaciones de los 3 enfoques | Descriptivo, sin criterio de aprobación |
 | Tester frente al oráculo | Coincidencia del veredicto con las pruebas de referencia | 21 versiones de módulos reales | Descriptivo |
 | Métricas RAGs | Fidelidad y relevancias | 20 sesiones, 60 muestras | Descriptivo |
@@ -106,10 +116,15 @@ su código.
 
 ## 5.2 Resultados de las corridas de extremo a extremo
 
-**Reemplazar la Tabla 25 y su texto por:**
+**Conservar lo que dice de la integración, la Tabla 25 y el párrafo que la sigue.** En ese texto y en el título de la tabla,
+«corrida final» pasa a «verificación posterior a los ajustes de robustez», porque ya no fue la última corrida.
 
-La corrida ampliada recorrió 20 casos sintéticos con el flujo completo. Dieciséis módulos quedaron validados, 11 de ellos en la
-primera versión, y 4 sesiones escalaron a la revisión final. El tiempo del sistema fue de 6,6 minutos de media, con un máximo de
+**Agregar al final de la sección:**
+
+La corrida ampliada recorrió 20 casos sintéticos con el flujo completo, de tres a cuatro por arquitectura, en tres momentos. En la
+línea base, 10 de 19 módulos quedaron validados en la primera versión. Tras los ajustes de la primera salida descritos en el
+capítulo 4, los 20 módulos quedaron validados, 18 de ellos en la primera versión. En la última corrida, con el sistema final, 16
+módulos quedaron validados, 11 de ellos en la primera versión, y 4 sesiones escalaron a la revisión final. El tiempo del sistema fue de 6,6 minutos de media, con un máximo de
 10,3, frente a los 20 del RNF-01. El costo fue de 0,403 dólares de media por módulo, de 0,181 a 0,690, y de 0,391 por módulo
 validado. La arquitectura elegida coincidió con la esperada en los 20 casos.
 
@@ -118,7 +133,7 @@ La generación de código concentró el 44,8 % del costo, la selección y parame
 
 **[Tabla A]. Criterios de calidad de la primera salida en la corrida ampliada**
 
-| Criterio | Meta | Corrida previa | Corrida ampliada | ¿Cumple? |
+| Criterio | Meta | Corrida anterior | Última corrida | ¿Cumple? |
 |---|---|---|---|---|
 | Validados en la primera versión | al menos 15 de 19 | 18 de 20 | 11 de 20 | no |
 | Primeros intentos del desarrollador rechazados | como máximo 2 de 29 | 7 de 23 | 4 de 35 | no |
@@ -130,7 +145,7 @@ La generación de código concentró el 44,8 % del costo, la selección y parame
 
 Fuente: Elaboración propia.
 
-El retroceso frente a la corrida previa no se debió a un cambio en los modelos ni en los prompts, que fueron los mismos. La causa
+El retroceso frente a la corrida anterior no se debió a un cambio en los modelos ni en los prompts, que fueron los mismos. La causa
 principal fueron escenarios de aceptación defectuosos del elicitador en cuatro casos, que contradecían las reglas, inventaban datos o
 incluían una pregunta abierta; se estima que, sin ellos, 15 de 20 módulos habrían quedado validados en la primera versión. Se sumó que el juez del tester cambió de veredicto
 en 3 de 124 rejuicios de una prueba idéntica. Una corrida adicional de tres casos terminó sin escalamientos, lo que muestra la
@@ -216,12 +231,14 @@ puede justificar el mayor costo, que sigue siendo de centavos de dólar por mód
 **Reemplazar la Tabla 26 y su texto por:**
 
 Con el conjunto de defectos inyectados, ampliado a 21 defectos y 3 controles y con el agente vigente, el tester detectó los 63 defectos
-de las tres corridas y aprobó los 9 controles.
+de las tres corridas y aprobó los 9 controles. Tomando como caso positivo la detección de un defecto, la matriz de confusión arrojó los
+valores de la Tabla 26.
 
 **Tabla 26. Métricas del agente tester sobre los defectos inyectados**
 
 | Indicador | Valor en las tres corridas |
 |---|---|
+| Defectos inyectados | 63, 21 por corrida |
 | Defectos detectados, verdaderos positivos | 63 |
 | Defectos no detectados, falsos negativos | 0 |
 | Controles aprobados, verdaderos negativos | 9 |
@@ -259,10 +276,10 @@ contra los que juzga.
 
 ## 5.5 Métricas de la generación aumentada por recuperación (antes 5.4)
 
-**Reemplazar la sección por:**
+**Conservar los dos párrafos actuales,** con el segundo en pasado: «se miden» pasa a «se midieron». **Agregar:**
 
-Las tres dimensiones de RAGs [66] de la Tabla 14 se midieron sobre las 20 sesiones de la corrida ampliada, con una muestra por sesión y por
-agente y, como juez, un modelo de lenguaje que esos agentes no usan.
+Se midieron sobre las 20 sesiones de la última corrida ampliada, con una muestra por sesión y por agente y, como juez, un modelo de lenguaje
+que esos agentes no usan.
 
 **[Tabla F]. Métricas RAGs por colección**
 
@@ -279,7 +296,7 @@ La fidelidad del elicitador y del arquitecto fue alta. La del tester está subes
 ejecución de las pruebas, que no se le entregó al juez; al apartarlas con un filtro de texto aproximado, subió a cerca de 0,68. La
 relevancia del contexto del dominio de negocio fue la más baja, porque el corpus es catastral y tributario y varios casos no lo son, y
 porque el elicitador solo puede tomar terminología de esa colección. Es la base de conocimiento que más ajustes requiere.
-`[CONFIRMAR: un autor revisó una muestra de cinco juicios del modelo.]`
+Un autor revisó una muestra de cinco juicios del modelo y los validó.
 
 ---
 
@@ -290,9 +307,30 @@ porque el elicitador solo puede tomar terminología de esa colección. Es la bas
 | Requerimiento | Evidencia | Estado |
 |---|---|---|
 | RNF-01 Eficiencia de desempeño | Módulos en un máximo de 10,3 min frente a 20. Turnos de hasta 12,4 s, salvo uno de 16,2 s, en una de 20 sesiones, frente a 15 s | Cumplido parcialmente |
-| RNF-02 Fiabilidad | Estado persistido y reanudable; en Azure, el sistema volvió tras un reinicio en 32 s con sus datos | Cumplido |
-| RNF-07 Compatibilidad | Windows con WSL2 y Ubuntu 24.04 en Azure; macOS sin verificar | Cumplido parcialmente |
-| RNF-10 Adecuación funcional | Presupuesto configurable que detiene la ejecución, con 0,391 USD de media por módulo validado | Cumplido |
+| RNF-02 Fiabilidad | Estado persistido en PostgreSQL después de cada paso, con reanudación tras una caída y retoma de sesiones en otro proceso; en Azure, el sistema volvió tras un reinicio en 32 s con sus datos | Cumplido |
+| RNF-07 Compatibilidad | Contenedores con Docker Desktop sobre Windows y WSL2, verificados desde un clon limpio, y en Ubuntu 24.04 en Azure; macOS no se verificó | Cumplido parcialmente |
+| RNF-10 Adecuación funcional | Costo registrado por nodo y por sesión en PostgreSQL; presupuesto por módulo, de 1,50 USD por defecto, que pausa la sesión hasta que una persona lo amplía o la cierra, con 0,391 USD de media por módulo validado | Cumplido |
+
+**Las demás filas están en `01-correcciones.md`, C-30. El texto que sigue a la tabla debe decir:**
+
+De los diez requerimientos no funcionales, siete se cumplieron y tres de forma parcial: el RNF-01, porque un turno de diálogo llegó a 16,2
+segundos frente a 15; el RNF-04, porque los fragmentos recuperados viajan en los prompts que procesa Azure OpenAI, y el RNF-07, porque el
+despliegue no se verificó en macOS. El RF-37 se cumplió con su enunciado vigente: el sistema se entrega en contenedores y completa el flujo de
+extremo a extremo con los modelos de Azure OpenAI y las representaciones vectoriales locales.
+
+---
+
+## 5.7 Hallazgos y ajustes iterativos (antes 5.6)
+
+**Además de lo que indica C-31, agregar al final:**
+
+La última corrida dejó tres hallazgos más. El principal es que nada revisa los escenarios de aceptación del elicitador antes de generar el
+código: en cuatro casos, un escenario defectuoso impidió validar el módulo en la primera versión, y en dos de ellos el defecto llegó al código,
+con una fecha fija en producción en uno y un mensaje provisional en otro, y esos módulos quedaron validados. La revisión humana final debería
+detectarlos, pero en esta corrida la hizo un analista simulado que aprueba sin leer. El segundo es la variabilidad del juez del tester, que
+cambió de veredicto en 3 de 124 rejuicios de una prueba idéntica. El tercero es que un escenario imposible consume todo el ciclo de corrección
+antes de escalar, porque el desarrollador no tiene cómo reportarlo. Estas correcciones no se aplicaron durante la medición, para no alterar lo
+medido, y quedaron como recomendaciones.
 
 ---
 
@@ -303,7 +341,8 @@ porque el elicitador solo puede tomar terminología de esa colección. Es la bas
 El cuarto objetivo aplicó el plan de pruebas del capítulo 5. Los módulos se produjeron en un máximo de 10,3 minutos frente al límite de 20,
 y el costo medio fue de 0,403 dólares por módulo. Un turno de diálogo superó los 15 segundos del RNF-01, con 16,2 segundos, en una de 20
 sesiones. La arquitectura elegida coincidió con la esperada en los 20 casos. Las decisiones que se tomaron para mejorar la elicitación
-cumplieron su objetivo, con 19 resúmenes confirmados frente a 16, pero la validación en la primera versión bajó de 18 a 11 de 20.
+cumplieron su objetivo, con 19 resúmenes confirmados frente a 16, pero la validación en la primera versión bajó de 18 a 11 de 20. De los diez requerimientos no funcionales, siete se cumplieron y tres de
+forma parcial.
 
 La comparación con un solo modelo de lenguaje fue el resultado más importante, y no favoreció al sistema en lo que se esperaba. Con las
 mismas pruebas, la tasa de errores fue de 3,4 % en el sistema, de 5,4 % en el modelo con diálogo y de 0,0 % en el modelo de un solo prompt,
@@ -315,7 +354,7 @@ tester, que con defectos inyectados alcanzó 1,00, bajó a una exactitud de 0,52
 
 La evaluación tiene limitaciones. Los casos son sintéticos y los módulos pequeños, de modo que con módulos mayores el resultado podría ser
 otro. Seis de los nueve casos tienen una sola corrida por enfoque, y la variabilidad es alta: un mismo caso escaló en una corrida y se validó
-en la primera versión en otra. El modelo de comparación es muy capaz. El oráculo lo escribió el propio equipo, y el analista simulado no
+en la primera versión en otra. El modelo de comparación es muy capaz. El oráculo no lo elaboró un tercero independiente, aunque un autor lo revisó frente a cada ficha, y el analista simulado no
 permite medir el valor de los puntos de control humano. Finalmente, no se comparó el sistema con desarrollo humano, por lo que el ahorro frente
 al trabajo manual no quedó cuantificado.
 
@@ -358,6 +397,9 @@ perder información, y un validador solo es tan bueno como los requerimientos co
 - Comparar el sistema con el desarrollo humano en casos reales de Realtix, para cuantificar el ahorro de tiempo y de costo, y comparar de forma
   sistemática los modelos asignados a cada nodo.
 - Filtrar la colección de dominio de negocio cuando la necesidad no pertenezca al dominio.
+- Reducir las fallas del primer intento del agente desarrollador, guardando las salidas rechazadas para su diagnóstico y reforzando su prompt.
+- Con datos reales de Realtix, emplear despliegues de zona de datos de EE. UU. y evaluar qué fragmentos de las bases de conocimiento pueden
+  enviarse en los prompts.
 - Completar el acceso remoto a la interfaz web con un enlace por sesión para el cliente, y verificar el despliegue en macOS.
 - Alinear el sistema con la ISO/IEC 27090:2026 [85], en particular frente a la inyección de prompts en las respuestas del cliente y la exposición
   de los datos de las bases de conocimiento.

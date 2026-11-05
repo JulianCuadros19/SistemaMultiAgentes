@@ -14,9 +14,9 @@ Actualizado el 2026-11-05. El paso está cerrado. El diseño y sus cambios está
 
 ## Lo que falta, a cargo del equipo
 
-- [ ] Revisar los oráculos frente a las fichas: cada `evaluacion/referencia/<caso>/interfaz.md` lista qué verifica.
-- [ ] Revisar 5 juicios de RAGs: `evaluacion/resultados/paso-15/rag/revision.md`.
-- [ ] Aplicar `docs/tesis/` al documento y resolver las marcas `[CONFIRMAR]` de `05-evaluacion-paso-15.md`.
+- [x] Revisar los oráculos frente a las fichas: cada `evaluacion/referencia/<caso>/interfaz.md` lista qué verifica.
+- [x] Revisar 5 juicios de RAGs: `evaluacion/resultados/paso-15/rag/revision.md`.
+- [ ] Aplicar `docs/tesis/` al documento.
 - [ ] Decidir los puntos abiertos de `docs/tesis/LEEME.md`.
 - [ ] Rotar la clave de Azure OpenAI y borrar la máquina de demostración cuando no se necesite.
 
@@ -64,7 +64,7 @@ python -c "from pathlib import Path; from multiagente.evaluacion.traza import ga
 ## Máquina de demostración
 
 - **Enlace:** `https://multiagente-demo.centralus.cloudapp.azure.com/`. La contraseña no se versiona.
-- **Encender y apagar:** en el portal de Azure, **Iniciar** y **Detener**. Tiene apagado automático si se corrió su comando.
+- **Encender y apagar:** en el portal de Azure, **Iniciar** y **Detener**. No se apaga sola.
 - **Publicar una versión nueva:**
 
   ```bash

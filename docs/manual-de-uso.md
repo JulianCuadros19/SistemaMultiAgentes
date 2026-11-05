@@ -38,8 +38,8 @@ docker compose up -d --build --wait
   clic en **Iniciar**. El enlace responde poco después, y el sistema arranca solo.
 - **Entrar:** el navegador pide usuario y contraseña. El equipo los comparte aparte; no van en este
   documento.
-- **Apagarla:** haga clic en **Detener** en el portal. Apagarla desde adentro no detiene el cobro. Además,
-  se apaga sola a las 23:30, hora de Bogotá.
+- **Apagarla:** haga clic en **Detener** en el portal. Apagarla desde adentro no detiene el cobro. No se apaga
+  sola: quien la encienda debe detenerla al terminar.
 - **Costo:** sale de los créditos de estudiante, unos 0,23 USD por hora encendida. Cada sesión gasta además
   hasta 1 USD en modelos: la contraseña no se comparte con cualquiera.
 

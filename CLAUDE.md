@@ -453,10 +453,10 @@ Mantener esta sección actualizada al cerrar cada paso.
   - **Despliegue de demostración (ADR-0020):** `scripts/desplegar_azure.sh` y `docker-compose.azure.yml`, en una máquina de
     Azure con TLS y contraseña, solo con datos sintéticos.
   - **Costo:** 16,74 USD de los 17 del tope.
-  - **Verificado:** 812 pruebas unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado.
+  - **Verificado:** 812 pruebas unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado. Un autor revisó los
+    oráculos frente a las fichas y 5 juicios de RAGs.
   - **Pendiente del equipo:**
-    - revisar los oráculos frente a las fichas y 5 juicios de RAGs (`evaluacion/resultados/paso-15/rag/revision.md`);
-    - aplicar `docs/tesis/` al documento, con `05-evaluacion-paso-15.md`, y resolver sus marcas `[CONFIRMAR]`;
+    - aplicar `docs/tesis/` al documento, con `05-evaluacion-paso-15.md`;
     - rotar la clave de Azure OpenAI y borrar la máquina cuando no se necesite.
   - **Correcciones recomendadas, sin aplicar:** en la sección 10 del informe. El sistema no cambió durante la medición.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.

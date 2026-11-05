@@ -10,7 +10,7 @@ el 4 de noviembre de 2026. Las páginas son las impresas al pie.
 - por qué.
 
 Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo largo, remite a
-`02-avances.md`.
+`02-avances.md` o a `05-evaluacion-paso-15.md`.
 
 ## Qué cambió desde esa versión, en una lista
 
@@ -21,13 +21,16 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 - **Presupuesto y traza:** el presupuesto por módulo existe y detiene la ejecución. La traza por
   nodo vive en PostgreSQL, y Langfuse salió del stack (ADR-0016).
 - **Cifras del sistema:**
-  - 17 registros de decisión, no 14;
-  - 840 pruebas automatizadas, no 582;
+  - 20 registros de decisión, no 14;
+  - 909 pruebas automatizadas, no 582;
   - 187 fragmentos, no 186.
-- **Evaluación:** se hizo una corrida ampliada de 20 casos. En la línea base se validaron 10 de 19
-  módulos en la primera versión; en la final, 20 de 20, 18 en la primera.
+- **Evaluación:**
+  - la corrida ampliada de 20 casos se hizo en tres momentos. En la línea base, 10 de 19 módulos se validaron en
+    la primera versión; tras el pulido, 20 de 20, 18 en la primera, y en la última, con el sistema final, 16 de 20,
+    11 en la primera;
+  - el sistema se comparó con un solo modelo de lenguaje en nueve casos, y se calcularon las métricas RAGs (ADR-0019).
 - **Entrega:** el sistema se entrega en contenedores, con un solo comando, verificado desde un clon
-  limpio (ADR-0017).
+  limpio (ADR-0017). Además, hay un despliegue de demostración en Azure (ADR-0020).
 
 ## Preliminares
 
@@ -40,12 +43,13 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 - **Debe decir:** «Para ello se especificaron 39 requerimientos funcionales y diez no funcionales, se
   diseñó un grafo de diecisiete nodos en LangGraph con tres aprobaciones humanas y cuatro bases de
   conocimiento, se implementaron los agentes con los modelos de lenguaje desplegados en Azure OpenAI
-  y representaciones vectoriales locales, y se evaluó el sistema con un plan de pruebas de siete
+  y representaciones vectoriales locales, y se evaluó el sistema con un plan de pruebas de once
   niveles.»
 - **Por qué:**
   - RF-39 (ADR-0015);
   - Azure OpenAI como único proveedor (ADR-0017);
-  - el plan gana el nivel de la entrega en contenedores (C-28).
+  - el plan gana el nivel de la entrega en contenedores (C-28) y los cuatro niveles de
+    `05-evaluacion-paso-15.md`, 5.1.
 
 ### C-02 · Resumen, p. 14, cuarto párrafo
 
@@ -55,18 +59,22 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   hasta 4,8 segundos. El tester detectó los dieciséis defectos inyectados sin rechazos falsos, se
   aprobaron 582 pruebas automatizadas y, de los diez requerimientos no funcionales, seis se
   cumplieron y cuatro de forma parcial.»
-- **Debe decir** (propuesta): «Se obtuvo un producto mínimo viable, empaquetado en contenedores, que
-  se ejecuta en la infraestructura de la empresa. En la corrida final sobre veinte casos
-  sintéticos, los veinte módulos quedaron validados, dieciocho en la primera versión, en 5,3 minutos
-  de media y 13,2 como máximo, frente a un límite de 20, con un costo medio de 0,34 dólares por
-  módulo y turnos de hasta 9,4 segundos. El tester detectó los 21 defectos inyectados sin rechazar
-  los controles, se aprobaron 840 pruebas automatizadas y, de los diez requerimientos no
-  funcionales, ocho se cumplieron y dos de forma parcial.»
+- **Debe decir** (propuesta): «Se obtuvo un producto mínimo viable, empaquetado en contenedores, ejecutable
+  en la infraestructura de la empresa. En la última corrida sobre veinte casos sintéticos, dieciséis módulos
+  quedaron validados, once en la primera versión, y cuatro sesiones escalaron a la revisión humana, en 6,6
+  minutos de media y 10,3 como máximo, frente a un límite de 20, con un costo medio de 0,40 dólares por
+  módulo y turnos de hasta 16,2 segundos, frente a un máximo de 15. El tester detectó los 21 defectos inyectados
+  sin rechazar los controles, aunque frente a pruebas de aceptación independientes su exactitud bajó a 0,52.
+  Frente a un solo modelo de lenguaje, en nueve casos, el sistema no tuvo menos errores (3,4 %, frente a 5,4 %
+  del modelo con diálogo y 0,0 % del modelo con toda la información en un solo prompt) y costó y tardó el doble
+  o más; su aporte estuvo en los requerimientos trazables, el diseño, la validación independiente y el control
+  humano. Se aprobaron 909 pruebas automatizadas y, de los diez requerimientos no funcionales, siete se
+  cumplieron y tres de forma parcial.»
 - **Por qué:**
-  - corrida final del ADR-0015;
+  - última corrida ampliada y comparación con un solo modelo (ADR-0019);
   - corpus del tester ampliado en el ADR-0015;
-  - pruebas al cierre del paso 14;
-  - Tabla 27 actualizada (C-30). «Ocho y dos» supone que el RNF-04 sigue parcial: ver la decisión
+  - pruebas al cierre del paso 15;
+  - Tabla 27 actualizada (C-30). «Siete y tres» supone que el RNF-04 sigue parcial: ver la decisión
     pendiente de C-30.
 
 ### C-03 · Abstract, p. 15, párrafos tercero y cuarto
@@ -77,17 +85,24 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   evaluated with a six-level test plan.» Y: «The result is a minimum viable product that runs on
   the company's infrastructure: nine out of nine integration runs produced a validated module in
   2.7 to 14.3 minutes, against a 20-minute limit, at a cost of 0.16 to 0.37 dollars per module and
-  with turns of up to 4.8 seconds.»
-- **Debe decir:** la traducción de C-01 y C-02. Por ejemplo:
-  - «39 functional and ten non-functional requirements»;
-  - «the agents were implemented with the language models deployed on Azure OpenAI and local
-    embeddings»;
-  - «a seven-level test plan»;
-  - «in the final run on twenty synthetic cases, all twenty modules were validated, eighteen in the
-    first version, in 5.3 minutes on average and 13.2 at most, at an average cost of 0.34 dollars
-    per module and with turns of up to 9.4 seconds»;
-  - «the tester detected all 21 injected defects without rejecting the controls, 840 automated
-    tests passed and, of the ten non-functional requirements, eight were met and two partially».
+  with turns of up to 4.8 seconds. The tester detected all sixteen injected defects with no false
+  rejections, 582 automated tests passed and, of the ten non-functional requirements, six were met
+  and four partially.»
+- **Debe decir:**
+  - «To this end, 39 functional and ten non-functional requirements were specified, a seventeen-node graph
+    was designed in LangGraph with three human approvals and four knowledge bases, the agents were
+    implemented with the language models deployed on Azure OpenAI and local embeddings, and the system was
+    evaluated with an eleven-level test plan.»
+  - «The result is a containerized minimum viable product that can run on the company's infrastructure. In
+    the last run on twenty synthetic cases, sixteen modules were validated, eleven in the first version, and
+    four sessions escalated to human review, in 6.6 minutes on average and 10.3 at most, against a 20-minute
+    limit, at an average cost of 0.40 dollars per module and with turns of up to 16.2 seconds, against a
+    15-second limit. The tester detected all 21 injected defects without rejecting the controls, although its
+    accuracy fell to 0.52 against independent acceptance tests. Compared with a single language model on nine
+    cases, the system did not have fewer errors (3.4%, against 5.4% for the model with dialogue and 0.0% for the
+    model given all the information in a single prompt) and took at least twice the cost and time; its
+    contribution lay in traceable requirements, design, independent validation and human control. In addition,
+    909 automated tests passed and, of the ten non-functional requirements, seven were met and three partially.»
 - **Por qué:** coherencia con el resumen.
 
 ### C-04 · Introducción, «Alcance y limitaciones», p. 19
@@ -274,10 +289,13 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 
 - **Dice hoy:** «Las decisiones tomadas durante el desarrollo se documentaron en catorce registros de
   decisión arquitectónica, que la Tabla 21 lista por su nombre.»
-- **Debe decir:** «…en diecisiete registros…». Además, agregar tres filas:
+- **Debe decir:** «…en veinte registros…». Además, agregar seis filas:
   - ADR-0015 «Calidad de la primera salida y enmiendas de los requerimientos desde N17»;
   - ADR-0016 «Control de costo y traza por nodo»;
-  - ADR-0017 «Entrega en contenedores con Azure OpenAI».
+  - ADR-0017 «Entrega en contenedores con Azure OpenAI»;
+  - ADR-0018 «Rediseño de la interfaz web»;
+  - ADR-0019 «Casos de referencia y líneas base»;
+  - ADR-0020 «Despliegue de demostración en Azure».
 
 ### C-22 · 4.6, p. 66
 
@@ -310,10 +328,10 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 - **Dice hoy:** «En la última ejecución registrada se aprobaron 507 pruebas unitarias, 30 pruebas de
   integración, 19 pruebas de representaciones vectoriales y 26 pruebas del entorno aislado, que en
   conjunto suman 582 pruebas.»
-- **Debe decir:** «…se aprobaron 754 pruebas unitarias, 34 pruebas de integración, 19 pruebas de
-  representaciones vectoriales y 33 pruebas del entorno aislado, que en conjunto suman 840
+- **Debe decir:** «…se aprobaron 812 pruebas unitarias, 34 pruebas de integración, 19 pruebas de
+  representaciones vectoriales y 44 pruebas del entorno aislado, que en conjunto suman 909
   pruebas.»
-- **Por qué:** cierre del paso 14 (ADR-0017).
+- **Por qué:** cierre del paso 15.
 
 ### C-26 · 4.13, p. 71
 
@@ -322,10 +340,9 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   para versiones posteriores del sistema.»
 - **Debe decir:** «El sistema incorporó después el presupuesto que detiene la ejecución y la traza por
   nodo, y se empaquetó en contenedores con un solo comando de arranque. Quedaron fuera el acceso
-  remoto con autenticación, que el equipo dejó como trabajo futuro, y la comparación con el
-  desarrollo manual, con un modelo único y entre modelos para cada nodo, prevista para la fase de
-  evaluación.»
-- **Por qué:** ADR-0016 y ADR-0017. El paso 15 sigue pendiente.
+  remoto con un enlace por sesión para el cliente y la comparación sistemática de los modelos de
+  lenguaje de cada nodo.»
+- **Por qué:** ADR-0016, ADR-0017, ADR-0019 y ADR-0020.
 
 ### C-27 · Secciones nuevas del capítulo 4
 
@@ -341,20 +358,21 @@ corre.
 
 ### C-28 · 5.1 y Tabla 24, pp. 72 y 73
 
+- **Primer párrafo:** «con seis niveles» → «con once niveles».
 - **Dice hoy:** «Estas corridas partieron de tres casos sintéticos del dominio catastral, sin datos de
   Realtix: el cálculo del avalúo, la liquidación por lotes y el registro de mutaciones.»
 - **Debe:** agregar «A ellas se sumó una corrida ampliada sobre veinte casos sintéticos nuevos, de
-  tres a cuatro por arquitectura del catálogo, sin datos de Realtix, con una línea base y una
-  corrida final.»
+  tres a cuatro por arquitectura del catálogo, sin datos de Realtix, con una línea base, una corrida
+  tras el pulido y una última corrida con el sistema final.»
 - **Tabla 24:**
-  - «582 pruebas en la última ejecución» → «840 pruebas en la última ejecución».
+  - «582 pruebas en la última ejecución» → «909 pruebas en la última ejecución».
   - Nivel «Desempeño del tester»: agregar que el corpus se amplió a 21 defectos y 3 controles en el
     ADR-0015.
   - Nivel «Corrida final de evaluación»:
     - debe decir «Corrida ampliada de evaluación»;
     - qué verifica: el flujo completo sobre necesidades variadas, antes y después del pulido del
       ADR-0015;
-    - casos: 20 casos sintéticos, con una corrida de línea base y una corrida final;
+    - casos: 20 casos sintéticos, con una línea base, una corrida tras el pulido y la última corrida;
     - criterio: los fijados antes de medir (`03-cifras.md`, sección 8).
 
     La corrida de 3 casos queda en el texto como la verificación posterior a los ajustes de
@@ -363,65 +381,34 @@ corre.
     - qué verifica: el sistema completo desde un clon limpio;
     - casos: un caso con el analista simulado;
     - criterio: módulo validado con los modelos de Azure OpenAI.
+  - Cuatro niveles nuevos más: están en `05-evaluacion-paso-15.md`, 5.1. La tabla queda con once.
 
 ### C-29 · 5.2, Tabla 25 y 5.3, pp. 73 y 74
 
-**5.2:** conservar la integración y la corrida de 3 casos y agregar los resultados de la corrida
-ampliada:
-- una tabla con la línea base y la final;
-- la tabla de criterios;
-- la tabla por caso, si cabe.
-
-Están en `03-cifras.md`, sección 8, y en `02-avances.md`, secciones 2 y 3.5.
-
-**5.3:**
-- **Dice hoy:** «Para medir la capacidad del tester de detectar errores se inyectaron dieciséis
-  defectos conocidos en el código evaluado y se ejecutó la validación en tres corridas.»
-- **Debe:** agregar la medición del ADR-0015.
-  - Con el corpus ampliado a 21 defectos y 3 controles, en tres corridas, el tester detectó 63 de 63
-    defectos y aprobó 9 de 9 controles. Las métricas de la Tabla 26 se mantienen en 1,00.
-  - Al rejuzgar las 49 versiones reales guardadas, coincidió con su veredicto original en 40.
+**Reemplazada por `05-evaluacion-paso-15.md`, 5.2 y 5.4.** Las cifras de la línea base y de la corrida tras el
+pulido están en `03-cifras.md`, sección 8, y en `02-avances.md`, secciones 2 y 3.5.
 
 ### C-30 · 5.5 y Tabla 27, pp. 75 y 76
 
-**Filas de la Tabla 27:**
+**Filas de la Tabla 27.** Las del RNF-01, RNF-02, RNF-07 y RNF-10 están en `05-evaluacion-paso-15.md`, 5.6. Las demás:
 
 | Requerimiento | Evidencia nueva | Estado |
 |---|---|---|
-| RNF-01 | Agregar: «en la corrida final de 20 casos, media de 5,3 min y máximo de 13,2 min por módulo; turno más largo de 9,4 s» | Cumplido |
-| RNF-03 | «26 pruebas del entorno aislado» → «33»; además, en la entrega, el entorno aislado corre sin red y sin root también cuando lo crea la aplicación en contenedor | Cumplido |
+| RNF-03 | «26 pruebas del entorno aislado» → «44»; además, en la entrega, el entorno aislado corre sin red y sin root también cuando lo crea la aplicación en contenedor | Cumplido |
 | RNF-04 | Sin cambios en la evidencia. Precisar que los prompts se procesan en Azure OpenAI, dentro de su límite de cumplimiento | Decisión del equipo: se recomienda mantener «Cumplido parcialmente» |
 | RNF-05 | «en su versión 1.2» → las versiones vigentes: diálogo 1.10, extracción 1.7, síntesis 1.9, enmienda 1.0, selección 1.2, parametrización 1.6, generación 1.9 y veredicto 1.2 | Cumplido |
 | RNF-06 | «Capa de acceso agnóstica al proveedor sobre la API de OpenAI v1; el modelo, el esfuerzo de razonamiento y el límite de salida de cada nodo se configuran sin tocar el código, y el modelo de N3 y N5 se cambió durante el desarrollo editando solo la configuración (ADR-0009)» | Cumplido |
-| RNF-07 | «El sistema completo corre en contenedores con Docker Desktop sobre Windows y WSL2, verificado desde un clon limpio, con la web accesible desde Ubuntu y desde Windows; macOS no se verificó» | Cumplido parcialmente |
 | RNF-09 | Agregar «o, con una enmienda, al elicitador» | Cumplido |
-| RNF-10 | «Costo registrado por nodo y por sesión en PostgreSQL; presupuesto de 1,50 USD por módulo que pausa la sesión antes del siguiente nodo con modelo hasta que una persona lo amplía o la cierra, verificado con una sesión real que se detuvo al superarlo» | Cumplido |
 
-**Texto que sigue a la tabla:**
-- **Dice hoy:** «De los diez requerimientos no funcionales, seis se cumplieron y cuatro de forma
-  parcial. Las limitaciones se deben a que la inferencia se realizó con modelos remotos, lo que deja
-  sin verificar la operación íntegra con modelos locales y hace que los fragmentos recuperados
-  viajen en los prompts enviados al proveedor; a que la compatibilidad solo se verificó en Ubuntu
-  sobre WSL2, y a que el presupuesto configurable quedó pendiente. Por el uso de modelos remotos, el
-  RF-37, que exige operar sin dependencia de proveedores de nube, también se cumplió de forma
-  parcial.»
-- **Debe decir:** «De los diez requerimientos no funcionales, ocho se cumplieron y dos de forma
-  parcial: el RNF-04, porque los fragmentos recuperados viajan en los prompts que procesa Azure
-  OpenAI, y el RNF-07, porque el despliegue no se verificó en macOS. El RF-37 se cumplió con su
-  enunciado vigente: el sistema se entrega en contenedores y completa el flujo de extremo a extremo
-  con los modelos de Azure OpenAI y las representaciones vectoriales locales.»
-- **Por qué:**
-  - ADR-0016;
-  - ADR-0017;
-  - RF-37 y RNF-06 de los requerimientos 1.3.
+**Texto que sigue a la tabla:** está en `05-evaluacion-paso-15.md`, 5.6.
 
 **Decisión pendiente del equipo.** El RNF-04 dice que la información de dominio debe permanecer bajo
 control de la empresa y que los embeddings se generan localmente.
 - **Lo que se cumple:** los embeddings son locales.
 - **Lo que no:** los fragmentos que se inyectan en los prompts salen al recurso de Azure OpenAI.
 - **Recomendación:** mantenerlo como «Cumplido parcialmente», con esa explicación. Si el equipo
-  considera que el recurso de Azure de la empresa cumple «bajo control de la empresa», pasaría a
-  «Cumplido» y el conteo quedaría en nueve y uno.
+  considera que el recurso de Azure cumple «bajo control de la empresa», pasaría a «Cumplido» y el
+  conteo quedaría en ocho y dos.
 
 ### C-31 · 5.6, p. 76
 
@@ -433,12 +420,14 @@ control de la empresa y que los embeddings se generan localmente.
   sangría incorrecta.»
 - **Debe decir:** «…; la solución se aplicó: el desarrollador dejó de escribir ese archivo, que el
   sistema genera al exportar (ADR-0014).» Y agregar los hallazgos de la corrida ampliada:
-  - los primeros intentos rechazados del desarrollador bajaron de 7 de 29 a 7 de 23, sin alcanzar
-    la meta de 2 de 29;
-  - las causas restantes son una respuesta incompleta (3), funciones con `self` en el diseño (2) y
-    estilo (2);
-  - el cierre de la elicitación pasó de 30 s en 3 casos, con un máximo de 51 s.
-- **Fuente:** `02-avances.md`, sección 3.6.
+  - los primeros intentos rechazados del desarrollador pasaron de 7 de 29 a 7 de 23 y, en la última corrida,
+    a 4 de 35, sin alcanzar la meta de 2 de 29;
+  - en la corrida de 7 de 23, las causas fueron una respuesta incompleta (3), funciones con `self` en el
+    diseño (2) y estilo (2);
+  - el cierre de la elicitación llegó a un máximo de 77,3 s en la última corrida.
+- **En los dos párrafos de la sección:** «corrida final» → «verificación posterior a los ajustes de robustez».
+- **Hallazgos del paso 15:** están en `05-evaluacion-paso-15.md`, 5.7.
+- **Fuente:** `02-avances.md`, sección 3.6, y `03-cifras.md`, sección 13.
 
 ## Capítulo 6
 
@@ -462,7 +451,7 @@ control de la empresa y que los embeddings se generan localmente.
   enviados al modelo remoto, lo que limita la confidencialidad del RNF-04, y la operación íntegra
   con modelos locales, prevista por el RNF-06, no se verificó.»
 - **Debe decir:**
-  - agregar «…y, en la corrida final de veinte casos, el 41 % y el 27 %»;
+  - agregar «…y, en la última corrida de veinte casos, el 44,8 % y el 27,1 %»;
   - la oración final: «En contraste, una decisión se cumplió solo en parte: los fragmentos
     recuperados viajan en los prompts que procesa Azure OpenAI, lo que limita la confidencialidad
     del RNF-04. La operación con modelos locales, que preveía la versión inicial del RNF-06, se
@@ -480,45 +469,22 @@ control de la empresa y que los embeddings se generan localmente.
     generaciones de la integración…»
 - **Debe decir:**
   - «…187 fragmentos…»;
-  - «…en nueve de nueve corridas de integración y, tras el pulido del ADR-0015, en veinte de veinte
-    casos de la corrida ampliada final.»;
-  - «…840 pruebas… diecisiete registros…»;
-  - en las debilidades, agregar «…y en la corrida final, en 7 de 23 primeros intentos, de ellos 3
-    por una respuesta incompleta».
+  - «…en nueve de nueve corridas de integración; en la corrida ampliada posterior al pulido del ADR-0015 se
+    validaron veinte de veinte casos y, en la última, dieciséis de veinte.»;
+  - «…909 pruebas… veinte registros…»;
+  - en las debilidades, agregar «…y, en las corridas ampliadas, en 7 de 23 y en 4 de 35 primeros intentos».
 
 ### C-35 · 6.4, pp. 78 y 79
 
-- **Dice hoy:** «Los módulos se validaron en 2,7 a 14,3 minutos frente al límite de 20, los turnos de
-  diálogo no superaron 4,8 segundos frente al máximo de 15 y el costo de inferencia fue de 0,16 a
-  0,37 dólares por módulo, con una media de 0,27.» Y: «Los resultados de tiempo son buenos y tienen
-  holgura: el módulo más lento consumió el 72 % del tiempo permitido y el turno más largo, cerca de
-  un tercio del máximo.»
-- **Debe decir:**
-  - agregar los resultados de la corrida final: veinte de veinte validados, dieciocho en la primera
-    versión, frente a diez de diecinueve en la línea base; 5,3 minutos de media y 13,2 como máximo;
-    turnos de hasta 9,4 segundos; 0,342 dólares de media por módulo, de 0,18 a 0,87;
-  - con esas cifras, el módulo más lento consumió el 66 % del tiempo permitido y el turno más largo,
-    el 63 % del máximo;
-  - «seis se cumplieron y cuatro de forma parcial» → «ocho se cumplieron y dos de forma parcial».
-- **Las limitaciones siguen vigentes:**
-  - casos sintéticos;
-  - métricas RAGs sin calcular;
-  - sin comparación con el desarrollo manual.
-
-  Agregar que la comparación es el paso 15.
+**Reemplazada por `05-evaluacion-paso-15.md`, 6.4.**
 
 ### C-36 · 6.5, p. 79
 
-- **Dice hoy:** «En el ámbito económico, un módulo validado costó en promedio 0,27 dólares de
-  inferencia y entre 2,7 y 14,3 minutos de tiempo del sistema, de modo que cien módulos costarían
-  cerca de 27 dólares de inferencia…». Y: «…un activo propio que reúne 38 requerimientos, un grafo
-  de diecisiete nodos, catorce registros de decisión, cuatro bases de conocimiento y 582 pruebas
-  automatizadas…»
-- **Debe decir:**
-  - «…un módulo validado costó en promedio 0,342 dólares de inferencia en la corrida final y 5,3
-    minutos de tiempo del sistema, de modo que cien módulos costarían cerca de 34 dólares…»;
-  - «…39 requerimientos, un grafo de diecisiete nodos, diecisiete registros de decisión, cuatro bases
-    de conocimiento y 840 pruebas automatizadas, empaquetado en contenedores…».
+- **La primera frase del ámbito económico** está en `05-evaluacion-paso-15.md`, 6.5.
+- **Dice hoy, más adelante:** «…un activo propio que reúne 38 requerimientos, un grafo de diecisiete nodos,
+  catorce registros de decisión, cuatro bases de conocimiento y 582 pruebas automatizadas…»
+- **Debe decir:** «…39 requerimientos, un grafo de diecisiete nodos, veinte registros de decisión, cuatro bases
+  de conocimiento y 909 pruebas automatizadas, empaquetado en contenedores…».
 - **Opcional:** mencionar que el presupuesto por módulo, de 1,50 dólares por defecto, acota el gasto
   de cada sesión.
 
@@ -529,38 +495,20 @@ control de la empresa y que los embeddings se generan localmente.
 - **Dice hoy:** «El objetivo general se cumplió: el sistema automatizó la cadena que va de la
   conversación con el cliente al código validado y produjo un módulo validado en nueve de nueve
   corridas de integración, dentro de los umbrales de tiempo.»
-- **Debe decir:** «…y produjo un módulo validado en nueve de nueve corridas de integración y en veinte
-  de veinte casos de la corrida ampliada final, dieciocho en la primera versión, dentro de los
-  umbrales de tiempo.»
-- **Opcional:**
-  - **Párrafo nuevo:** la mejora de la primera salida vino de dar al arquitecto y al tester la
-    noción de escenario ejecutable. Con ella, la primera versión pasó al tester en 18 de 20 casos,
-    frente a 10 de 19.
-  - **Cambio en el párrafo de la evaluación:** «modelos remotos» → «modelos de un único proveedor».
+- **Debe decir:** «…y produjo un módulo validado en nueve de nueve corridas de integración y, en la última
+  corrida sobre veinte casos, en dieciséis, once de ellos en la primera versión, dentro del umbral de tiempo por
+  módulo.»
+- **El párrafo de la evaluación:** está en `05-evaluacion-paso-15.md`, capítulo 7.
+- **Opcional, párrafo nuevo:** la mejora de la primera salida vino de dar al arquitecto y al tester la
+  noción de escenario ejecutable. Con ella, la primera versión pasó al tester en 18 de 20 casos, frente a
+  10 de 19, aunque la última corrida, con 11 de 20, mostró que ese resultado varía y depende de los escenarios
+  que escribe el elicitador.
 
 ## Capítulo 8
 
 ### C-38 · Recomendaciones, p. 82
 
-- **Quitar** «Implementar el presupuesto configurable que detenga la ejecución al alcanzar un costo
-  máximo por módulo, para completar el RNF-10.» Ya está hecho (ADR-0016).
-- **Quitar** «Verificar la operación íntegra con modelos de ejecución local, de modo que se cumplan
-  el RF-37 y el RNF-06 y que los fragmentos de las bases de conocimiento no salgan de la empresa.»
-  El equipo lo descartó (ADR-0017). En su lugar, si se quiere: «Con datos reales de Realtix,
-  emplear despliegues de zona de datos de EE. UU. y evaluar qué fragmentos de las bases de
-  conocimiento pueden enviarse en los prompts.»
-- **Actualizar** «Reducir las fallas del primer intento del agente desarrollador, guardando las
-  salidas rechazadas para su diagnóstico y reforzando su prompt.» Precisar que la causa principal
-  restante es la respuesta incompleta, en 3 de 23 primeros intentos.
-- **Mantener:**
-  - «Incorporar autenticación para el acceso remoto…»;
-  - la comparación con el desarrollo manual, que es el paso 15;
-  - las métricas RAGs;
-  - la ISO/IEC 27090.
-- **Agregar:**
-  - medir las decisiones 37 a 39 del ADR-0015;
-  - resolver dónde queda lo que el cliente pide en los resultados;
-  - plantear mejor las necesidades dirigidas por eventos.
+**Reemplazada por `05-evaluacion-paso-15.md`, capítulo 8.**
 
 ## Anexos
 
@@ -609,12 +557,11 @@ elicitador.»
 
 - **Dice hoy:** «El presente anexo detalla los catorce registros de decisión arquitectónica listados
   en la sección 4.3.»
-- **Debe decir:** «…los diecisiete registros…»
+- **Debe decir:** «…los veinte registros…»
 - **Además:**
-  - agregar las entradas de los ADR-0015, ADR-0016 y ADR-0017;
+  - agregar las entradas de los ADR-0015, ADR-0016 y ADR-0017, que están en `02-avances.md`, sección 7;
+  - agregar las de los ADR-0018, ADR-0019 y ADR-0020, que están en `05-evaluacion-paso-15.md`;
   - ajustar el «Estado y fecha» de las entradas que ellos modificaron.
-
-  Todo está en `02-avances.md`, sección 7.
 
 ### C-43 · Anexo E, Tabla 35, p. 107
 
@@ -641,9 +588,7 @@ elicitador.»
 ### C-46 · Capítulos 1.6.4, 3.8, 5, 6.4, 6.5, 7 y 8
 
 - **Lo que pasó:** el paso 15 terminó el 5 de noviembre, y `05-evaluacion-paso-15.md` trae el texto de estas secciones.
-- **Regla:** donde las entradas C-29 a C-31 y C-35 a C-38 traten lo mismo que ese archivo, manda él.
-- **También cambia en C-45, tabla de indicadores:** OE4 queda con los niveles del plan vigente aplicados. La comparación
-  con desarrollo humano queda como trabajo futuro.
+- **Regla:** si una entrada de este archivo y ese archivo tratan lo mismo, manda él.
 
 ## Detalles de edición
 
@@ -669,7 +614,7 @@ elicitador.»
   |---|---|---|
   | OE1 | 100 % del documento aprobado | Cumplido, con acta |
   | OE2 | 100 % del documento aprobado | Cumplido, con acta |
-  | OE3 | 100 % del producto mínimo viable funcional | Cumplido: pasos 0 a 14 cerrados y 20 de 20 módulos validados |
-  | OE4 | 90 % de aplicación de las pruebas | En curso: los niveles del plan se aplicaron; la comparación con el desarrollo manual y con un modelo único es el paso 15 |
+  | OE3 | 100 % del producto mínimo viable funcional | Cumplido: los cuatro agentes y el orquestador operan de extremo a extremo; en la última corrida, 16 de 20 módulos validados y 4 escalados a la revisión humana |
+  | OE4 | 90 % de aplicación de las pruebas | Cumplido: se aplicaron todos los niveles del plan vigente; la comparación con desarrollo humano quedó como trabajo futuro |
 
   Que el equipo confirme estos estados antes de publicarlos.

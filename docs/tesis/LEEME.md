@@ -78,8 +78,7 @@ Reglas:
 - La comparación con un solo modelo de lenguaje y las métricas RAGs ya se hicieron: sus cifras están en
   05-evaluacion-paso-15.md y en 03-cifras.md. No se hizo comparación con desarrollo humano ni benchmark
   de modelos: preséntalos como trabajo futuro, sin resultados.
-- Donde 05-evaluacion-paso-15.md trate lo mismo que 01-correcciones.md o 02-avances.md, manda el 05. Respeta
-  sus marcas [CONFIRMAR] y déjalas señaladas.
+- Donde 05-evaluacion-paso-15.md trate lo mismo que 01-correcciones.md o 02-avances.md, manda el 05.
 - Los autores son Julián Andrés Cuadros Muñoz y Laura Catalina Riveros Flórez. No atribuyas
   autoría a herramientas.
 - Mantén el estilo del documento: voz impersonal, tiempo pasado, coma decimal y cifras con su
