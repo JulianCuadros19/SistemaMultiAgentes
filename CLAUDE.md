@@ -163,8 +163,9 @@ Mantener esta sección actualizada al cerrar cada paso.
   en `docs/anexos.md`; el PDF queda solo en local. «Contrato de diseño» pasa a ser
   «especificación de diseño» (prefijo `ED-`). Flujo de 17 nodos con tres puntos de control
   humano (N6, N9 y N17) y plan de pruebas del tester (N16); nuevo RF-38, total 38 RF.
-  Pendiente del equipo: actualizar el documento de tesis (RF-38, Tabla 23, Figura 7, Anexos B y C)
-  con la lista «Cambios para el documento de tesis» del ADR-0015, que incluye el RF-39.
+  Pendiente del equipo: actualizar el documento de tesis con el paquete de `docs/tesis/` (corte al
+  paso 14, contrastado con la versión de 112 páginas del 2026-11-04), que consolida los cambios de
+  los ADR-0004 y 0015 a 0017. Se actualiza al cerrar el paso 15.
 - **Paso 4: cerrado el 2026-10-08.** Esquemas Pydantic en `multiagente.core.esquemas`
   (ADR-0005): `BacklogHistorias` y `RequerimientoFormal` (Anexo A) y `EspecificacionDiseno`
   (Anexo B, con la validación 1: estructura y ausencia de ciclos). Validan el backlog y el RF-27
