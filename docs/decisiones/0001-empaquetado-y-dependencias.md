@@ -9,6 +9,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 > El ADR-0016 retira Langfuse de las dependencias: la traza por nodo vive en PostgreSQL.
 > El ADR-0017 instala el paquete en la imagen de la aplicación, editable y con las versiones
 > exactas del `.venv` como restricciones (`docker/aplicacion/versiones.txt`).
+> El ADR-0019 agrega el subpaquete `multiagente.evaluacion`, para la evaluación del objetivo 4.
+> No participa en el flujo del sistema ni agrega dependencias.
 
 ## Contexto y planteamiento del problema
 
