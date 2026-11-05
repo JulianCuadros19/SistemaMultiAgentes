@@ -59,7 +59,7 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   hasta 4,8 segundos. El tester detectó los dieciséis defectos inyectados sin rechazos falsos, se
   aprobaron 582 pruebas automatizadas y, de los diez requerimientos no funcionales, seis se
   cumplieron y cuatro de forma parcial.»
-- **Debe decir** (propuesta): «Se obtuvo un producto mínimo viable, empaquetado en contenedores, ejecutable
+- **Debe decir:** «Se obtuvo un producto mínimo viable, empaquetado en contenedores, ejecutable
   en la infraestructura de la empresa. En la última corrida sobre veinte casos sintéticos, dieciséis módulos
   quedaron validados, once en la primera versión, y cuatro sesiones escalaron a la revisión humana, en 6,6
   minutos de media y 10,3 como máximo, frente a un límite de 20, con un costo medio de 0,40 dólares por
@@ -193,14 +193,15 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 
 - **Dice hoy:** «A modo de ejemplo, la ¡Error! No se encuentra el origen de la referencia. reproduce
   el prompt de sistema del nodo de diálogo del agente elicitador en su versión vigente al cierre del
-  desarrollo…»
-- **Debe:** reinsertar la figura «Prompt de sistema del nodo de diálogo del agente elicitador», con
-  la versión 1.10 (`prompts/elicitador/dialogo.md`), y rehacer la referencia. Si no, reescribir la
-  oración para remitir al Anexo F.
+  desarrollo; los prompts de los demás nodos que invocan un modelo se presentan en el Anexo F.»
+- **Debe decir:** «Los prompts de sistema de todos los nodos que invocan un modelo, incluido el del nodo de
+  diálogo del agente elicitador, se presentan en el Anexo F en su versión vigente al cierre del desarrollo.»
 - **Por qué:**
   - la figura ya no existe en el cuerpo, y la lista de figuras la conserva como «¡Error! Marcador no
     definido» (C-45);
   - la misma referencia rota está en el Anexo F (C-44).
+- **Si el equipo prefiere reinsertar la figura:** va con la versión 1.10 del prompt, en
+  `06-prompts-anexo-f.md`, y se rehace la referencia.
 
 ### C-14 · 3.4, p. 60
 
@@ -261,14 +262,16 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 - **Debe decir:** agregar después «Los registros ADR-0015 a ADR-0017 llevaron la arquitectura a su
   versión 1.5: enmiendas de los requerimientos desde la revisión final, presupuesto por módulo con
   pausa y traza por nodo, y entrega en contenedores con Azure OpenAI como único proveedor de
-  modelos de lenguaje.»
+  modelos de lenguaje. El registro ADR-0020 agregó, en la versión 1.6, un despliegue de demostración en
+  Azure.»
 
 ## Capítulo 4
 
 ### C-19 · Introducción del capítulo, p. 64
 
 - **Debe:** agregar a la enumeración de contenidos «la calidad de la primera salida y las enmiendas,
-  el control de costo y la traza por nodo, y el empaquetado en contenedores».
+  el control de costo y la traza por nodo, el empaquetado en contenedores y el despliegue de demostración
+  en Azure».
 
 ### C-20 · 4.2, p. 65
 
@@ -293,9 +296,9 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   - ADR-0015 «Calidad de la primera salida y enmiendas de los requerimientos desde N17»;
   - ADR-0016 «Control de costo y traza por nodo»;
   - ADR-0017 «Entrega en contenedores con Azure OpenAI»;
-  - ADR-0018 «Rediseño de la interfaz web»;
-  - ADR-0019 «Casos de referencia y líneas base»;
-  - ADR-0020 «Despliegue de demostración en Azure».
+  - ADR-0018 «Rediseño de la interfaz web por etapas»;
+  - ADR-0019 «Casos de referencia y líneas base del objetivo 4»;
+  - ADR-0020 «Despliegue de demostración en una máquina de Azure».
 
 ### C-22 · 4.6, p. 66
 
@@ -320,7 +323,10 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   - la pausa por presupuesto, con su ampliación;
   - la página «Traza por nodo» y el comando `multiagente traza`;
   - la operación con la composición: web en `http://127.0.0.1:8000/` y consola con `docker compose
-    run`.
+    run`;
+  - la organización de la web tras el rediseño (ADR-0018): la página de cada sesión se divide en cinco
+    etapas, con la línea del flujo y los tres puntos de control; el panel agrupa las sesiones según quién
+    debe actuar, y el cliente ve su avance en cuatro pasos.
 - **Fuente:** `02-avances.md`, sección 6.
 
 ### C-25 · 4.11, p. 70
@@ -339,20 +345,24 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   acceso remoto con autenticación y la comparación sistemática de modelos de lenguaje, previstos
   para versiones posteriores del sistema.»
 - **Debe decir:** «El sistema incorporó después el presupuesto que detiene la ejecución y la traza por
-  nodo, y se empaquetó en contenedores con un solo comando de arranque. Quedaron fuera el acceso
+  nodo, se empaquetó en contenedores con un solo comando de arranque y se desplegó para demostración en una
+  máquina virtual de Azure. Quedaron fuera el acceso
   remoto con un enlace por sesión para el cliente y la comparación sistemática de los modelos de
   lenguaje de cada nodo.»
 - **Por qué:** ADR-0016, ADR-0017, ADR-0019 y ADR-0020.
 
 ### C-27 · Secciones nuevas del capítulo 4
 
-Después de la 4.10 y antes de «Pruebas automatizadas», agregar tres secciones:
-- «Calidad de la primera salida y enmiendas desde la revisión final»;
-- «Control de costo y traza por nodo»;
-- «Empaquetado en contenedores con Azure OpenAI».
+Después de la 4.10 y antes de «Pruebas automatizadas», agregar cuatro secciones, en este orden:
+- 4.11 «Calidad de la primera salida y enmiendas desde la revisión final»;
+- 4.12 «Control de costo y traza por nodo»;
+- 4.13 «Empaquetado en contenedores con Azure OpenAI»;
+- 4.14 «Despliegue de demostración en Azure».
 
-El material está en `02-avances.md`, secciones 3 a 5. La numeración de las secciones siguientes se
-corre.
+- **Material:** `02-avances.md`, secciones 3 a 5, y `05-evaluacion-paso-15.md`, para la última.
+- **Enfoque:** en estas secciones se cuenta qué se hizo y por qué. Los resultados de las corridas van en 5.2.
+- **Numeración:** «Pruebas automatizadas» pasa a 4.15, «Ejemplo de una sesión completa» a 4.16 y «Producto
+  obtenido» a 4.17, con sus referencias cruzadas.
 
 ## Capítulo 5
 
@@ -366,8 +376,9 @@ corre.
   tras el pulido y una última corrida con el sistema final.»
 - **Tabla 24:**
   - «582 pruebas en la última ejecución» → «909 pruebas en la última ejecución».
-  - Nivel «Desempeño del tester»: agregar que el corpus se amplió a 21 defectos y 3 controles en el
-    ADR-0015.
+  - Nivel «Desempeño del tester», con el corpus ampliado en el ADR-0015:
+    - casos: «21 defectos inyectados y 3 controles, 3 corridas»;
+    - criterio: «Detectar los 21 defectos con su regla y aprobar los controles».
   - Nivel «Corrida final de evaluación»:
     - debe decir «Corrida ampliada de evaluación»;
     - qué verifica: el flujo completo sobre necesidades variadas, antes y después del pulido del
@@ -536,7 +547,7 @@ control de la empresa y que los embeddings se generan localmente.
   arquitecto, pedir una enmienda de los requerimientos o cerrar la sesión.»
 
 **Fila nueva, RF-39:**
-- **Componente:** el que se elija en C-07.
+- **Componente:** «Orquestador y flujo iterativo» (C-07).
 - **Enunciado:** «Incorporar a los requerimientos vigentes, como una enmienda aprobada por el
   analista, una regla de negocio descubierta en la validación final, sin renumerar requerimientos
   ni escenarios; rehacer el plan de pruebas y corregir el módulo con el mismo diseño.»
@@ -571,14 +582,15 @@ elicitador.»
 
 ### C-44 · Anexo F, p. 108
 
-- **Dice hoy:** «…y los prompts de sistema de los nodos que invocan un modelo de lenguaje, en la
-  versión vigente al cierre del desarrollo, salvo el del nodo de diálogo del agente elicitador, que
-  se presenta en la ¡Error! No se encuentra el origen de la referencia.»
-- **Debe:**
-  - reparar la referencia (C-13);
-  - incluir los prompts vigentes que el anexo anuncia y que hoy no aparecen.
-
-  Las versiones están en `03-cifras.md`, sección 3, y los textos, en `prompts/<agente>/*.md`.
+- **Dice hoy:** «El presente anexo reúne las técnicas de prompting aplicadas en los agentes, que resume la
+  Tabla 36, y los prompts de sistema de los nodos que invocan un modelo de lenguaje, en la versión vigente al
+  cierre del desarrollo, salvo el del nodo de diálogo del agente elicitador, que se presenta en la ¡Error! No
+  se encuentra el origen de la referencia.»
+- **Debe decir:** «El presente anexo reúne las técnicas de prompting aplicadas en los agentes, que resume la
+  Tabla 36, y los prompts de sistema de los nodos que invocan un modelo de lenguaje, en la versión vigente al
+  cierre del desarrollo.»
+- **Debe además:** después de la Tabla 36, incluir los ocho prompts de `06-prompts-anexo-f.md`, tal cual y en
+  letra monoespaciada de 9 puntos. Hoy el anexo los anuncia, pero no aparecen.
 - **Opcional, en la Tabla 36:**
   - la «segunda opinión» del juez de N14, como verificación de un rechazo;
   - los «recorridos» de los escenarios en N8, como descomposición en pasos verificables.
@@ -606,15 +618,6 @@ elicitador.»
 - **Las referencias del texto** («Tabla 30», «Tabla 32 del Anexo C», «Tabla 35 del Anexo E»,
   «Tabla 38 del Anexo H», etc.) **coinciden con las leyendas,** no con las listas.
 - **Arreglo:**
-  - decidir si se reinsertan la figura del prompt (C-13) y la tabla de indicadores;
+  - la figura del prompt no se reinserta (C-13), y su línea sale de la lista;
+  - la tabla de indicadores se reinserta al final de 6.4, con el contenido de `05-evaluacion-paso-15.md`;
   - después, actualizar los campos de ambas listas y de las referencias cruzadas.
-- **Si se quiere reinsertar la tabla de indicadores** (requerimientos, Tabla 10):
-
-  | Objetivo | Indicador | Estado |
-  |---|---|---|
-  | OE1 | 100 % del documento aprobado | Cumplido, con acta |
-  | OE2 | 100 % del documento aprobado | Cumplido, con acta |
-  | OE3 | 100 % del producto mínimo viable funcional | Cumplido: los cuatro agentes y el orquestador operan de extremo a extremo; en la última corrida, 16 de 20 módulos validados y 4 escalados a la revisión humana |
-  | OE4 | 90 % de aplicación de las pruebas | Cumplido: se aplicaron todos los niveles del plan vigente; la comparación con desarrollo humano quedó como trabajo futuro |
-
-  Que el equipo confirme estos estados antes de publicarlos.

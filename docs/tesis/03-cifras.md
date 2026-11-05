@@ -16,8 +16,8 @@ del sistema, sin la espera humana ni el cliente simulado, salvo que se diga otra
 |---|---|---|
 | Requerimientos funcionales | 39 (RF-01 a RF-39) | `docs/requerimientos.md` 1.3 |
 | Requerimientos no funcionales | 10 (RNF-01 a RNF-10) | `docs/requerimientos.md` 1.3 |
-| Nodos del grafo | 17, de ellos 5 con modelo de lenguaje (N3, N5, N8, N10 y N14) | `docs/arquitectura.md` 1.5 |
-| Puntos de control humano | 3: N6, N9 y N17 | `docs/arquitectura.md` 1.5 |
+| Nodos del grafo | 17, de ellos 5 con modelo de lenguaje (N3, N5, N8, N10 y N14) | `docs/arquitectura.md` 1.6 |
+| Puntos de control humano | 3: N6, N9 y N17 | `docs/arquitectura.md` 1.6 |
 | Registros de decisión | 20 (ADR-0001 a ADR-0020) | `docs/decisiones/` |
 | Colecciones de conocimiento | 4 | ADR-0007 |
 | Documentos del corpus | 36 | ingesta del 2026-11-04 |
@@ -127,6 +127,9 @@ desarrollador.
 | Corrida de 3 casos tras los ajustes de robustez | 3 de 3 validados en la v1, 14,7 min en total, 0,23 a 0,32 USD por módulo | ADR-0014 |
 
 ## 8. Corrida ampliada de 20 casos sintéticos
+
+**«Corrida final» es aquí la corrida tras el pulido del ADR-0015.** La última corrida, con el sistema final, está en la
+sección 13.
 
 **Método:**
 - **Casos:** 20 casos sintéticos, de 3 a 4 por arquitectura del catálogo, en

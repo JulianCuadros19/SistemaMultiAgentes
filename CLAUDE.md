@@ -142,7 +142,7 @@ PostgreSQL (ADR-0016) · pytest · Ruff.
 Mantener esta sección actualizada al cerrar cada paso.
 
 - Objetivos 1 y 2: completados, documentos aprobados.
-- Objetivo 3: en curso.
+- Objetivos 3 y 4: completados, con los pasos 0 a 15 cerrados.
 - **Paso 0: cerrado el 2026-09-24.** Verificado en Ubuntu 26.04.1 LTS sobre WSL2:
   Python 3.14.4 con `python3.14-venv`, Git 2.53.0, Docker 29.8.0 y Docker Compose v5.5.1
   mediante la integración WSL de Docker Desktop (`hello-world` se ejecuta).
@@ -164,8 +164,8 @@ Mantener esta sección actualizada al cerrar cada paso.
   «especificación de diseño» (prefijo `ED-`). Flujo de 17 nodos con tres puntos de control
   humano (N6, N9 y N17) y plan de pruebas del tester (N16); nuevo RF-38, total 38 RF.
   Pendiente del equipo: actualizar el documento de tesis con el paquete de `docs/tesis/` (corte al
-  paso 14, contrastado con la versión de 112 páginas del 2026-11-04), que consolida los cambios de
-  los ADR-0004 y 0015 a 0017. Se actualiza al cerrar el paso 15.
+  paso 15, contrastado con la versión de 112 páginas del 2026-11-04), que consolida los cambios de
+  los ADR-0004 y 0015 a 0020.
 - **Paso 4: cerrado el 2026-10-08.** Esquemas Pydantic en `multiagente.core.esquemas`
   (ADR-0005): `BacklogHistorias` y `RequerimientoFormal` (Anexo A) y `EspecificacionDiseno`
   (Anexo B, con la validación 1: estructura y ausencia de ciclos). Validan el backlog y el RF-27

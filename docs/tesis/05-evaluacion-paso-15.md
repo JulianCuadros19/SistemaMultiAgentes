@@ -40,7 +40,7 @@ sustituye la entrega en la infraestructura de la empresa.
 
 ---
 
-## Capítulo 4: sección nueva, antes de «Producto obtenido»
+## Capítulo 4: sección nueva, después de «Empaquetado en contenedores con Azure OpenAI»
 
 ### Despliegue de demostración en Azure
 
@@ -75,10 +75,10 @@ los hallazgos que orientaron los ajustes iterativos.
 
 **Agregar al final de la sección:**
 
-La tasa de errores medida con el tester del propio sistema no permite comparar enfoques, porque cada uno tendría sus propias
-pruebas y el tester juzga contra los requerimientos que el mismo sistema elicitó. Por eso se agregó una segunda vara:
-**pruebas de aceptación de referencia**, escritas desde la ficha de cada caso sintético y comunes a todos los enfoques. Cada
-prueba verifica solo lo que la ficha dice sin ambigüedad: ejemplos con cifras, reglas, rangos y mensajes textuales. El oráculo
+La tasa de errores medida con el tester del propio sistema no permitía comparar enfoques, porque cada uno tendría sus propias
+pruebas y el tester juzga contra los requerimientos que el mismo sistema elicitó. Por eso se agregó un segundo instrumento:
+**pruebas de aceptación de referencia**, en adelante el oráculo, escritas desde la ficha de cada caso sintético, que describe lo
+que sabe el cliente simulado, y comunes a todos los enfoques. Cada prueba verificó solo lo que la ficha dice sin ambigüedad: ejemplos con cifras, reglas, rangos y mensajes textuales. El oráculo
 se validó antes de medir: en cada caso, una implementación de control pasó todas las verificaciones y cada uno de los 35
 mutantes, variantes con un defecto a propósito, falló al menos una. Un autor revisó las verificaciones frente a
 cada ficha.
@@ -97,6 +97,8 @@ arquitectura:
   misma información que el sistema.
 - **Modelo de un solo prompt:** un solo modelo que recibió en un mensaje lo que sabe el cliente, sin diálogo. Es el mejor caso
   para un modelo solo, porque supone que alguien ya hizo la elicitación.
+
+Antes de medir se planteó como hipótesis que el sistema tendría menos errores que un solo modelo de lenguaje.
 
 Se usaron nueve casos sintéticos, sin datos de Realtix, que cubren las seis arquitecturas del catálogo. Tres se eligieron antes
 de medir; los otros seis fueron el primer caso de cada arquitectura, por número, sin mirar su resultado. Las pruebas de esos seis
@@ -243,7 +245,10 @@ valores de la Tabla 26.
 | Defectos no detectados, falsos negativos | 0 |
 | Controles aprobados, verdaderos negativos | 9 |
 | Rechazos de código correcto, falsos positivos | 0 |
-| Precisión, sensibilidad, F1 y exactitud | 1,00 |
+| Precisión | 1,00 |
+| Sensibilidad o recall | 1,00 |
+| F1-score | 1,00 |
+| Exactitud | 1,00 |
 
 Fuente: Elaboración propia con base en [55].
 
@@ -358,6 +363,21 @@ en la primera versión en otra. El modelo de comparación es muy capaz. El orác
 permite medir el valor de los puntos de control humano. Finalmente, no se comparó el sistema con desarrollo humano, por lo que el ahorro frente
 al trabajo manual no quedó cuantificado.
 
+**Agregar al final de la sección, con la tabla de indicadores que hoy solo aparece en la lista de tablas:**
+
+La [Tabla G] resume el cumplimiento de los indicadores de cada objetivo específico.
+
+**[Tabla G]. Cumplimiento de los indicadores por objetivo específico**
+
+| Objetivo específico | Indicador | Estado |
+|---|---|---|
+| OE1. Definir metas y requerimientos | 100 % del documento aprobado | Cumplido, con acta |
+| OE2. Diseñar la arquitectura | 100 % del documento aprobado | Cumplido, con acta |
+| OE3. Desarrollar los agentes | 100 % del producto mínimo viable funcional | Cumplido: los cuatro agentes y el orquestador operan de extremo a extremo; en la última corrida, 16 de 20 módulos quedaron validados y 4 escalaron a la revisión humana |
+| OE4. Evaluar el desempeño | 90 % de aplicación de las pruebas | Cumplido: se aplicaron los once niveles del plan; la comparación con desarrollo humano quedó como trabajo futuro |
+
+Fuente: Elaboración propia.
+
 ---
 
 ## 6.5 Impactos del proyecto
@@ -374,12 +394,14 @@ obtienen los artefactos y los controles de la [Tabla D]. El ahorro frente al des
 
 **Reemplazar el párrafo de la evaluación por:**
 
-La evaluación confirmó que el sistema opera dentro de sus umbrales de tiempo y de costo, con la excepción de un turno de diálogo, pero
-no que produzca menos errores que un solo modelo de lenguaje: en módulos pequeños y con un modelo capaz, ambos enfoques escribieron código
+La evaluación confirmó que el sistema opera dentro de su límite de tiempo por módulo y de su presupuesto, con la excepción de un turno
+de diálogo, pero no que produzca menos errores que un solo modelo de lenguaje: en módulos pequeños y con un modelo capaz, ambos enfoques escribieron código
 correcto cuando tuvieron la información, y el sistema costó el doble o más. El valor de la arquitectura multiagente no estuvo en la corrección del
 código, sino en lo que la rodea: convertir una conversación en requerimientos trazables, elegir el diseño de un catálogo cerrado, validar de
 forma independiente y dejar la decisión final en manos de una persona. También quedó claro su principal riesgo: cada paso de la cadena puede
-perder información, y un validador solo es tan bueno como los requerimientos contra los que juzga.
+perder información, y un validador solo es tan bueno como los requerimientos contra los que juzga. En conjunto, el producto mínimo viable
+constituye para Realtix un activo tecnológico propio y una base verificable para incorporar IA generativa a su fábrica de software, en línea
+con la colaboración entre personas e IA que promueve la Industria 5.0 [2].
 
 ---
 
@@ -396,6 +418,7 @@ perder información, y un validador solo es tan bueno como los requerimientos co
 - Evaluar el sistema con módulos de mayor tamaño, donde la descomposición por agentes podría aportar más, y repetir cada caso más veces.
 - Comparar el sistema con el desarrollo humano en casos reales de Realtix, para cuantificar el ahorro de tiempo y de costo, y comparar de forma
   sistemática los modelos asignados a cada nodo.
+- Ampliar el conjunto de defectos inyectados y los casos de prueba con casos reales anonimizados.
 - Filtrar la colección de dominio de negocio cuando la necesidad no pertenezca al dominio.
 - Reducir las fallas del primer intento del agente desarrollador, guardando las salidas rechazadas para su diagnóstico y reforzando su prompt.
 - Con datos reales de Realtix, emplear despliegues de zona de datos de EE. UU. y evaluar qué fragmentos de las bases de conocimiento pueden
@@ -406,16 +429,96 @@ perder información, y un validador solo es tan bueno como los requerimientos co
 
 ---
 
-## Anexo D: entradas nuevas, en el formato de la tabla de registros
+## Anexo D: entradas nuevas, en el formato de la Tabla 34
 
-**ADR-0018. Rediseño de la interfaz web.** Contexto: las pantallas no mostraban el avance de una sesión por etapas. Decisión: organizar cada sesión
-en cinco etapas con la línea del flujo y los tres puntos de control, y agrupar el panel según quién debe actuar. Consecuencia: se usa sin
-recursos externos, con fuentes servidas por la aplicación.
+Las de los ADR-0015 a ADR-0017 están en `02-avances.md`, sección 7.
 
-**ADR-0019. Casos de referencia y líneas base.** Contexto: la tasa de errores con el tester propio no permitía comparar enfoques. Decisión: un oráculo
-común de pruebas de aceptación, en nueve casos, frente a dos líneas base de un solo modelo de lenguaje; se retiró la implementación manual, por no
-ser independiente. Consecuencia: el sistema no tuvo menos errores y costó el doble o más, y se precisó dónde está su valor.
+### ADR-0018. Rediseño de la interfaz web por etapas
 
-**ADR-0020. Despliegue de demostración en Azure.** Contexto: se necesitaba un enlace público. Decisión: una máquina virtual con la misma composición y
-un proxy con TLS y contraseña, solo con datos sintéticos. Consecuencia: el enlace funciona sin cambiar el sistema, con una sola contraseña y sin tope
-global de gasto.
+**Estado y fecha.** Aceptada el 05/11/2026. Ajustó el ADR-0014 en la presentación de la web.
+
+**Contexto y problema.** La web del ADR-0014 cumplía sus funciones, pero cada página era una sola columna plana. La sesión mostraba solo la
+pausa pendiente, sin los requerimientos ni el diseño aprobados y sin indicar en qué punto del flujo estaba. El panel mezclaba todas las sesiones,
+la vista del cliente nombraba al agente con un término que el cliente no tenía por qué conocer, y la trazabilidad y la traza se mostraban como
+texto plano. El equipo pidió un diseño más propio, profesional y limpio, sin cambiar las funciones.
+
+**Opciones consideradas.**
+- Para la sesión: A. Etapas en la misma página, con pestañas que son anclas. B. Una página por etapa. C. La página plana, con secciones plegables.
+- Para la trazabilidad y la traza: A. Un conversor propio del Markdown que escriben los generadores. B. Una biblioteca de Markdown. C. Plantillas
+  HTML propias, armadas desde el estado.
+- Para la tipografía: A. Una familia libre servida por la aplicación. B. Las fuentes del sistema.
+
+**Decisión.** Se eligió la opción A en los tres casos. La sesión se organizó en cinco etapas, conversación, requerimientos, diseño, desarrollo y
+pruebas, y aprobación final, con una línea del flujo que marca con rombos los tres puntos de control humano. Se ve una etapa a la vez, y cada una
+conserva lo ya aprobado. El panel agrupó las sesiones según quién debe actuar, y la vista del cliente mostró su avance en cuatro pasos y presentó
+al elicitador como «Equipo». La tipografía fue IBM Plex, con licencia libre y servida por la aplicación, sin recursos de terceros.
+
+**Consecuencias.** Favorables: el recorrido de la sesión, sus puntos de control y lo que espera se leen de un vistazo; el panel separa lo que exige
+al equipo, sin dependencias nuevas de Python. Desfavorables: hay más código de plantillas y estilos, y el conversor debe aprender cualquier sintaxis
+nueva de los documentos.
+
+**Verificación.** Se aprobaron 771 pruebas unitarias, 34 de integración, 19 de representaciones vectoriales y 33 del entorno aislado. Se revisaron
+capturas en claro, en oscuro y a 390 píxeles de ancho con Edge, y el contraste de cada par de texto y fondo superó 4,5:1. No se verificaron Firefox,
+Safari ni un lector de pantalla.
+
+### ADR-0019. Casos de referencia y líneas base del objetivo 4
+
+**Estado y fecha.** Aceptada el 05/11/2026. Ajustó el ADR-0001, con el subpaquete de evaluación.
+
+**Contexto y problema.** La tasa de errores se medía con el tester del propio sistema, contra los requerimientos que el mismo sistema elicitó, lo que
+no permitía comparar enfoques. Además, quedaban sin calcular las métricas RAGs y sin medir las decisiones 37 a 39 del ADR-0015.
+
+**Opciones consideradas.**
+- Para el oráculo: A. Pruebas de aceptación de referencia escritas desde la ficha de cada caso. B. El tester del sistema, con los requerimientos de una
+  de sus corridas. C. Un juez de modelo que leyera la ficha y el código.
+- Para el modelo de comparación: A. Que conversara con el mismo cliente simulado. B. Que recibiera en un mensaje lo que sabe el cliente. C. Que recibiera
+  los requerimientos aprobados por el analista.
+- Para la implementación manual: A. Los autores, cronometrando cada fase. B. Desarrolladores de Realtix. C. Una estimación de la empresa.
+
+**Decisión.** Se eligió la opción A para el oráculo, porque el tester mide contra los requerimientos del propio sistema y un juez de modelo no ejecuta el
+código. Se usaron como líneas base las opciones A y B del modelo de comparación, con el mismo modelo del agente desarrollador. La implementación manual,
+prevista al inicio, se retiró antes de ejecutarla: Realtix no pudo compartir sus desarrollos por el acuerdo de confidencialidad, y la de los autores no
+habría sido independiente. Se descartó el código abierto de repositorios públicos, que no implementa estas fichas ni registra tiempos ni costos. Se
+usaron nueve casos sintéticos, con las seis arquitecturas, y un tope de 17 USD para todo el paso.
+
+**Consecuencias.** Favorables: los tres enfoques se midieron con el mismo instrumento, las tablas se regeneran desde los resultados guardados y se
+precisó dónde está el valor del sistema. Desfavorables: el sistema no tuvo menos errores y costó el doble o más, cada implementación necesitó un adaptador
+escrito a mano, seis de los nueve casos tuvieron una sola corrida por enfoque y el ahorro frente al trabajo manual no quedó cuantificado.
+
+**Verificación.** En cada caso, la implementación de control pasó todas las verificaciones y cada uno de los 35 mutantes falló al menos una. Los oráculos
+de los casos nuevos se versionaron antes de correr las líneas base. Un autor revisó los oráculos frente a las fichas y cinco juicios de las métricas RAGs.
+Todo el paso costó 16,74 USD de inferencia.
+
+### ADR-0020. Despliegue de demostración en una máquina de Azure
+
+**Estado y fecha.** Aceptada el 05/11/2026. Ajustó el acceso a la web del ADR-0017, solo en la máquina de demostración.
+
+**Contexto y problema.** El ADR-0017 dejó la web solo en la máquina donde corre. El equipo necesitaba un enlace público para compartir el sistema, pagado
+con créditos de estudiante y con la máquina apagada mientras no se usara.
+
+**Opciones consideradas.** A. Una máquina virtual con la composición y un proxy con TLS y contraseña. B. Azure Container Apps o Container Instances. C. Solo
+un túnel SSH, sin enlace público.
+
+**Decisión.** Se eligió la opción A, porque los servicios administrados no ofrecen el Docker del anfitrión con que la aplicación crea el entorno aislado, y
+un túnel no da un enlace público. Se usó una máquina de 4 vCPU y 16 GiB en Central US. Un archivo aparte de la composición agregó el proxy, único servicio
+publicado hacia afuera, con TLS automático y una sola contraseña, y bajó el presupuesto de cada sesión a 1 USD. La máquina se apaga desde el portal, sin
+apagado automático.
+
+**Consecuencias.** Favorables: el enlace funciona sin cambiar el sistema ni la composición de la entrega. Desfavorables: hay una sola contraseña y ningún
+enlace por sesión para el cliente, la clave de Azure OpenAI queda también en esa máquina, no hay un tope global de gasto y, si queda encendida, sigue
+cobrando. Solo admite datos sintéticos, de modo que no reemplaza el despliegue en la infraestructura de la empresa con datos reales.
+
+**Verificación.** La composición arrancó desde cero en unos 5 minutos. Desde afuera, la web respondió por HTTPS con certificado, con 401 sin contraseña y 200
+con ella, y los puertos de la base de datos, de la aplicación y de las representaciones vectoriales no respondieron. Un módulo real quedó validado en la
+primera versión, en 3,15 minutos y por 0,198 USD, y tras un reinicio el enlace volvió en 32 segundos con su sesión.
+
+### Ajustes a las entradas existentes
+
+Además de los que indica `02-avances.md`, sección 7, agregar en «Estado y fecha»:
+
+| Registro | Agregar |
+|---|---|
+| ADR-0001 | Ajustada también por el ADR-0019, que agregó el subpaquete de evaluación. |
+| ADR-0014 | Ajustada también por el ADR-0018, en la presentación de la web. |
+| ADR-0015 | Sus decisiones 37 a 39 se midieron en el ADR-0019. |
+| ADR-0017 | Ajustada por el ADR-0020, solo en la máquina de demostración, que agregó acceso remoto con TLS y contraseña. |

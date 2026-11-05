@@ -1,4 +1,4 @@
-# Paquete de contexto para actualizar el documento de tesis
+# Paquete para actualizar el documento de tesis
 
 **Corte:** 5 de noviembre de 2026, al cierre del paso 15 del plan de trabajo.
 
@@ -9,84 +9,75 @@ Este paquete es un documento derivado. La fuente de verdad son los documentos de
 - `docs/requerimientos.md`, versión 1.3;
 - `docs/arquitectura.md`, versión 1.6;
 - los registros de decisión de `docs/decisiones/`;
-- las mediciones de `docs/mediciones/`.
+- las mediciones de `docs/mediciones/` y `docs/evaluacion/informe-objetivo-4.md`.
 
 ## Qué contiene
 
 | Archivo | Para qué sirve |
 |---|---|
 | `01-correcciones.md` | Lo que el documento dice hoy y ya no es cierto, en su orden y con su página, y lo que debe decir. 46 entradas |
-| `02-avances.md` | Lo que el documento todavía no cuenta y dónde va (ver la lista debajo) |
-| `03-cifras.md` | Todas las cifras con su fuente. Es la referencia única: ninguna cifra se toma de otro lado |
+| `02-avances.md` | Material para las secciones nuevas del capítulo 4 y las entradas de los ADR-0015 a ADR-0017 del Anexo D |
+| `03-cifras.md` | Las cifras con su fuente. Es la referencia: ninguna cifra se toma de otro lado |
 | `04-arquitectura-final.md` | La arquitectura vigente: nodos, flujo con su diagrama, estado, datos, conocimiento, modelos y despliegue. Sirve para rehacer la Figura 8 y la Tabla 35 |
-| `05-evaluacion-paso-15.md` | **El texto de la evaluación, listo para el documento:** capítulos 1.6.4, 3.8, 4 (despliegue), 5, 6.4, 6.5, 7, 8 y Anexo D. Manda sobre `01` y `02` en lo que se crucen |
-
-**Lo que trae `02-avances.md`:**
-- la corrida ampliada de 20 casos, con su línea base y su corrida final;
-- la calidad de la primera salida y las enmiendas;
-- el control de costo y la traza por nodo;
-- la entrega en contenedores con Azure OpenAI;
-- las tres entradas nuevas del Anexo D;
-- lo pendiente.
+| `05-evaluacion-paso-15.md` | El texto de la evaluación, ya redactado: 1.6.4, 3.8, 4.14, capítulo 5, 6.4, 6.5, 7, 8 y las entradas de los ADR-0018 a ADR-0020 del Anexo D |
+| `06-prompts-anexo-f.md` | Los ocho prompts vigentes, para el Anexo F |
 
 ## Cómo usarlo
 
-1. **Archivos para la conversación de redacción:**
-   - **Siempre:** los cinco archivos de esta carpeta.
-   - **Como respaldo, si caben:**
-     - `docs/evaluacion/informe-objetivo-4.md`;
-     - `docs/requerimientos.md`;
-     - `docs/arquitectura.md`;
-     - `docs/decisiones/0015-calidad-de-la-primera-salida.md`;
-     - `docs/decisiones/0016-control-de-costo-y-traza-por-nodo.md`;
-     - `docs/decisiones/0017-entrega-en-contenedores-con-azure-openai.md`.
-   - **Para el Anexo F:** los prompts de `prompts/<agente>/*.md`.
-2. **Mensaje:** pegar el mensaje de abajo.
-3. **Orden de trabajo:** primero las correcciones, después los avances. Pedir los cambios por
-   capítulo y revisarlos contra `03-cifras.md` antes de aceptarlos.
-4. **Antes de entregar el documento,** el equipo decide los puntos abiertos:
-   - el estado del RNF-04 (`01-correcciones.md`, C-30);
-   - el componente del RF-39 (C-07);
-   - si se reinsertan la figura del prompt y la tabla de indicadores (C-13 y C-45).
+1. **Revisa las decisiones del equipo** que trae el mensaje de abajo. Si cambias alguna, edítala en el mensaje antes de pegarlo.
+2. **Adjunta los seis archivos numerados** a la conversación donde está el documento. Este LEEME no hace falta.
+3. **Pega el mensaje.**
+4. **Revisa cada tanda** contra `03-cifras.md` antes de dar el visto bueno a la siguiente.
+5. **En Word, al terminar:** `Ctrl+A` y `F9` para actualizar la tabla de contenido, las listas y las referencias.
 
 ## Mensaje para pegar
 
 ```text
-Te comparto el paquete de contexto del sistema multiagente al 5 de noviembre de 2026, al cierre
-del paso 15 del plan de trabajo. Úsalo para actualizar el documento de tesis en tres tiempos.
+Actualiza mi documento de tesis con los seis archivos adjuntos. Son el paquete definitivo, con corte al 5 de noviembre de 2026, y están contrastados con la versión de 112 páginas del 4 de noviembre. Si un pasaje ya no está igual, ubica el equivalente y aplica el sentido del cambio. Si no lo encuentras, dímelo; no lo inventes.
 
-1. Correcciones. Aplica 01-correcciones.md en el orden del documento. Cada entrada trae la
-   ubicación, con la página de la versión del 4 de noviembre, lo que dice hoy, lo que debe decir y
-   por qué. Si un pasaje ya no está igual, ubica el equivalente y aplica el sentido de la
-   corrección. Las entradas marcadas como decisión del equipo no las resuelvas: déjalas señaladas.
-2. Avances. Redacta lo nuevo con 02-avances.md: las tres secciones nuevas del capítulo 4, la
-   actualización de los capítulos 5 y 6, las conclusiones y las recomendaciones, y las tres
-   entradas nuevas del Anexo D en el formato de la Tabla 34. Para la Figura 8 y la Tabla 35 del
-   Anexo E usa 04-arquitectura-final.md.
-3. Evaluación. Lleva al documento el texto de 05-evaluacion-paso-15.md, que ya está redactado, y numera sus
-   tablas nuevas.
+QUÉ ES CADA ARCHIVO
+- 01-correcciones.md: lo que el documento dice hoy y ya no es cierto, y lo que debe decir (entradas C-01 a C-46).
+- 02-avances.md: material para las secciones nuevas del capítulo 4 y las entradas de los ADR-0015 a ADR-0017 del Anexo D.
+- 03-cifras.md: la referencia de cifras, con su fuente.
+- 04-arquitectura-final.md: la arquitectura vigente, para la Figura 8 y la Tabla 35.
+- 05-evaluacion-paso-15.md: el texto de la evaluación, ya redactado, y las entradas de los ADR-0018 a ADR-0020 del Anexo D.
+- 06-prompts-anexo-f.md: los ocho prompts vigentes, para el Anexo F.
 
-Reglas:
-- Toma toda cifra de 03-cifras.md tal cual, con su unidad. No la recalcules ni la redondees de
-  otra forma. Si necesitas una cifra que no está, pregunta antes de escribirla.
-- Conserva la terminología del documento: especificación de diseño (nunca contrato), requerimiento
-  formal, punto de control humano, revisión o validación final, entorno aislado, enmienda, traza
-  por nodo y presupuesto por módulo.
+Si dos fuentes no coinciden, manda este mensaje, luego 05, luego 01 y luego 02.
+
+DECISIONES DEL EQUIPO, YA TOMADAS
+1. El RNF-04 queda «Cumplido parcialmente». El conteo final es de siete requerimientos no funcionales cumplidos y tres parciales.
+2. El RF-39 va en el componente «Orquestador y flujo iterativo», que pasa de 3 a 4. El total es de 39 requerimientos funcionales.
+3. La figura del prompt no se reinserta: 3.4 y el Anexo F quedan con el texto de C-13 y C-44.
+4. La tabla de indicadores se reinserta al final de 6.4, con el contenido del archivo 05.
+5. El Anexo F incluye los ocho prompts completos, en letra monoespaciada de 9 puntos.
+
+ORDEN DE TRABAJO
+Trabaja por tandas. Al terminar cada una, dime qué cambiaste y qué no pudiste aplicar, y espera mi visto bueno antes de seguir.
+1. Preliminares y capítulos 1 a 3: C-01 a C-18, más 1.6.4 y 3.8 del archivo 05.
+2. Capítulo 4: C-19 a C-27. Redacta las secciones nuevas con las secciones 3 a 6 de 02, y la del despliegue con 05.
+3. Capítulo 5: todo lo del capítulo 5 en 05, más C-28, C-30 y C-31.
+4. Capítulos 6 a 8: C-32 a C-37, más 6.4, 6.5, 7 y 8 del archivo 05.
+5. Anexos: C-39 a C-44. Las entradas del Anexo D salen de 02, sección 7, y de 05, cada una con los aspectos de la Tabla 34.
+6. Listas: C-45. Actualiza la tabla de contenido, la lista de tablas, la de figuras y las referencias cruzadas.
+
+REGLAS
+- Si puedes editar el archivo de Word, hazlo con control de cambios y conserva sus estilos. Si no, dame el texto final de cada sección, listo para pegar, e indica dónde va.
+- Lleva tal cual el texto entre comillas « » de las entradas de 01 y el texto de 05. El material de 02 redáctalo con el estilo del documento.
+- Toma las cifras de 03 y 05 tal cual, con su unidad. No las recalcules ni las redondees de otra forma. Si necesitas una que no está, pregunta antes de escribirla.
+- Los números de tabla y de figura del paquete son los de la versión del 4 de noviembre. [Tabla A] a [Tabla G] son tablas nuevas. Numera todas en orden de aparición, con la leyenda arriba y «Fuente:» abajo, como las demás.
+- Conserva la terminología del documento: especificación de diseño (nunca contrato), requerimiento formal, punto de control humano, revisión o validación final, entorno aislado, enmienda, traza por nodo y presupuesto por módulo.
 - Todos los casos de prueba son sintéticos; no hay datos de Realtix.
-- Los modelos de lenguaje son solo los desplegados en Azure OpenAI y BGE-M3 corre local. No
-  plantees modelos de lenguaje locales ni de pesos abiertos.
-- La comparación con un solo modelo de lenguaje y las métricas RAGs ya se hicieron: sus cifras están en
-  05-evaluacion-paso-15.md y en 03-cifras.md. No se hizo comparación con desarrollo humano ni benchmark
-  de modelos: preséntalos como trabajo futuro, sin resultados.
-- Donde 05-evaluacion-paso-15.md trate lo mismo que 01-correcciones.md o 02-avances.md, manda el 05.
-- Los autores son Julián Andrés Cuadros Muñoz y Laura Catalina Riveros Flórez. No atribuyas
-  autoría a herramientas.
-- Mantén el estilo del documento: voz impersonal, tiempo pasado, coma decimal y cifras con su
-  unidad.
-- Al terminar, actualiza la lista de tablas, la de figuras y las referencias cruzadas. Hoy
-  arrastran una Tabla 28 y una Figura 9 que ya no existen (C-45).
+- Los modelos de lenguaje son solo los desplegados en Azure OpenAI y BGE-M3 corre local. No plantees modelos de lenguaje locales ni de pesos abiertos.
+- No se hizo comparación con desarrollo humano ni benchmark de modelos: preséntalos como trabajo futuro, sin resultados.
+- No suavices los resultados desfavorables: el sistema no tuvo menos errores que un solo modelo de lenguaje, costó y tardó el doble o más, y la exactitud del tester frente a las pruebas de referencia fue de 0,52.
+- Los autores son Julián Andrés Cuadros Muñoz y Laura Catalina Riveros Flórez. No atribuyas autoría a herramientas.
+- Mantén el estilo del documento: voz impersonal, tiempo pasado, coma decimal y cifras con su unidad.
+
+COMPROBACIÓN FINAL
+Al terminar, busca en el documento y repórtame dónde siguen apareciendo, fuera del Anexo D: «38 requerimientos», «38 functional», «582», «catorce registros», «186 fragmentos», «seis niveles», «six-level», «modelos remotos», «remote models», «¡Error!» y «[Tabla». Confirma también que el documento dice 39 requerimientos funcionales, 909 pruebas, veinte registros de decisión, once niveles de prueba, y siete requerimientos no funcionales cumplidos y tres parciales.
 ```
 
 ## Estado
 
-Actualizado al cerrar el paso 15. El benchmark de modelos en N3 y N5 quedó fuera por decisión del equipo.
+El benchmark de modelos en N3 y N5 quedó fuera por decisión del equipo (ADR-0019).

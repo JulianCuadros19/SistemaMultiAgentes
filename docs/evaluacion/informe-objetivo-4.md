@@ -6,7 +6,7 @@ de trabajo, 5 de noviembre de 2026. El diseño está en el ADR-0019.
 
 ## 1. Conclusión
 
-- **El sistema opera dentro de sus umbrales de tiempo y costo,** con una excepción: un turno de diálogo de
+- **El sistema opera dentro de su límite de tiempo por módulo y de su presupuesto,** con una excepción: un turno de diálogo de
   16,2 s frente a los 15 s del RNF-01.
 - **El sistema no entrega menos errores que un modelo de lenguaje solo.** Con las mismas pruebas de
   referencia, la tasa de errores es de 3,4 % en el sistema y de 5,4 % en el modelo con diálogo, y queda

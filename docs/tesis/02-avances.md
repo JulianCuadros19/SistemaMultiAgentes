@@ -9,7 +9,7 @@ de 3 casos tras los ajustes de robustez. Falta lo que vino después. El paso 15 
 - **Secciones 2 a 6:** material de redacción, con las cifras exactas. El documento lo redacta con
   su propio estilo.
 - **Sección 7:** las entradas nuevas del Anexo D, en el formato de la Tabla 34.
-- **Sección 8:** lo pendiente.
+- **Sección 8:** el paso 15, que está en `05-evaluacion-paso-15.md`.
 
 Toda cifra está también en `03-cifras.md`, con su fuente.
 
@@ -20,7 +20,7 @@ Toda cifra está también en `03-cifras.md`, con su fuente.
 | Corrida ampliada de línea base (sección 2) | Capítulo 5, como nivel nuevo del plan de pruebas y punto de partida de la evaluación |
 | Calidad de la primera salida y enmiendas (sección 3) | Capítulo 4, sección nueva después de la 4.10; sus resultados, en los capítulos 5 y 6 |
 | Control de costo y traza por nodo (sección 4) | Capítulo 4, sección nueva |
-| Entrega en contenedores con Azure OpenAI (sección 5) | Capítulo 4, sección nueva, antes de «Producto obtenido» |
+| Entrega en contenedores con Azure OpenAI (sección 5) | Capítulo 4, sección nueva, antes de «Pruebas automatizadas» |
 | Ajustes de las interfaces (sección 6) | Sección 4.9 |
 | ADR-0015, ADR-0016 y ADR-0017 (sección 7) | Tabla 21 de la sección 4.3 y Tabla 34 del Anexo D |
 | Paso 15 (sección 8) | `05-evaluacion-paso-15.md` indica dónde va cada parte |
@@ -173,7 +173,10 @@ analista y la versión de cada requerimiento enmendado.
 **Verificación.** En la prueba con costo, el requerimiento subió a la versión 0.2 con la regla y su
 escenario, y el módulo corregido salió aprobado, por 0,20 USD.
 
-### 3.5 Corrida final (fase 7, 4 de noviembre de 2026)
+### 3.5 Corrida tras el pulido (fase 7, 4 de noviembre de 2026)
+
+**Es la corrida anterior a la última.** En el documento, sus resultados y los de la última corrida van en 5.2, como
+indica `05-evaluacion-paso-15.md`.
 
 **Condiciones:** los mismos 20 casos y la misma política del analista que la línea base, con los
 prompts vigentes.
@@ -196,7 +199,7 @@ prompts vigentes.
   20,5 %, N5 el 10,8 % y N14 el 0,4 %.
 - **Total de la corrida:** 7,59 USD con el cliente simulado, en 866 llamadas y 2 h 1 min de reloj.
 
-| Criterio, fijado antes de medir | Meta | Línea base | Final | ¿Cumple? |
+| Criterio, fijado antes de medir | Meta | Línea base | Tras el pulido | ¿Cumple? |
 |---|---|---|---|---|
 | Validados en la primera versión | al menos 15 de 19 | 10 de 19 | 18 de 20 | sí |
 | Primeros intentos de N10 rechazados | como máximo 2 de 29 | 7 de 29 | 7 de 23 | no |
@@ -225,8 +228,8 @@ nueva, tres correcciones deterministas:
 - **Decisión 38:** el resumen solo muestra la obligatoriedad si el cliente la dijo sin negarla.
 - **Decisión 39:** «no aplica» al comienzo de una respuesta cuenta como no saber.
 
-**Estado de esas correcciones:** quedaron sin medir. Las verifican las pruebas sin costo y su
-aplicación, sin modelo, a las sesiones guardadas de la corrida.
+**Estado de esas correcciones:** se midieron en la última corrida, la del paso 15. Los resúmenes confirmados
+subieron a 19 de 20, y las sesiones en el límite de turnos bajaron de 5 a 1.
 
 ### 3.7 Pendientes que dejó
 
@@ -250,14 +253,14 @@ acumulado de la sesión.
    autoalojada exigía cinco contenedores más (web, worker, ClickHouse, Redis y MinIO), y las tablas
    cubren el RF-34.
 2. **El presupuesto por módulo es de 1,50 USD por defecto.** Cubre con holgura el máximo de la
-   corrida final (0,87 USD) y la sesión del equipo con más devoluciones (0,97 USD).
+   corrida tras el pulido (0,87 USD) y la sesión del equipo con más devoluciones (0,97 USD).
 3. **Pausa por presupuesto.** Al alcanzarlo, la sesión pausa. Una persona lo amplía, y queda
    registrado quién, cuánto, cuándo y por qué, o cierra la sesión.
 
 **Implementación:**
 - **Costo:** cada nodo corre envuelto y suma a la sesión el costo de sus llamadas al modelo.
 - **Comprobación:** antes de cada nodo con modelo (N3, N5, N8, N10 y N14) se comprueba el
-  presupuesto. Por eso el exceso queda acotado a un nodo: el más caro de la corrida final, N10,
+  presupuesto. Por eso el exceso queda acotado a un nodo: el más caro de la corrida tras el pulido, N10,
   costó hasta 0,20 USD.
 - **Traza:** queda en dos tablas nuevas:
   - `ejecuciones`, una fila por nodo, con su inicio, duración, costo y error;
@@ -453,8 +456,8 @@ ADR-0006, ADR-0008, ADR-0010, ADR-0011, ADR-0012, ADR-0013 y ADR-0014.
 **Consecuencias:**
 - **Favorables:**
   - lo que se agrega en la revisión final queda en los requerimientos y se prueba;
-  - la primera versión pasa al tester mucho más a menudo;
-  - ninguna sesión escala.
+  - en la corrida tras el pulido, la primera versión pasó al tester mucho más a menudo y ninguna sesión escaló,
+    aunque la última corrida mostró que ese resultado varía (ADR-0019).
 - **Desfavorables:**
   - el costo por módulo subió a 0,342 USD, al borde de la meta de 0,35;
   - la elicitación es más larga;
@@ -462,7 +465,7 @@ ADR-0006, ADR-0008, ADR-0010, ADR-0011, ADR-0012, ADR-0013 y ADR-0014.
     resúmenes confirmados.
 
 **Verificación:**
-- **Corrida final de 20 casos:** 20 de 20 módulos validados, 18 en la primera versión, frente a 10
+- **Corrida de 20 casos tras el pulido:** 20 de 20 módulos validados, 18 en la primera versión, frente a 10
   de 19 en la línea base. Ninguno escaló.
 - **Tiempo:** 5,3 min de media y 13,2 como máximo.
 - **Costo:** 0,342 USD de media por módulo; la corrida completa, 7,59 USD.
