@@ -25,7 +25,7 @@
   <h2>Guardadas</h2>
   {% if sesiones %}
   <table class="tabla">
-    <thead><tr><th>Abierta</th><th>Cliente · proyecto</th><th>Estado</th><th></th></tr></thead>
+    <thead><tr><th>Abierta</th><th>Cliente · proyecto</th><th>Estado</th><th>Gastado (USD)</th><th></th></tr></thead>
     <tbody>
       {% for vista in sesiones %}
       <tr>
@@ -38,6 +38,7 @@
           <span class="etiqueta {{ vista.fase.value }}">{{ vista.describir() }}</span>
           {% endif %}
         </td>
+        <td>{{ '%.4f' | format(vista.costo_usd) }}{% if vista.presupuesto_usd %} de {{ vista.presupuesto_usd }}{% endif %}</td>
         <td class="acciones">
           <a href="/sesiones/{{ vista.id_sesion }}">Operar</a>
           <a href="/conversacion/{{ vista.id_sesion }}">Vista del cliente</a>

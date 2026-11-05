@@ -13,6 +13,7 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionBaseDatos, ConfiguracionOrquestador
+from multiagente.interfaces.operacion import Operador
 from multiagente.llm.costos import ConsumoTokens
 from multiagente.llm.traza import RegistroLlamada
 from multiagente.orquestador.grafo import Nodo, construir_grafo
@@ -26,7 +27,7 @@ from multiagente.orquestador.traza import EjecucionNodo
 from multiagente.persistencia.conexiones import abrir_pool
 from multiagente.persistencia.ejecuciones import TrazaEjecuciones
 from multiagente.persistencia.migraciones import migrar
-from multiagente.persistencia.puntos_control import serializador
+from multiagente.persistencia.puntos_control import abrir_checkpointer, serializador
 
 pytestmark = pytest.mark.integracion
 
@@ -135,3 +136,42 @@ def test_el_grafo_deja_su_traza_en_postgresql(pool):
     assert {ejecucion.nodo for ejecucion in ejecuciones} == {nodo.value for nodo in Nodo}
     estado = app.get_state({"configurable": {"thread_id": recorrido.id_sesion}}).values
     assert sum(e.costo_usd for e in ejecuciones) == estado["control"].costo_acumulado_usd
+
+
+def test_el_operador_con_postgresql_pausa_por_presupuesto_y_lo_amplia(pool):
+    simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=Decimal("0.01"))
+    configuracion = ConfiguracionOrquestador(
+        _env_file=None, presupuesto_maximo_por_modulo_usd=Decimal("0.03")
+    )
+    traza = TrazaEjecuciones(pool)
+    with abrir_checkpointer() as checkpointer:
+        app = construir_grafo(simulacion.como_servicios(), configuracion, traza).compile(
+            checkpointer=checkpointer
+        )
+        operador = Operador(app, traza=traza)
+        id_sesion = operador.iniciar("Oficina", "Catastro", "Registrar mutaciones")
+        try:
+            operador.responder(id_sesion, "Analista")
+            operador.responder(id_sesion, "Ahorrar tiempo")
+            vista = operador.vista(id_sesion)
+            assert vista.pausa.punto == "presupuesto"
+            assert vista.costo_usd == Decimal("0.03")
+
+            # Otro proceso, con su propia conexión, la ve igual y puede ampliarla.
+            with abrir_checkpointer() as otro:
+                otra_app = construir_grafo(
+                    simulacion.como_servicios(), configuracion, traza
+                ).compile(checkpointer=otro)
+                avance = Operador(otra_app, traza=traza).ampliar_presupuesto(
+                    id_sesion, "Laura", Decimal("0.50")
+                )
+                assert avance.pausa.punto == "dialogo"
+            operador.responder(id_sesion, "El predio debe existir")
+            control = operador.estado(id_sesion)["control"]
+            assert control.presupuesto_usd == Decimal("0.50")
+            assert control.ampliaciones[0].gastado == Decimal("0.03")
+            ejecuciones = operador.ejecuciones(id_sesion)
+            assert sum(e.costo_usd for e in ejecuciones) == control.costo_acumulado_usd
+            assert "## Llamadas al modelo" in operador.traza(id_sesion)
+        finally:
+            checkpointer.delete_thread(id_sesion)

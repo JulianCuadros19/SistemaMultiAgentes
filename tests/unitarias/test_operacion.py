@@ -1,6 +1,7 @@
 """Capa de operación compartida por la consola y la web, con servicios simulados y sin Docker."""
 
 import json
+from decimal import Decimal
 
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
@@ -24,6 +25,7 @@ from multiagente.orquestador.simulacion import (
     ServiciosSimulados,
     guion_completo,
 )
+from multiagente.orquestador.traza import TrazaEnMemoria
 from multiagente.persistencia.puntos_control import serializador
 
 PRUEBA_QUE_PASA = "def test_radicado_con_anio():\n    assert True\n"
@@ -122,6 +124,42 @@ def test_una_regla_descubierta_en_n17_entra_a_los_requerimientos_exportados(
     trazabilidad = paquete["trazabilidad.md"]
     assert f"· Laura · aprobada · enmienda RF-01 v0.2: {regla}" in trazabilidad
     assert "| final | rechazado | Laura |" in trazabilidad
+
+
+def test_una_sesion_que_alcanza_su_presupuesto_se_amplia_o_se_cierra(tmp_path, entorno_falso):
+    simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=Decimal("0.01"))
+    configuracion = ConfiguracionOrquestador(
+        _env_file=None, presupuesto_maximo_por_modulo_usd=Decimal("0.05")
+    )
+    traza = TrazaEnMemoria()
+    app = construir_grafo(simulacion.como_servicios(), configuracion, traza).compile(
+        checkpointer=InMemorySaver(serde=serializador())
+    )
+    op = Operador(app, entorno_falso, traza=traza)
+    guion = guion_completo()
+    ampliada = op.iniciar("Oficina", guion.proyecto, guion.necesidad)
+    cerrada = op.iniciar("Oficina", guion.proyecto, guion.necesidad)
+    for id_sesion in (ampliada, cerrada):
+        for respuesta in guion.respuestas_cliente[:4]:
+            op.responder(id_sesion, respuesta)
+
+    vista = op.vista(ampliada)
+    assert vista.pausa.punto == "presupuesto"
+    assert (vista.costo_usd, vista.presupuesto_usd) == (Decimal("0.05"), Decimal("0.05"))
+    assert vista.describir().startswith("Detenida por presupuesto: gastó 0.05 de 0.05 USD")
+    with pytest.raises(ErrorOperacion, match="no espera dialogo"):
+        op.responder(ampliada, "Otra respuesta")
+    avance = op.ampliar_presupuesto(ampliada, "Laura", Decimal("0.04"))
+    assert "debe superar lo gastado" in avance.pausa.datos["aviso"]
+    avance = op.ampliar_presupuesto(ampliada, "Laura", Decimal("1.00"), "Cerrar el diálogo")
+    assert avance.pausa.punto == "dialogo"
+
+    # Cerrar es la otra salida, desde la misma pausa.
+    op.cerrar(cerrada, "Julián", "El presupuesto no alcanza")
+    cierre = op.estado(cerrada)["sesion"].cierre
+    assert cierre.desde == "Espera que una persona amplíe el presupuesto"
+    assert "- Gastado: 0.0500 USD · presupuesto: 0.05 USD" in op.trazabilidad(cerrada)
+    assert len(op.ejecuciones(cerrada)) > 0
 
 
 def test_el_error_de_recoleccion_indica_el_archivo_y_el_motivo():

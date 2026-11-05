@@ -312,6 +312,7 @@ def trazabilidad_md(
         f"- Abierta el {sesion.creada:%Y-%m-%d %H:%M} UTC · fase: {sesion.fase}",
         f"- Iteraciones del ciclo de corrección: {control.iteracion} de "
         f"{control.limite_iteraciones}",
+        *gasto_md(control),
         *(
             [
                 f"- Cerrada por {sesion.cierre.revisor} el {sesion.cierre.fecha:%Y-%m-%d %H:%M} "

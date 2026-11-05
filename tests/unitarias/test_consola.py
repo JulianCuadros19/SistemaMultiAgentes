@@ -1,6 +1,7 @@
 """Interfaz de consola: presentación, bucle de operación y subcomandos, con entradas guionizadas."""
 
 import argparse
+from decimal import Decimal
 
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
@@ -18,6 +19,7 @@ from multiagente.orquestador.ejecucion import avanzar, iniciar_sesion
 from multiagente.orquestador.estado import Decision, Destino, Fase, PuntoControl, ResultadoPrueba
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import ServiciosSimulados, guion_completo
+from multiagente.orquestador.traza import TrazaEnMemoria
 from multiagente.persistencia.puntos_control import serializador
 
 PRESENTACION = {
@@ -352,6 +354,53 @@ def test_en_n17_se_enmiendan_los_requerimientos_y_el_analista_ve_la_enmienda(
         (Decision.RECHAZADO, Destino.REQUERIMIENTOS),
         (Decision.APROBADO, None),
     ]
+
+
+def test_la_consola_amplia_el_presupuesto_y_muestra_el_gasto_y_la_traza(
+    tmp_path, capsys, entorno_falso
+):
+    simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=Decimal("0.01"))
+    configuracion_grafo = ConfiguracionOrquestador(
+        _env_file=None, presupuesto_maximo_por_modulo_usd=Decimal("0.05")
+    )
+    traza = TrazaEnMemoria()
+    app = construir_grafo(simulacion.como_servicios(), configuracion_grafo, traza).compile(
+        checkpointer=InMemorySaver(serde=serializador())
+    )
+    op = Operador(app, entorno_falso, traza=traza)
+    guion = guion_completo()
+    teclado = Teclado(
+        "Oficina",
+        guion.proyecto,
+        guion.necesidad,
+        *guion.respuestas_cliente[:4],
+        # Pausa por presupuesto: una cifra inválida, y luego la ampliación con su motivo.
+        "a",
+        "mucho",
+        "a",
+        "1,00",
+        "Falta cerrar el diálogo",
+        "Laura",
+        *guion.respuestas_cliente[4:7],
+        *["a", ""] * 3,
+    )
+    assert ejecutar(op, comando("nueva"), configuracion(tmp_path), teclado) == 0
+
+    salida = capsys.readouterr().out
+    assert "=== Pausa por presupuesto ===" in salida
+    assert "La sesión gastó 0.05 USD de su presupuesto de 0.05 USD." in salida
+    assert "Escriba el presupuesto como un número, por ejemplo 2.50." in salida
+    [vista] = op.sesiones()
+    assert vista.fase is Fase.VALIDADO
+    (ampliacion,) = op.estado(vista.id_sesion)["control"].ampliaciones
+    assert (ampliacion.revisor, ampliacion.nuevo) == ("Laura", Decimal("1.00"))
+
+    assert ejecutar(op, comando("sesiones"), configuracion(tmp_path), Teclado()) == 0
+    assert f"gastado {vista.costo_usd:.4f} USD, presupuesto 1.00 USD" in capsys.readouterr().out
+    assert ejecutar(op, comando(f"traza {vista.id_sesion}"), configuracion(tmp_path)) == 0
+    documento = capsys.readouterr().out
+    assert documento.startswith(f"# Traza de la sesión {vista.id_sesion}")
+    assert "  - Ampliado por Laura el " in documento and ": Falta cerrar el diálogo" in documento
 
 
 def test_se_cierra_desde_un_punto_de_control(tmp_path, capsys, entorno_falso):

@@ -7,12 +7,17 @@ nueva (ADR-0015). Una sesión que no debe seguir se cierra sin módulo validado 
 cualquier pausa o tras una falla. Todo pasa por el `Operador`, igual que en la web, de modo que
 ambas interfaces aplican las mismas reglas.
 
+Una sesión que alcanza su presupuesto se detiene antes del siguiente nodo con modelo: la persona
+lo amplía para seguir o la cierra (RNF-10). `multiagente traza ID` muestra el tiempo, los prompts,
+los tokens y el costo de cada nodo (RF-34).
+
 Uso:
     multiagente nueva
     multiagente continuar ID
     multiagente cerrar ID
     multiagente sesiones
     multiagente ver ID
+    multiagente traza ID
     multiagente exportar ID CARPETA
     multiagente web
 """
@@ -24,6 +29,7 @@ import time
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +58,7 @@ from multiagente.interfaces.operacion import (
 )
 from multiagente.orquestador.ejecucion import Avance
 from multiagente.orquestador.estado import (
+    PAUSA_PRESUPUESTO,
     Decision,
     Destino,
     Enmienda,
@@ -64,7 +71,12 @@ from multiagente.sandbox.ejecutor import ErrorEntornoAislado
 SALIR = "/salir"
 """Lo que escribe la persona, como cliente, para dejar la sesión en pausa."""
 
-REVISORES = {"requerimientos": "Analista", "especificacion": "Arquitecto", "final": "Revisor"}
+REVISORES = {
+    "requerimientos": "Analista",
+    "especificacion": "Arquitecto",
+    "final": "Revisor",
+    PAUSA_PRESUPUESTO: "Analista",
+}
 """Rol que decide en cada punto de control, si la persona no da su nombre."""
 
 AGENTES_DEL_RECHAZO = {"requerimientos": "elicitador", "especificacion": "arquitecto"}
@@ -173,10 +185,21 @@ def mostrar_validacion(datos: dict[str, Any]) -> None:
         )
 
 
+def mostrar_presupuesto(datos: dict[str, Any]) -> None:
+    """Imprime por qué la sesión se detuvo: alcanzó su presupuesto antes de un nodo con modelo."""
+    print("\n=== Pausa por presupuesto ===\n")
+    print(
+        f"La sesión gastó {datos['gastado_usd']} USD de su presupuesto de "
+        f"{datos['presupuesto_usd']} USD. Antes de seguir con {datos['nodo']}, que usa un modelo, "
+        "una persona debe ampliarlo, o cerrar la sesión."
+    )
+
+
 PRESENTACION: dict[str, Callable[[dict[str, Any]], None]] = {
     "requerimientos": mostrar_requerimientos,
     "especificacion": mostrar_especificacion,
     "final": mostrar_validacion,
+    PAUSA_PRESUPUESTO: mostrar_presupuesto,
 }
 
 
@@ -238,6 +261,15 @@ class DecisionHumana:
 
 
 @dataclass(frozen=True)
+class AmpliacionHumana:
+    """Ampliación del presupuesto de una sesión detenida por alcanzarlo (RNF-10)."""
+
+    revisor: str
+    presupuesto_usd: Decimal
+    motivo: str | None = None
+
+
+@dataclass(frozen=True)
 class CierreHumano:
     """Decisión de una persona de cerrar la sesión sin módulo validado."""
 
@@ -248,9 +280,11 @@ class CierreHumano:
 RespondeCliente = Callable[[Operador, VistaSesion], str | None]
 """Da la respuesta del cliente a la pregunta pendiente, o None para dejar la sesión en pausa."""
 
-DecideRevisor = Callable[[Operador, VistaSesion], DecisionHumana | CierreHumano | None]
-"""Da la decisión en el punto de control pendiente, el cierre de la sesión o None para dejarla
-en pausa."""
+DecideRevisor = Callable[
+    [Operador, VistaSesion], DecisionHumana | AmpliacionHumana | CierreHumano | None
+]
+"""Da la decisión en el punto de control pendiente, la ampliación del presupuesto, el cierre de
+la sesión o None para dejarla en pausa."""
 
 AtiendeDetenida = Callable[[VistaSesion], bool | CierreHumano]
 """Ante una sesión detenida por una falla: True la reanuda, False la deja así y un cierre la
@@ -449,6 +483,17 @@ def operar(
         if isinstance(decision, CierreHumano):
             _cerrar(operador, id_sesion, decision, tiempos)
             continue
+        if isinstance(decision, AmpliacionHumana):
+            print("(Retomando con el presupuesto ampliado…)")
+            _avanzar(
+                operador,
+                id_sesion,
+                lambda d=decision: operador.ampliar_presupuesto(
+                    id_sesion, d.revisor, d.presupuesto_usd, d.motivo
+                ),
+                tiempos,
+            )
+            continue
         print("(Procesando…)")
         avance = _avanzar(
             operador,
@@ -531,7 +576,7 @@ class RevisorPorTeclado:
 
     def __call__(
         self, operador: Operador, vista: VistaSesion
-    ) -> DecisionHumana | CierreHumano | None:
+    ) -> DecisionHumana | AmpliacionHumana | CierreHumano | None:
         """Ofrece las opciones del punto de control hasta que la persona decide o sale.
 
         En N17, rechazar devuelve el módulo al desarrollador, [d]iseño al arquitecto y
@@ -541,6 +586,8 @@ class RevisorPorTeclado:
         """
         punto, datos = vista.pausa.punto, vista.pausa.datos
         revisor = REVISORES[punto]
+        if punto == PAUSA_PRESUPUESTO:
+            return self._presupuesto(revisor)
         final = punto == "final"
         con_version = final and datos.get("version") is not None
         bloqueo = datos.get("bloqueo")
@@ -604,6 +651,31 @@ class RevisorPorTeclado:
             Decision.RECHAZADO, self._nombre(revisor), observaciones or None, pruebas, destino
         )
 
+    def _presupuesto(self, revisor: str) -> AmpliacionHumana | CierreHumano | None:
+        """En la pausa por presupuesto: ampliarlo, cerrar la sesión o dejarla en pausa."""
+        while True:
+            eleccion = (
+                self.leer("\n[a]mpliar el presupuesto, [x] cerrar la sesión o [s]alir: ")
+                .strip()
+                .lower()[:1]
+            )
+            if eleccion == "a":
+                texto = self.leer("Presupuesto nuevo en USD, por ejemplo 2.50: ").strip()
+                try:
+                    monto = Decimal(texto.replace(",", "."))
+                except InvalidOperation:
+                    print("Escriba el presupuesto como un número, por ejemplo 2.50.")
+                    continue
+                motivo = self.leer("Motivo (Enter: sin motivo): ").strip() or None
+                return AmpliacionHumana(self._nombre(revisor), monto, motivo)
+            if eleccion == "x":
+                if cierre := pedir_cierre(self.leer, revisor):
+                    return cierre
+            elif eleccion == "s":
+                return None
+            else:
+                print("Opción no válida.")
+
     def _nombre(self, revisor: str) -> str:
         return self.leer(f"Su nombre, como revisor (Enter: «{revisor}»): ").strip() or revisor
 
@@ -651,6 +723,10 @@ def _parser() -> argparse.ArgumentParser:
     comandos.add_parser("sesiones", help="Lista las sesiones guardadas.")
     ver = comandos.add_parser("ver", help="Muestra la trazabilidad de una sesión (RF-33).")
     ver.add_argument("sesion")
+    traza = comandos.add_parser(
+        "traza", help="Muestra el tiempo, los prompts, los tokens y el costo de cada nodo (RF-34)."
+    )
+    traza.add_argument("sesion")
     exportar = comandos.add_parser("exportar", help="Exporta el módulo validado (RF-35).")
     exportar.add_argument("sesion")
     exportar.add_argument("carpeta", type=Path)
@@ -664,9 +740,11 @@ def _listar(operador: Operador) -> None:
     if not sesiones:
         print("No hay sesiones guardadas.")
     for vista in sesiones:
+        presupuesto = f"{vista.presupuesto_usd} USD" if vista.presupuesto_usd else "sin tope"
         print(
             f"{vista.id_sesion}  {vista.creada:%Y-%m-%d %H:%M}  {vista.cliente} · "
-            f"{vista.proyecto}\n    {vista.describir()}"
+            f"{vista.proyecto}\n    {vista.describir()} · gastado {vista.costo_usd:.4f} USD, "
+            f"presupuesto {presupuesto}"
         )
 
 
@@ -721,6 +799,8 @@ def ejecutar(
             _listar(operador)
         elif argumentos.comando == "ver":
             print(operador.trazabilidad(argumentos.sesion))
+        elif argumentos.comando == "traza":
+            print(operador.traza(argumentos.sesion))
         elif argumentos.comando == "exportar":
             _exportar(operador, argumentos.sesion, argumentos.carpeta)
         elif argumentos.comando == "nueva":

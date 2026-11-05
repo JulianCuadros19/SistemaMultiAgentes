@@ -77,7 +77,13 @@ CASOS = RAIZ / "evaluacion" / "casos" / "ampliada"
 SALIDA = RAIZ / "evaluacion" / "resultados" / "corrida-ampliada"
 REANUDACIONES = 1
 """Reanudaciones de una sesión detenida antes de dejarla así."""
-NODO_DE_PAUSA = {"dialogo": "N4", "requerimientos": "N6", "especificacion": "N9", "final": "N17"}
+NODO_DE_PAUSA = {
+    "dialogo": "N4",
+    "requerimientos": "N6",
+    "especificacion": "N9",
+    "final": "N17",
+    "presupuesto": "presupuesto",
+}
 
 
 @dataclass
@@ -119,6 +125,12 @@ def analista_simulado(bitacora: Bitacora, salida: Path) -> DecideRevisor:
     def decidir(operador: Operador, vista: VistaSesion) -> DecisionHumana | None:
         punto, datos = vista.pausa.punto, vista.pausa.datos
         revisor = REVISORES[punto]
+        if punto == "presupuesto":
+            # El presupuesto lo amplía una persona: la corrida deja la sesión en esa pausa.
+            bitacora.motivo_pausa = (
+                f"Presupuesto alcanzado: {datos['gastado_usd']} de {datos['presupuesto_usd']} USD"
+            )
+            return None
         if punto == "requerimientos":
             if datos["defectos"] and not bitacora.rechazos_n6:
                 bitacora.rechazos_n6.append(observaciones_del_analista(datos))

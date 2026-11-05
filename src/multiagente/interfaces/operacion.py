@@ -9,6 +9,7 @@ import uuid
 from collections.abc import Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from langgraph.graph.state import CompiledStateGraph
@@ -37,6 +38,7 @@ from multiagente.orquestador.ejecucion import (
     validaciones,
 )
 from multiagente.orquestador.estado import (
+    PAUSA_PRESUPUESTO,
     RUTA_PRUEBA_PROPIA,
     CierreSesion,
     Decision,
@@ -84,6 +86,7 @@ ESPERAS = {
     "requerimientos": "Espera la aprobación de los requerimientos (N6)",
     "especificacion": "Espera la aprobación de la especificación de diseño (N9)",
     "final": "Espera la aprobación final del módulo (N17)",
+    PAUSA_PRESUPUESTO: "Espera que una persona amplíe el presupuesto",
 }
 
 LONGITUD_DETALLE_PRUEBA = 500
@@ -110,6 +113,8 @@ class VistaSesion(BaseModel):
             cierra la elicitación y lanza la síntesis, que tarda varios segundos.
         en_curso: Una corrida, de este proceso o de otro, la está avanzando ahora: no hay que
             reanudarla ni cerrarla, aunque tenga nodos pendientes.
+        costo_usd: Lo que gastó la sesión en los modelos, sin el cliente simulado (RNF-10).
+        presupuesto_usd: Su presupuesto; None en las sesiones anteriores al paso 13.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -126,6 +131,8 @@ class VistaSesion(BaseModel):
     limite_iteraciones: int
     confirma_resumen: bool
     en_curso: bool = False
+    costo_usd: Decimal = Decimal(0)
+    presupuesto_usd: Decimal | None = None
 
     @property
     def detenida(self) -> bool:
@@ -145,6 +152,12 @@ class VistaSesion(BaseModel):
         if self.pausa is not None:
             if self.pausa.punto == "final" and self.pausa.datos.get("escalado"):
                 return "Escalada: el tester no aprobó el módulo; espera la decisión de una persona"
+            if self.pausa.punto == PAUSA_PRESUPUESTO:
+                return (
+                    f"Detenida por presupuesto: gastó {self.pausa.datos['gastado_usd']} de "
+                    f"{self.pausa.datos['presupuesto_usd']} USD; espera que una persona lo amplíe "
+                    "o cierre la sesión"
+                )
             return ESPERAS[self.pausa.punto]
         if self.pendientes:
             nodos = ", ".join(NOMBRES_DE_NODO.get(n, n) for n in self.pendientes)
@@ -301,6 +314,40 @@ class Operador:
             self._pausa(id_sesion, PUNTOS_DE_CONTROL)
             return self._avanzar(id_sesion, respuesta)
 
+    def ampliar_presupuesto(
+        self,
+        id_sesion: str,
+        revisor: str,
+        presupuesto_usd: Decimal,
+        motivo: str | None = None,
+    ) -> Avance:
+        """Amplía el presupuesto de una sesión detenida por alcanzarlo, y la retoma (RNF-10).
+
+        Un presupuesto que no supera lo gastado vuelve a pausar con un aviso en
+        `Pausa.datos["aviso"]`. Para no seguir, la sesión se cierra con `cerrar`.
+
+        Args:
+            id_sesion: Identificador de la sesión.
+            revisor: Quién lo amplía.
+            presupuesto_usd: Presupuesto nuevo, en USD.
+            motivo: Por qué, si se dice.
+
+        Returns:
+            El avance hasta la siguiente pausa o el final.
+
+        Raises:
+            ErrorOperacion: Si la sesión no espera una ampliación o está en curso.
+        """
+        respuesta: dict[str, Any] = {
+            "revisor": revisor.strip(),
+            "presupuesto_usd": str(presupuesto_usd),
+        }
+        if motivo and motivo.strip():
+            respuesta["motivo"] = motivo.strip()
+        with self._exclusivo(id_sesion):
+            self._pausa(id_sesion, (PAUSA_PRESUPUESTO,))
+            return self._avanzar(id_sesion, respuesta)
+
     def cerrar(self, id_sesion: str, revisor: str, motivo: str) -> None:
         """Cierra una sesión sin módulo validado, desde una pausa o detenida por una falla.
 
@@ -416,6 +463,8 @@ class Operador:
                 and conversacion.registro.por_preguntar == ["confirmacion"]
             ),
             en_curso=clave(id_sesion) in ocupadas,
+            costo_usd=control.costo_acumulado_usd,
+            presupuesto_usd=control.presupuesto_usd,
         )
 
     def sesiones(self) -> list[VistaSesion]:

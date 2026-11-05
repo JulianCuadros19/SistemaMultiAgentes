@@ -4,17 +4,23 @@ import io
 import threading
 import time
 import zipfile
+from decimal import Decimal
 
 from fastapi.testclient import TestClient
 from langgraph.checkpoint.memory import InMemorySaver
 
 from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.interfaces.operacion import Operador
-from multiagente.interfaces.web.aplicacion import PARA_EL_CLIENTE, crear_aplicacion
+from multiagente.interfaces.web.aplicacion import (
+    PARA_EL_CLIENTE,
+    PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO,
+    crear_aplicacion,
+)
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
 from multiagente.orquestador.estado import Decision, Destino, Fase, PuntoControl, ResultadoPrueba
 from multiagente.orquestador.grafo import construir_grafo
 from multiagente.orquestador.simulacion import PREGUNTAS, ServiciosSimulados, guion_completo
+from multiagente.orquestador.traza import TrazaEnMemoria
 from multiagente.persistencia.puntos_control import serializador
 
 
@@ -271,6 +277,56 @@ def test_en_n17_se_piden_enmiendas_que_el_analista_revisa_en_n6(entorno_falso):
     carpeta = f"modulo-{id_sesion[:8]}"
     requerimientos = exportado.read(f"{carpeta}/requerimientos.md").decode("utf-8")
     assert "## RF-01 · versión 0.3\n\n- v0.3 · enmendado desde N17 por Laura el " in requerimientos
+
+
+def test_la_web_amplia_el_presupuesto_y_muestra_el_gasto_y_la_traza(entorno_falso):
+    simulacion = ServiciosSimulados(fallos_veredicto=0, costo_por_llamada=Decimal("0.01"))
+    configuracion = ConfiguracionOrquestador(
+        _env_file=None, presupuesto_maximo_por_modulo_usd=Decimal("0.05")
+    )
+    traza = TrazaEnMemoria()
+    app = construir_grafo(simulacion.como_servicios(), configuracion, traza).compile(
+        checkpointer=InMemorySaver(serde=serializador())
+    )
+    operador = Operador(app, entorno_falso, traza=traza)
+    cliente = TestClient(crear_aplicacion(operador, EjecutorDeTareas(sincronico=True)))
+    guion = guion_completo()
+    id_sesion = abrir(cliente, guion.necesidad)
+    for respuesta in guion.respuestas_cliente[:4]:
+        cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": respuesta})
+
+    pagina = cliente.get(f"/sesiones/{id_sesion}").text
+    assert "Pausa por presupuesto" in pagina
+    assert "La sesión gastó 0.05 USD de su presupuesto de 0.05 USD" in pagina
+    assert "N3 · diálogo con el cliente" in pagina
+    assert "gastado 0.0500 USD de\n    0.05 USD" in pagina
+    assert f'action="/sesiones/{id_sesion}/presupuesto"' in pagina
+    assert PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO in cliente.get(f"/conversacion/{id_sesion}").text
+    assert "0.0500 de 0.05" in cliente.get("/").text
+
+    pagina = cliente.post(
+        f"/sesiones/{id_sesion}/presupuesto", data={"presupuesto_usd": "muchos"}
+    ).text
+    assert "Escriba el presupuesto nuevo como un número" in pagina
+    pagina = cliente.post(
+        f"/sesiones/{id_sesion}/presupuesto",
+        data={"presupuesto_usd": "0,90", "revisor": "Laura", "motivo": "Seguir"},
+    ).text
+    assert "Conversación con el cliente" in pagina
+    (ampliacion,) = operador.estado(id_sesion)["control"].ampliaciones or (None,)
+    # La ampliación queda en el estado cuando N3 termina, con la respuesta del cliente.
+    assert ampliacion is None
+    cliente.post(f"/sesiones/{id_sesion}/respuesta", data={"texto": guion.respuestas_cliente[4]})
+    (ampliacion,) = operador.estado(id_sesion)["control"].ampliaciones
+    assert (ampliacion.revisor, ampliacion.nuevo, ampliacion.motivo) == (
+        "Laura",
+        Decimal("0.90"),
+        "Seguir",
+    )
+
+    documento = cliente.get(f"/sesiones/{id_sesion}/traza").text
+    assert f"# Traza de la sesión {id_sesion}" in documento
+    assert "<title>Traza" in documento or "Traza</title>" in documento
 
 
 def test_la_especificacion_con_errores_no_ofrece_aprobar(entorno_falso):

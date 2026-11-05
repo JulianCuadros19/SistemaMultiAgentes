@@ -8,7 +8,10 @@ Rutas:
   revisa en N6 (ADR-0015);
 - `/sesiones/{id}/cerrar`: cierra sin módulo validado una sesión en pausa o detenida;
 - `/conversacion/{id}`: la vista del cliente, solo el diálogo y un estado en lenguaje de negocio;
-- `/sesiones/{id}/trazabilidad` y `/sesiones/{id}/exportar.zip` (RF-33, RF-35);
+- `/sesiones/{id}/presupuesto`: amplía el presupuesto de una sesión detenida por alcanzarlo
+  (RNF-10);
+- `/sesiones/{id}/trazabilidad`, `/sesiones/{id}/traza` y `/sesiones/{id}/exportar.zip` (RF-33,
+  RF-34, RF-35);
 - `/sesiones/{id}/estado.json`, que la página consulta mientras procesa.
 
 Todo pasa por el `Operador`, como en la consola. Las plantillas escapan el contenido, incluido el
@@ -18,6 +21,7 @@ código generado. Sin recursos externos: funciona sin conexión (RF-37).
 import io
 import uuid
 import zipfile
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -42,6 +46,7 @@ from multiagente.interfaces.operacion import (
 )
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
 from multiagente.orquestador.estado import (
+    PAUSA_PRESUPUESTO,
     Decision,
     Destino,
     Enmienda,
@@ -52,7 +57,12 @@ from multiagente.orquestador.estado import (
 
 CARPETA = Path(__file__).parent
 
-REVISORES = {"requerimientos": "Analista", "especificacion": "Arquitecto", "final": "Revisor"}
+REVISORES = {
+    "requerimientos": "Analista",
+    "especificacion": "Arquitecto",
+    "final": "Revisor",
+    PAUSA_PRESUPUESTO: "Analista",
+}
 
 PROCESOS = {
     ("requerimientos", Decision.APROBADO): "Diseñando la arquitectura (N7 y N8); tarda 1 o 2 min",
@@ -91,6 +101,9 @@ PARA_EL_CLIENTE = {
     Fase.CERRADA: "El equipo cerró esta sesión. Gracias por su tiempo.",
 }
 """Estado de la sesión en el lenguaje del cliente, cuando no le toca responder (RNF-08)."""
+
+PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO = "El equipo revisará su caso antes de continuar."
+"""Lo que ve el cliente mientras la sesión espera que alguien amplíe el presupuesto."""
 
 
 def _redirigir(url: str) -> RedirectResponse:
@@ -212,6 +225,12 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
                     RecorridoEscenario.model_validate(r) for r in datos.get("recorridos", [])
                 ],
             }
+        if pausa.punto == PAUSA_PRESUPUESTO:
+            return {
+                "gastado": datos["gastado_usd"],
+                "presupuesto": datos["presupuesto_usd"],
+                "nodo": NOMBRES_DE_NODO.get(datos["nodo"], datos["nodo"]),
+            }
         if pausa.punto == "final":
             estado = operador.estado(vista.id_sesion)
             pruebas = pruebas_por_sesion.get(vista.id_sesion)
@@ -261,7 +280,11 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             tarea=tarea,
             error=error,
             turnos=operador.estado(id_sesion)["conversacion"].turnos,
-            mensaje=PARA_EL_CLIENTE[vista.fase],
+            mensaje=(
+                PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO
+                if vista.pausa is not None and vista.pausa.punto == PAUSA_PRESUPUESTO
+                else PARA_EL_CLIENTE[vista.fase]
+            ),
         )
 
     @aplicacion.get("/sesiones/{id_sesion}/estado.json")
@@ -360,6 +383,33 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
         tareas.lanzar(id_sesion, proceso, accion)
         return volver(id_sesion, "operacion")
 
+    @aplicacion.post("/sesiones/{id_sesion}/presupuesto")
+    def ampliar_presupuesto(
+        id_sesion: str,
+        presupuesto_usd: Annotated[str, Form()] = "",
+        revisor: Annotated[str, Form()] = "",
+        motivo: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        """Amplía el presupuesto de una sesión detenida por alcanzarlo y la retoma (RNF-10)."""
+        vista_libre(id_sesion)
+        try:
+            monto = Decimal(presupuesto_usd.strip().replace(",", "."))
+        except InvalidOperation as error:
+            raise ErrorOperacion(
+                "Escriba el presupuesto nuevo como un número, por ejemplo 2.50."
+            ) from error
+
+        def accion() -> None:
+            operador.ampliar_presupuesto(
+                id_sesion,
+                revisor.strip() or REVISORES[PAUSA_PRESUPUESTO],
+                monto,
+                motivo or None,
+            )
+
+        tareas.lanzar(id_sesion, "Retomando la sesión con el presupuesto ampliado", accion)
+        return volver(id_sesion, "operacion")
+
     @aplicacion.post("/sesiones/{id_sesion}/cerrar")
     def cerrar(
         id_sesion: str,
@@ -422,6 +472,17 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             "trazabilidad.html",
             id_sesion=id_sesion,
             documento=operador.trazabilidad(id_sesion),
+        )
+
+    @aplicacion.get("/sesiones/{id_sesion}/traza", response_class=HTMLResponse)
+    def traza(request: Request, id_sesion: str) -> HTMLResponse:
+        """Tiempo, prompts, tokens y costo de cada nodo de la sesión (RF-34)."""
+        return pagina(
+            request,
+            "trazabilidad.html",
+            id_sesion=id_sesion,
+            titulo="Traza",
+            documento=operador.traza(id_sesion),
         )
 
     @aplicacion.get("/sesiones/{id_sesion}/exportar.zip")

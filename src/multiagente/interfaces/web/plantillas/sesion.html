@@ -66,12 +66,15 @@
   <h1>{{ vista.cliente }} · {{ vista.proyecto }}</h1>
   <p class="detalle">
     Sesión {{ id_sesion }} · abierta el {{ vista.creada.strftime('%Y-%m-%d %H:%M') }} UTC ·
-    fase {{ vista.fase.value }} · iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }}
+    fase {{ vista.fase.value }} · iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }} ·
+    gastado {{ '%.4f' | format(vista.costo_usd) }} USD de
+    {{ '%s USD' | format(vista.presupuesto_usd) if vista.presupuesto_usd else 'un presupuesto sin tope' }}
   </p>
   <p><span class="etiqueta {{ vista.fase.value }}">{{ vista.describir() }}</span></p>
   <nav class="enlaces">
     <a href="/conversacion/{{ id_sesion }}">Vista del cliente</a>
     <a href="/sesiones/{{ id_sesion }}/trazabilidad">Trazabilidad</a>
+    <a href="/sesiones/{{ id_sesion }}/traza">Traza por nodo</a>
     {% if vista.fase.value == 'validado' %}
     <a href="/sesiones/{{ id_sesion }}/exportar.zip">Exportar el módulo (.zip)</a>
     {% endif %}
@@ -369,6 +372,25 @@
   <h2>Decisión</h2>
   {{ formulario_decision(id_sesion, revisor, bloqueo=pausa.datos.bloqueo, sugeridas=sugeridas,
      con_pruebas=pruebas is not none, final=True) }}
+  {{ formulario_cierre(id_sesion) }}
+</section>
+
+{# --- Pausa por presupuesto (RNF-10) ------------------------------------------------------- #}
+{% elif pausa.punto == 'presupuesto' %}
+<section class="tarjeta">
+  <h2>Pausa por presupuesto</h2>
+  <p class="aviso error">
+    La sesión gastó {{ gastado }} USD de su presupuesto de {{ presupuesto }} USD. Antes de seguir
+    con {{ nodo }}, que usa un modelo, una persona debe ampliarlo, o cerrar la sesión.
+  </p>
+  <form method="post" action="/sesiones/{{ id_sesion }}/presupuesto" class="formulario">
+    <label>Presupuesto nuevo en USD, mayor que lo gastado
+      <input name="presupuesto_usd" inputmode="decimal" placeholder="2.50" required>
+    </label>
+    <label>Motivo <textarea name="motivo" rows="2"></textarea></label>
+    <label>Su nombre, como revisor <input name="revisor" placeholder="{{ revisor }}"></label>
+    <button type="submit">Ampliar el presupuesto y seguir</button>
+  </form>
   {{ formulario_cierre(id_sesion) }}
 </section>
 {% endif %}
