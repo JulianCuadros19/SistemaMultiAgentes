@@ -86,8 +86,7 @@ En la máquina, el 2026-11-05:
   en la v1, en 3,15 min y por 0,198 USD, más 0,040 del cliente simulado
   (`docs/mediciones/paso-15-despliegue-azure.jsonl`).
 - **Reinicio:** tras `sudo reboot`, el enlace volvió en 32 s y conservó la sesión.
-
-Sin verificar, a cargo del equipo: el ciclo completo de detener e iniciar desde el portal.
+- **Detener e iniciar desde el portal:** el equipo lo probó, y el enlace volvió solo.
 
 ## Cambios para el documento de tesis
 

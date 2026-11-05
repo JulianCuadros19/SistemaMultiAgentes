@@ -54,7 +54,8 @@ crédito, se limitó su presupuesto a 1 USD y la máquina se apaga cuando no se 
 
 La verificación se hizo desde fuera de la máquina: sin contraseña, la web respondió 401; los puertos de la base de datos, de la
 aplicación y de los embeddings no respondieron, y un módulo real quedó validado en la primera versión en 3,15 minutos, por
-0,198 USD. Tras un reinicio, el enlace volvió en 32 segundos y conservó la sesión. La decisión quedó en el ADR-0020.
+0,198 USD. Tras un reinicio, el enlace volvió en 32 segundos y conservó la sesión, y también volvió al detener e iniciar la máquina desde el portal. La decisión quedó
+en el ADR-0020.
 
 ---
 
@@ -510,7 +511,7 @@ cobrando. Solo admite datos sintéticos, de modo que no reemplaza el despliegue 
 
 **Verificación.** La composición arrancó desde cero en unos 5 minutos. Desde afuera, la web respondió por HTTPS con certificado, con 401 sin contraseña y 200
 con ella, y los puertos de la base de datos, de la aplicación y de las representaciones vectoriales no respondieron. Un módulo real quedó validado en la
-primera versión, en 3,15 minutos y por 0,198 USD, y tras un reinicio el enlace volvió en 32 segundos con su sesión.
+primera versión, en 3,15 minutos y por 0,198 USD, y tras un reinicio el enlace volvió en 32 segundos con su sesión. También volvió al detener e iniciar la máquina desde el portal.
 
 ### Ajustes a las entradas existentes
 
