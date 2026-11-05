@@ -391,10 +391,35 @@ Mantener esta sección actualizada al cerrar cada paso.
   - el exceso queda acotado a un nodo;
   - el costo de un nodo que falla por infraestructura no suma al acumulado;
   - en N3, la ampliación se escribe en el estado cuando el cliente responde.
-- **Paso actual: 14, empaquetado en contenedores** (ADR-0017). Terminado cuando, desde un clon
-  limpio, la composición levanta el sistema completo y un módulo sale validado con los modelos de
-  Azure OpenAI. El 2026-11-04 el equipo descartó el «modo local»: el RF-37, el RNF-06, la
-  arquitectura y el plan de trabajo se corrigieron en consecuencia.
+- **Paso 14: cerrado el 2026-11-04.** Empaquetado en contenedores con Azure OpenAI (ADR-0017;
+  requerimientos 1.3, arquitectura 1.5):
+  - el equipo descartó el «modo local»: los modelos de lenguaje son solo los despliegues de Azure
+    OpenAI, y BGE-M3 sigue local por el RNF-04. El RF-37, el RNF-06, la arquitectura y el plan de
+    trabajo se corrigieron;
+  - `docker compose up -d --build --wait` levanta el sistema completo:
+    - la imagen de `docker/aplicacion/`, con Python 3.14.4, las versiones exactas del `.venv`
+      (`scripts/congelar_aplicacion.py`) y la CLI de Docker;
+    - los servicios `aplicacion` (web solo en 127.0.0.1, socket de Docker y `data/local`) e
+      `ingesta`, y la comprobación de `sandbox`, que sale de su perfil;
+    - el punto de entrada corre como el dueño de `data/local`, con el grupo del socket;
+  - la consola se usa con `docker compose run --rm aplicacion multiagente …`. La web sigue sin
+    autenticación y solo responde en la máquina.
+
+  Verificado:
+  - 754 pruebas unitarias, 34 de integración, 19 de embeddings y 33 del entorno aislado;
+  - desde un clon limpio, con volúmenes nuevos, el caso 05 salió validado en N17 en la v1 dentro
+    de los contenedores, por 0,245 USD. La web y la consola lo mostraron, con su traza y su
+    exportación. Las dos sesiones de la verificación costaron 0,40 USD
+    (`docs/mediciones/paso-14-contenedores.jsonl`).
+
+  Límites, en el ADR-0017:
+  - la primera construcción depende de PyPI: con una red lenta tardó 33 min y una vez falló;
+    repetir el comando la retoma;
+  - `docker compose exec` entra como root;
+  - macOS no se verificó.
+- **Paso actual: 15, casos de referencia y líneas base.** Terminado cuando hay métricas calculadas
+  contra la implementación manual y contra un modelo único, que también es un despliegue de Azure
+  OpenAI. Sus corridas pueden medir las decisiones 37 a 39 del ADR-0015.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
@@ -418,4 +443,4 @@ Mantener esta sección actualizada al cerrar cada paso.
   0,16 a 0,37 USD, con media de 0,27, sin el cliente simulado. N10 aporta el 51 %, N8 el 31 %, N3
   el 14 %, N5 el 4 % y N14 el 0,4 %. En la corrida ampliada final del paso 12 (ADR-0015), la media
   sube a 0,342 USD, de 0,18 a 0,87: N10 aporta el 41 %, N8 el 27 %, N3 el 21 %, N5 el 11 % y N14
-  menos del 1 %. Falta el presupuesto que detiene la ejecución (paso 13).
+  menos del 1 %. Desde el paso 13, el presupuesto de 1,50 USD por módulo la acota (ADR-0016).
