@@ -450,9 +450,16 @@ Mantener esta sección actualizada al cerrar cada paso.
     - 16 validados, 11 en la v1, y 4 escalados (02, 03, 14 y 16);
     - resúmenes confirmados: 19 de 20.
 
-    El retroceso frente a la corrida final del ADR-0015 es un resultado inesperado, todavía sin
-    investigar.
-    - **En la corrida final del ADR-0015:** 20 validados, 18 en la v1, y 16 resúmenes confirmados.
+    Ningún cambio del sistema explica el retroceso frente a la corrida final del ADR-0015, que dio
+    20 validados, 18 en la v1, y 16 resúmenes confirmados:
+    - **Causa principal:** escenarios defectuosos de N5, que nada revisa antes de N10 (02, 03, 13 y
+      19). Sin ellos, serían 15 de 20 en la v1.
+    - **Juez de N14:** cambió de veredicto en 3 de 124 rejuicios de una prueba idéntica.
+    - **Validados con defecto:** 13 y 19 llevan el defecto del requerimiento al código.
+    - **Decisión del equipo:** el sistema no cambia hasta terminar de medir; las correcciones
+      recomendadas van al informe.
+    - **Regla de los informes:** hasta terminar la fase 2, de las salidas de 02, 12 y 16 los autores
+      solo reciben clasificación, costo, tiempo, turnos y errores.
     - **Dónde está el detalle:** en el documento de estado.
   - **Pendiente:**
     - la implementación manual (fase 2, del equipo);

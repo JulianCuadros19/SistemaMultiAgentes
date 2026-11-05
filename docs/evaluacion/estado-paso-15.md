@@ -1,8 +1,9 @@
 # Estado del paso 15 · casos de referencia y líneas base
 
-Documento de traspaso, actualizado el 2026-11-05 a las 11:25, al terminar la corrida ampliada. Sirve para retomar el paso desde
-otra sesión. El diseño, las métricas y las hipótesis, fijados antes de medir, están en el
-ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en borrador).
+Documento de traspaso, actualizado el 2026-11-05 a las 12:25, tras investigar la corrida ampliada.
+Sirve para retomar el paso desde otra sesión. El diseño, las métricas y las hipótesis, fijados antes
+de medir, están en el ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en
+borrador).
 
 ## Qué pide el paso
 
@@ -29,6 +30,13 @@ ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en borrad
    El benchmark de modelos en N3 y N5 no entra.
 5. **Tope de 17 USD para todo el paso,** sumando todas las trazas `docs/mediciones/paso-15-*.jsonl`
    y lo que cuesten las corridas con revisión humana.
+6. **El sistema no cambia hasta terminar de medir.** Las hipótesis se fijaron antes de medir, y la
+   corrida ampliada no se puede repetir dentro del tope. Lo que destapó su investigación va al
+   informe como resultado, con sus correcciones recomendadas.
+
+**Regla de los informes durante el paso:** hasta terminar la fase 2, a los autores solo se les
+informa de las salidas de 02, 12 y 16 su clasificación, costo, tiempo, turnos y errores, sin cifras,
+diseño ni contenido de las entregas (`evaluacion/manual/LEEME.md`).
 
 ## Fase 1 · cerrada (commits `a8c0107`, `ec613c8` y `ef09c32`)
 
@@ -76,7 +84,7 @@ Orden de prioridad y tope de cada guion:
 | Orden | Corrida | Estado | Tope del guion |
 |---|---|---|---|
 | 1 | Corrida ampliada de 20 casos | **Terminada**: de 08:52 a 11:20, 20 de 20 casos, 8,8153 USD | 8,5 USD |
-| 2 | Modelo único, 3 corridas × 3 casos | Pendiente: es lo siguiente | 4,6 USD |
+| 2 | Modelo único, 3 corridas × 3 casos | En curso, con el visto bueno del equipo: primero un piloto del caso 12 | 4,6 USD |
 | 3 | Una corrida automática más × 3 casos (`sistema-2`) | Pendiente | 1,3 USD |
 | 4 | Corrida con revisión humana × 3 casos | Pendiente; va después de la manual de cada caso | ~1,2 USD |
 | 5 | Juez de las métricas RAGs | Pendiente; va en la fase 4 | Lo que quede: ~1,1 USD si lo demás cuesta lo estimado |
@@ -108,23 +116,65 @@ el tope del guion, porque el tope se revisa antes de cada caso. Quedan **8,18 US
   sesiones en el límite bajan de 5 a 1.
 - **Decisión 37:** los primeros intentos rechazados de N10 bajan de 7 de 23 a 4 de 35.
 
-**Resultado inesperado, sin investigar todavía:** la calidad de la primera salida retrocede.
-- **Validados en la v1:** bajan de 18 a 11.
-- **Escaladas:** 4 sesiones, tras 3 iteraciones, en los casos 02, 03, 14 y 16. Dos de ellas, 02 y
-  16, son casos de referencia.
-- **Patrones:**
-  - **02 y 03 (ARQ-01):** la v1 sale rechazada por CAL-FS-001, la cobertura de los criterios de
-    aceptación. La v2 y la v3, por CAL-FS-002, una prueba que falla en el entorno aislado.
-  - **14 y 16 (ARQ-05):** solo CAL-FS-001, que baja de 5 a 2 a 1 y de 3 a 1 a 1, sin llegar a cero.
-- **Fuentes para investigarlo sin costo:**
-  - los reportes de cada versión, en
-    `evaluacion/resultados/paso-15/corrida-ampliada/<sesión>/v<n>/`;
-  - la traza, `docs/mediciones/paso-15-corrida-ampliada.jsonl`;
-  - la web, en cada sesión.
-- **Lo que no se puede concluir sin investigar:** si es variabilidad del modelo, un efecto de la
-  decisión 38 sobre los escenarios o un juez de N14 más estricto.
-- **Efecto en la evaluación de referencia:** dirá si los módulos escalados de 02 y 16 tienen errores
-  reales.
+**Resultado inesperado:** la calidad de la primera salida retrocede. Los validados en la v1 bajan de
+18 a 11, y 4 sesiones escalan tras 3 iteraciones: 02, 03, 14 y 16.
+
+### Causas del retroceso (investigadas el 2026-11-05, sin costo)
+
+**Conclusión:** ningún cambio del sistema lo explica. La causa principal son escenarios defectuosos
+de N5, que nada revisa antes de N10. Le sigue el juez de N14, que cambia de veredicto sobre pruebas
+idénticas.
+
+**Lo que no cambió entre las dos corridas:** las huellas de todos los prompts, los despliegues y sus
+versiones. El consumo por nodo es casi igual. En los agentes solo cambiaron las decisiones 37 a 39.
+
+**Los 9 casos que no salieron en la v1.** De 02 y 16, casos de referencia, solo va la clasificación:
+
+| Caso | Causa | Desenlace |
+|---|---|---|
+| 02 | Escenario de N5 imposible según su propia regla | Escalado |
+| 03 | N5 inventó las fechas: 2025-01-01 + 120 días da 2025-05-01, pero el escenario exige «vencido» el 2025-04-15 | Escalado |
+| 13 | El ejemplo perdió su precondición (cupo reservado de 8:00 a 12:00), y N5 exige rechazar 11:00–13:00, una franja válida | Validado en la v2, con una fecha fija en `src/` |
+| 19 | N5 metió una pregunta abierta en el «entonces» | Validado en la v2, con «pendiente concretar el mensaje exacto de error» como mensaje real |
+| 14 | N5 agregó una capacidad de «revisión», con un escenario de tarea programada que el diseño no deja observar; además, pruebas flojas en la v1 | Escalado, con 13 de 14 casos cumplidos |
+| 16 | Hallazgos reales en la v1; en la v2 y la v3, el juez rechazó pruebas idénticas que ya había aceptado | Escalado |
+| 20 | Prueba floja en la v1; en la v2, el juez rechazó una prueba idéntica alegando que 1,0 y 7,0 °C no están fuera de 2,0–6,0 | Validado en la v3 |
+| 10 | Una prueba falla de verdad en la v1 y la v2 | Validado en la v3 |
+| 18 | Una prueba no compara los ítems de la venta | Validado en la v2 |
+
+**Lo que se desprende:**
+- **Sin los 4 escenarios defectuosos** (02, 03, 13 y 19), serían 15 de 20 en la v1.
+- **Las escaladas no señalan errores de cálculo:** en ninguna de las 4 el último hallazgo lo es. La
+  evaluación de referencia lo confirmará para 02 y 16.
+- **Los «16 validados» sobrestiman la calidad,** porque 13 y 19 llevan el defecto del requerimiento
+  al código. El analista simulado aprueba sin leer; en el caso 13, `USO.md` declara la excepción y
+  una persona podría verla en N17.
+- **Nada revisa la coherencia de los escenarios.** N6 mira la redacción. N10 detecta la contradicción
+  y la declara en `USO.md`, pero no tiene cómo reportarla: en 02 y 03 marcó la prueba como fallo
+  esperado y agotó las iteraciones; en 13 cedió y fijó el valor.
+- **El juez es inestable:** cambió de veredicto en 3 de 124 rejuicios de una prueba idéntica (0 de 13
+  en la corrida del ADR-0015), siempre hacia el rechazo y aun con la segunda opinión. Con un juez
+  constante, 16 y 20 habrían salido en la v2.
+
+**Lo que no se puede afirmar:**
+- **Decisiones 37 a 39:** no se halló un mecanismo que las conecte con los escenarios defectuosos, y
+  el defecto ya aparecía en una sesión de la corrida base (caso 01). Sí vuelven más completos los
+  requerimientos, de 43 a 51 y de 160 a 183 escenarios: el caso 10 pasó de 4 a 8 escenarios, y su v1
+  falló en una prueba real.
+- **Azar:** con una corrida por caso no se separa de un efecto pequeño. Por sí sola, la caída de 18 a
+  11 sería rara por azar (Fisher, p ≈ 0,03). La aparición de escenarios imposibles, de 0 a 4 sesiones,
+  no tanto (p ≈ 0,11).
+
+**Correcciones recomendadas, para después de medir** (van al informe):
+- revisar la coherencia de los escenarios en N6;
+- darle a N10 una vía para reportar un escenario imposible, y a N15 para escalarlo de inmediato;
+- conservar el veredicto de una prueba que no cambió;
+- una regla que detecte valores de un escenario fijados en `src/`.
+
+**Fuentes:**
+- los reportes de cada versión, en `evaluacion/resultados/paso-15/corrida-ampliada/<sesión>/v<n>/`;
+- la traza, `docs/mediciones/paso-15-corrida-ampliada.jsonl`;
+- los escenarios y el registro, en los puntos de control de cada sesión.
 
 **Sesiones de los casos de referencia en esta corrida:**
 - 02: `caso-ampliada-02.json`, escalada;
