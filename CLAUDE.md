@@ -71,7 +71,8 @@ pero no la cambies en silencio.
 ## Stack
 
 Python 3.11 o superior · LangGraph · PostgreSQL 16 con pgvector · Docker · Azure OpenAI
-durante el desarrollo, modelos locales en la entrega · BGE-M3 local · Langfuse · pytest · Ruff.
+durante el desarrollo, modelos locales en la entrega · BGE-M3 local · traza por nodo en
+PostgreSQL (ADR-0016) · pytest · Ruff.
 
 ## Entorno
 
@@ -358,8 +359,33 @@ Mantener esta sección actualizada al cerrar cada paso.
   - las necesidades de eventos se plantean como «publicar un aviso»;
   - el costo por módulo está al borde del criterio, empujado por ARQ-06; el presupuesto que
     detiene la ejecución es el paso 13.
-- **Paso actual: 13, control de costo y observabilidad.** Terminado cuando el presupuesto detiene
-  una ejecución que lo supera.
+- **Paso 13: cerrado el 2026-11-04.** Control de costo y traza por nodo (ADR-0016;
+  `docs/arquitectura.md` 1.4):
+  - cada nodo corre envuelto (`_instrumentado`, `orquestador/grafo.py`): suma a
+    `Control.costo_acumulado_usd` el costo de sus llamadas al modelo, capturadas con
+    `capturar_llamadas()`, e informa su traza;
+  - presupuesto por módulo `PRESUPUESTO_MAXIMO_POR_MODULO_USD`, de 1,50 USD por defecto:
+    - antes de N3, N5, N8, N10 y N14, una sesión que lo alcanzó pausa en «presupuesto»;
+    - una persona lo amplía, y queda registrado quién, cuánto, cuándo y por qué, o cierra la
+      sesión;
+  - traza por nodo en PostgreSQL (migración 0002: `ejecuciones` y `llamadas_modelo`), con
+    `multiagente traza ID` y la página «Traza por nodo»; las interfaces migran al arrancar;
+  - Langfuse sale del stack, por decisión del equipo: la versión autoalojada exigía cinco
+    contenedores más.
+
+  Verificado:
+  - 741 pruebas unitarias, 34 de integración, 19 de embeddings y 33 del entorno aislado;
+  - `pytest -m "nube and embeddings" tests/integracion/test_presupuesto_nube.py`: con el
+    elicitador real y 0,005 USD de presupuesto, la sesión se detiene antes de que N3 vuelva a
+    llamar al modelo; ampliado, sigue, y la traza trae por nodo prompts, tokens, costo y tiempos.
+    Costó 0,011 USD.
+
+  Límites, en el ADR-0016:
+  - el exceso queda acotado a un nodo;
+  - el costo de un nodo que falla por infraestructura no suma al acumulado;
+  - en N3, la ampliación se escribe en el estado cuando el cliente responde.
+- **Paso actual: 14, empaquetado y modo local.** Terminado cuando el sistema corre completo sin
+  credenciales de nube.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en
