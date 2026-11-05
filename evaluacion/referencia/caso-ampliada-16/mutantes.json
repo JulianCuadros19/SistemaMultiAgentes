@@ -1,0 +1,23 @@
+[
+  {
+    "nombre": "tasa_nominal",
+    "descripcion": "Divide la tasa efectiva anual entre 12 en lugar de convertirla a mensual.",
+    "cambios": [
+      {"buscar": "return (1 + tasa_efectiva_anual / 100) ** (Decimal(1) / 12) - 1", "reemplazar": "return tasa_efectiva_anual / 100 / 12"}
+    ]
+  },
+  {
+    "nombre": "sin_ajuste_de_la_ultima_cuota",
+    "descripcion": "Cobra la misma cuota también el último mes.",
+    "cambios": [
+      {"buscar": "pago = valor if mes < plazo_meses else saldo + interes", "reemplazar": "pago = valor"}
+    ]
+  },
+  {
+    "nombre": "sin_validar_la_tasa",
+    "descripcion": "Acepta cualquier tasa.",
+    "cambios": [
+      {"buscar": "if not Decimal(1) <= tasa_efectiva_anual <= Decimal(30):", "reemplazar": "if False:"}
+    ]
+  }
+]

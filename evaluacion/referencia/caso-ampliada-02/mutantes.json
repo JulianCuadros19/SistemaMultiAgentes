@@ -1,0 +1,24 @@
+[
+  {
+    "nombre": "redondeo_hacia_abajo",
+    "descripcion": "Trunca a la centena en lugar de redondear a la más cercana.",
+    "cambios": [
+      {"buscar": "from decimal import ROUND_HALF_UP, Decimal", "reemplazar": "from decimal import ROUND_FLOOR, Decimal"},
+      {"buscar": "rounding=ROUND_HALF_UP", "reemplazar": "rounding=ROUND_FLOOR"}
+    ]
+  },
+  {
+    "nombre": "sin_tope_pactado",
+    "descripcion": "Aplica el IPC aunque supere el porcentaje pactado.",
+    "cambios": [
+      {"buscar": "aplicado = min(porcentaje_pactado, ipc_anterior)", "reemplazar": "aplicado = ipc_anterior"}
+    ]
+  },
+  {
+    "nombre": "sin_regla_de_doce_meses",
+    "descripcion": "Reajusta aunque no hayan pasado doce meses.",
+    "cambios": [
+      {"buscar": "fecha_reajuste) < 12:", "reemplazar": "fecha_reajuste) < 0:"}
+    ]
+  }
+]

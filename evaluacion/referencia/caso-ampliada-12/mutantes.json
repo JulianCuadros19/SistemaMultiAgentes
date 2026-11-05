@@ -1,0 +1,23 @@
+[
+  {
+    "nombre": "pesos_de_izquierda_a_derecha",
+    "descripcion": "Recorre los dígitos de izquierda a derecha.",
+    "cambios": [
+      {"buscar": "zip(reversed(limpio), PESOS, strict=False)", "reemplazar": "zip(limpio, PESOS, strict=False)"}
+    ]
+  },
+  {
+    "nombre": "residuo_sin_excepcion",
+    "descripcion": "Resta siempre de 11, también con residuo 0 o 1.",
+    "cambios": [
+      {"buscar": "return residuo if residuo in (0, 1) else 11 - residuo", "reemplazar": "return 11 - residuo"}
+    ]
+  },
+  {
+    "nombre": "no_quita_separadores",
+    "descripcion": "No quita los puntos ni los guiones del número.",
+    "cambios": [
+      {"buscar": "limpio = numero.strip().replace(\".\", \"\").replace(\"-\", \"\")", "reemplazar": "limpio = numero.strip()"}
+    ]
+  }
+]
