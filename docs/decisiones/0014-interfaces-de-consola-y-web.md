@@ -10,6 +10,13 @@ modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ci
 > El ADR-0017 (paso 14) cierra el acceso remoto: la web sigue sin autenticación y solo responde en
 > la máquina donde corre. En la composición escucha dentro del contenedor y se publica solo en
 > `127.0.0.1` del anfitrión.
+>
+> El ADR-0018 rediseña la presentación de la web sin cambiar sus rutas ni sus funciones:
+> - la sesión se organiza por etapas;
+> - el panel agrupa las sesiones según quién debe actuar;
+> - el cliente ve su avance;
+> - la trazabilidad y la traza se leen en HTML;
+> - la tipografía se sirve desde la propia aplicación.
 
 ## Contexto y planteamiento del problema
 

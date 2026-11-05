@@ -87,7 +87,12 @@ o fallar; en ese caso basta repetir el comando, que retoma desde la última capa
 ### Operar el sistema
 
 En la web, el equipo opera desde el panel y el cliente conversa en su propia vista
-(`/conversacion/ID`).
+(`/conversacion/ID`):
+- **Panel:** agrupa las sesiones según quién debe actuar: las que esperan al equipo, las que
+  avanzan o esperan al cliente y las terminadas.
+- **Página de cada sesión:** la línea del flujo muestra sus cinco etapas y los tres puntos de
+  control, N6, N9 y N17. Se abre la etapa que espera, y cada etapa conserva lo ya aprobado.
+- **Vista del cliente:** muestra su avance en cuatro pasos de su lenguaje.
 
 La consola corre en otro contenedor de la misma imagen:
 
@@ -166,6 +171,9 @@ pytest -m "sandbox and not nube"
 ```
 
 - **Pruebas con costo:** las marcadas `nube` llaman a Azure OpenAI.
+- **Revisar la web sin costo:** `python scripts/web_demostracion.py` la levanta en
+  `http://127.0.0.1:8010/` con agentes simulados y nueve sesiones sintéticas, una por estado. No
+  llama a Azure ni usa PostgreSQL.
 - **Al cambiar una dependencia:** `python scripts/congelar_aplicacion.py` actualiza las versiones
   de la imagen.
 
