@@ -10,6 +10,9 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 > en caché, que los modelos GPT-6 cobran aparte y la API reporta en `cache_write_tokens`.
 > El ADR-0016 suma el costo de cada nodo al de la sesión, lo limita con un presupuesto y guarda la
 > traza por nodo en PostgreSQL; el JSONL queda para los scripts de medición.
+> El ADR-0017 descarta los modelos de lenguaje locales: Azure OpenAI es el único proveedor. El
+> factor del RF-37 y lo que se dice abajo de los servidores locales quedan sin efecto; la elección
+> de Chat Completions se mantiene.
 
 ## Contexto y planteamiento del problema
 

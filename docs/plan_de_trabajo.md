@@ -45,7 +45,7 @@ respuestas simuladas, cada agente real encaja después sin sorpresas.
 |---|---|---|
 | 12 | Interfaces de consola y web | Un analista opera el flujo completo sin tocar código |
 | 13 | Control de costo y observabilidad | El presupuesto detiene una ejecución que lo supera |
-| 14 | Empaquetado y modo local | El sistema corre completo sin credenciales de nube |
+| 14 | Empaquetado en contenedores | Desde un clon limpio, la composición levanta el sistema completo y un módulo sale validado con los modelos de Azure OpenAI |
 
 ## Bloque F · Evaluación del objetivo 4
 

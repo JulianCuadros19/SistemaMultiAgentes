@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo** | **Contenido**                                               |
 |-----------|-------------------------------------------------------------|
 | Producto  | Entregable del Objetivo Específico 1                        |
-| Versión   | 1.2                                                         |
+| Versión   | 1.3                                                         |
 | Fecha     | 14 de septiembre de 2026                                    |
 | Autores   | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director  | MsC. Juan Carlos Barrero Calixto                            |
@@ -173,7 +173,7 @@ Requerimientos transversales de auditoría, exportación y empaquetado.
 | **RF-34** | El sistema debe registrar la observabilidad de cada ejecución: trazas por agente, prompts y versiones utilizadas, tokens consumidos, costo estimado, latencia y errores.                                                             | Alta       | *DADA una ejecución finalizada, CUANDO se consulta su traza, ENTONCES están disponibles los prompts, tokens, costos y tiempos por nodo del grafo.*                  |
 | **RF-35** | El sistema debe exportar los entregables por módulo: requerimientos formales, registro de decisión arquitectónica, especificación de diseño, código fuente, documentación y reporte de validación, en formatos estándar.                   | Media      | *DADO un módulo validado, CUANDO se solicita la exportación, ENTONCES se genera el paquete completo de artefactos.*                                                 |
 | **RF-36** | Los prompts especializados de cada agente y la configuración de estilo del sistema deben estar versionados como activos, con posibilidad de auditar qué versión produjo cada artefacto.                                              | Alta       | *DADO un artefacto generado, CUANDO se audita, ENTONCES se identifica la versión exacta del prompt y de la configuración que lo produjeron.*                        |
-| **RF-37** | El sistema debe entregarse empaquetado en contenedores, capaz de operar de extremo a extremo sin dependencia de ningún proveedor de nube, utilizando modelos de lenguaje y de embeddings ejecutables localmente.                     | Alta       | *DADO el paquete entregado, CUANDO se despliega en una máquina sin credenciales de nube, ENTONCES el sistema completa el flujo de extremo a extremo en modo local.* |
+| **RF-37** | El sistema debe entregarse empaquetado en contenedores, capaz de operar de extremo a extremo con los modelos de lenguaje desplegados en Azure OpenAI y con el modelo de embeddings ejecutado localmente.                            | Alta       | *DADO el paquete entregado y un recurso de Azure OpenAI con los despliegues configurados, CUANDO se despliega con el archivo de composición, ENTONCES el sistema completa el flujo de extremo a extremo.* |
 
 *Fuente: Elaboración propia.*
 
@@ -190,7 +190,7 @@ Los requerimientos no funcionales se clasifican según las características de c
 | **RNF-03** | Seguridad                        | Todo código generado debe ejecutarse en un entorno aislado sin acceso a red ni al sistema de archivos del anfitrión.                                                               | Alta       |
 | **RNF-04** | Seguridad, confidencialidad      | La información de dominio incorporada a las bases de conocimiento debe permanecer bajo control de la empresa; los embeddings se generan localmente y no se transmiten a terceros.  | Alta       |
 | **RNF-05** | Mantenibilidad                   | El sistema debe permitir modificar el prompt, el modelo o la base de conocimiento de un agente sin alterar el código de los demás.                                                 | Alta       |
-| **RNF-06** | Flexibilidad                     | La capa de acceso a modelos debe ser agnóstica al proveedor, permitiendo sustituir el modelo de cada agente por configuración y operar íntegramente con modelos locales.           | Alta       |
+| **RNF-06** | Flexibilidad                     | La capa de acceso a modelos debe ser agnóstica al proveedor, permitiendo sustituir el modelo de cada agente por configuración.                                                     | Alta       |
 | **RNF-07** | Compatibilidad                   | El sistema debe ejecutarse sobre Python 3.11 o superior y PostgreSQL 16 o superior, desplegable mediante contenedores en Linux, Windows y macOS.                                   | Alta       |
 | **RNF-08** | Capacidad de interacción         | La conversación de elicitación debe ser comprensible para un cliente sin formación técnica: una pregunta por turno, lenguaje de negocio y confirmación explícita antes de cerrar.  | Alta       |
 | **RNF-09** | Capacidad de interacción, control humano | El sistema debe detenerse obligatoriamente en tres puntos de control humano: aprobación de requerimientos, aprobación de la especificación de diseño y validación final del módulo. Ante un rechazo, el flujo regresa al agente anterior con las observaciones; desde la validación final, también al arquitecto o, si la persona descubre una regla nueva, al elicitador, que enmienda los requerimientos y los somete de nuevo al analista.                                      | Alta       |
@@ -208,7 +208,7 @@ Los requerimientos no funcionales se clasifican según las características de c
 
 **7. RESTRICCIONES Y SUPUESTOS**
 
-- El sistema se ejecuta en la infraestructura de Realtix y debe poder operar sin conexión a proveedores de nube.
+- El sistema se ejecuta en la infraestructura de Realtix. Los modelos de lenguaje se acceden mediante un recurso de Azure OpenAI, por lo que la operación requiere conexión con ese servicio; el modelo de embeddings y las bases de conocimiento permanecen en la infraestructura de la empresa.
 
 - El catálogo de arquitecturas de referencia y el catálogo tecnológico autorizado son insumos que se validan antes del desarrollo del agente arquitecto.
 
@@ -240,3 +240,4 @@ El presente documento se considera aprobado cuando el equipo técnico de Realtix
 | 1.0 | 14 de septiembre de 2026 | Versión aprobada por el equipo técnico. |
 | 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): el requerimiento formal sigue el formato del Anexo A; el artefacto del arquitecto pasa a llamarse especificación de diseño; los RNF adoptan los nombres de ISO/IEC 25010:2023; se agrega el RF-38 (aprobación humana final), el RNF-09 pasa a tres puntos de control y los requerimientos aprobados se entregan también al agente tester. |
 | 1.2 | 4 de noviembre de 2026 | Enmiendas desde la validación final (ADR-0015): se agrega el RF-39, el rechazo del RF-38 admite tres destinos y el RNF-09 lleva la enmienda al elicitador. |
+| 1.3 | 4 de noviembre de 2026 | Entrega con Azure OpenAI (ADR-0017): los modelos de lenguaje son los desplegados en Azure OpenAI y no se usan modelos de lenguaje locales. El RF-37 pide operar de extremo a extremo con ellos y con el modelo de embeddings local; el RNF-06 deja de exigir la operación íntegra con modelos locales, y la restricción de operar sin conexión a proveedores de nube pasa a la conexión con Azure OpenAI. |

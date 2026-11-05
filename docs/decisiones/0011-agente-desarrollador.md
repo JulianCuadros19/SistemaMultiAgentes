@@ -15,6 +15,8 @@ modifica: ADR-0003 (costo con escritura en caché) y ADR-0006 (entrada de N10 y 
 > intento rechazado, que el código combina como en el RF-19. Una generación fallida cuenta como
 > iteración rechazada y va de N10 a N15. Si la especificación cambió, N10 genera de cero en lugar
 > de corregir.
+> El ADR-0017 (paso 14) da a la aplicación en contenedor acceso al Docker del anfitrión por su
+> socket, para crear el entorno aislado, que no cambia.
 
 ## Contexto y planteamiento del problema
 

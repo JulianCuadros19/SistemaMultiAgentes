@@ -7,6 +7,9 @@ modifica: ADR-0001 (Langfuse sale de las dependencias), ADR-0003 (la traza de la
 
 # ADR-0016 · Control de costo y traza por nodo
 
+> El ADR-0017 (paso 14) descarta el modo sin nube: Azure OpenAI es el único proveedor de modelos de
+> lenguaje. Langfuse sigue fuera, porque su versión autoalojada exigiría cinco contenedores más.
+
 ## Contexto y planteamiento del problema
 
 El paso 13 termina cuando **el presupuesto detiene una ejecución que lo supera**. Lo piden dos

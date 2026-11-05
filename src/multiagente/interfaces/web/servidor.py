@@ -1,7 +1,7 @@
 """Servidor de la interfaz web: `multiagente web`.
 
 Abre el operador del sistema completo y sirve la aplicación con uvicorn, solo en la máquina local
-(`INTERFAZ_HOST_WEB`, por defecto 127.0.0.1): no hay autenticación hasta el paso 14.
+(`INTERFAZ_HOST_WEB`, por defecto 127.0.0.1), porque no tiene autenticación (ADR-0017).
 """
 
 import uvicorn

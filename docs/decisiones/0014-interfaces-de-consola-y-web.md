@@ -7,6 +7,10 @@ modifica: ADR-0006 (decisión humana en N17, fallas del modelo, escalamiento, ci
 
 # ADR-0014 · Interfaces de consola y web sobre una capa de operación compartida
 
+> El ADR-0017 (paso 14) cierra el acceso remoto: la web sigue sin autenticación y solo responde en
+> la máquina donde corre. En la composición escucha dentro del contenedor y se publica solo en
+> `127.0.0.1` del anfitrión.
+
 ## Contexto y planteamiento del problema
 
 El paso 12 exige que un analista opere el flujo completo sin tocar código. Hasta el paso 11 el

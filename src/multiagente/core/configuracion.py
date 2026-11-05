@@ -225,8 +225,9 @@ class ConfiguracionRecuperacion(BaseSettings):
 class ConfiguracionInterfaces(BaseSettings):
     """Interfaces de operación, tomadas de las variables INTERFAZ_* (paso 12).
 
-    La traza y la carpeta de trabajo quedan en `data/local/`, que no se versiona. La web escucha
-    solo en la máquina local: el acceso remoto y la autenticación se deciden en el paso 14.
+    La traza y la carpeta de trabajo quedan en `data/local/`, que no se versiona. La web no tiene
+    autenticación y solo responde en la máquina local (ADR-0017): en la composición escucha en
+    0.0.0.0 dentro del contenedor, publicada solo en 127.0.0.1 del anfitrión.
     """
 
     model_config = SettingsConfigDict(

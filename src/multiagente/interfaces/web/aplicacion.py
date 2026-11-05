@@ -15,7 +15,7 @@ Rutas:
 - `/sesiones/{id}/estado.json`, que la página consulta mientras procesa.
 
 Todo pasa por el `Operador`, como en la consola. Las plantillas escapan el contenido, incluido el
-código generado. Sin recursos externos: funciona sin conexión (RF-37).
+código generado. Sin recursos externos: la página no carga nada de terceros, ni de una CDN.
 """
 
 import io

@@ -67,11 +67,14 @@ pero no la cambies en silencio.
 10. **Dinero y avalúos usan `Decimal`, nunca `float`.** Es una regla de calidad de severidad alta.
 11. **Los prompts viven en `prompts/<agente>/` y se versionan.** Ningún prompt en línea
     dentro del código de un nodo.
+12. **Los modelos de lenguaje son solo los desplegados en Azure OpenAI** (ADR-0017). Ningún nodo
+    usa modelos locales ni de pesos abiertos, y no se propone un servidor de inferencia local.
+    BGE-M3 no es un modelo de lenguaje: sigue local, porque el RNF-04 lo exige.
 
 ## Stack
 
-Python 3.11 o superior · LangGraph · PostgreSQL 16 con pgvector · Docker · Azure OpenAI
-durante el desarrollo, modelos locales en la entrega · BGE-M3 local · traza por nodo en
+Python 3.11 o superior · LangGraph · PostgreSQL 16 con pgvector · Docker · Azure OpenAI,
+único proveedor de modelos de lenguaje (ADR-0017) · BGE-M3 local · traza por nodo en
 PostgreSQL (ADR-0016) · pytest · Ruff.
 
 ## Entorno
@@ -384,8 +387,10 @@ Mantener esta sección actualizada al cerrar cada paso.
   - el exceso queda acotado a un nodo;
   - el costo de un nodo que falla por infraestructura no suma al acumulado;
   - en N3, la ampliación se escribe en el estado cuando el cliente responde.
-- **Paso actual: 14, empaquetado y modo local.** Terminado cuando el sistema corre completo sin
-  credenciales de nube.
+- **Paso actual: 14, empaquetado en contenedores** (ADR-0017). Terminado cuando, desde un clon
+  limpio, la composición levanta el sistema completo y un módulo sale validado con los modelos de
+  Azure OpenAI. El 2026-11-04 el equipo descartó el «modo local»: el RF-37, el RNF-06, la
+  arquitectura y el plan de trabajo se corrigieron en consecuencia.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en

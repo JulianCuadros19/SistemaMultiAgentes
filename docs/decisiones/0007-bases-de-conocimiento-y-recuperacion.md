@@ -8,6 +8,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 > El ADR-0012 (paso 10) agrega a criterios_calidad las reglas CAL-MT-009 y CAL-MT-010: el corpus
 > pasa a 186 fragmentos, 51 de criterios y 33 reglas.
+> El ADR-0017 (paso 14) deja a Azure OpenAI como único proveedor de modelos de lenguaje y retira el
+> factor del RF-37 de operar sin nube. Los embeddings siguen locales por el RNF-04 y por el costo.
 
 ## Contexto y planteamiento del problema
 

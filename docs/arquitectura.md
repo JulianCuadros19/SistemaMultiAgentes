@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo**      | **Contenido**                                               |
 |----------------|-------------------------------------------------------------|
 | Producto       | Entregable del Objetivo Específico 2                        |
-| Versión        | 1.4                                                         |
+| Versión        | 1.5                                                         |
 | Fecha          | 14 de septiembre de 2026                                    |
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |
@@ -96,7 +96,7 @@ Esta decisión es preferible a la recuperación por tres razones: el estilo pasa
 
 El pipeline de ingesta carga el documento, lo fragmenta según la estrategia de su colección, genera los embeddings de forma local y realiza la indexación vectorial y léxica. La recuperación combina búsqueda semántica y léxica con fusión por rango recíproco, aplica filtro obligatorio por colección, verifica la relevancia del contexto antes de inyectarlo en el prompt y registra en la traza el contexto descartado.
 
-Se adopta un modelo de embeddings de ejecución local. La justificación es triple: elimina el costo por token en un proceso que se reindexa repetidamente durante el afinamiento, evita que la información de dominio salga de la infraestructura de la empresa conforme al RNF-04, y es condición necesaria para el modo de operación sin dependencia de nube exigido por el RF-37. La dimensión del vector queda fijada en la definición de la tabla, por lo que un cambio de modelo implica reindexar el corpus.
+Se adopta un modelo de embeddings de ejecución local. La justificación es doble: elimina el costo por token en un proceso que se reindexa repetidamente durante el afinamiento y evita que la información de dominio salga de la infraestructura de la empresa conforme al RNF-04. La dimensión del vector queda fijada en la definición de la tabla, por lo que un cambio de modelo implica reindexar el corpus.
 
 **4. ROLES DE LOS AGENTES Y PROMPTS**
 
@@ -160,7 +160,7 @@ Se adopta el principio de asignación por complejidad cognitiva: a cada nodo se 
 
 *Fuente: Elaboración propia.*
 
-**Identificadores de modelo.** La tabla especifica perfiles, no identificadores concretos. Los identificadores residen en la configuración del sistema conforme al RNF-06, y su selección definitiva se realiza mediante benchmark controlado. Esta decisión permite que el sistema opere con modelos accedidos por interfaz remota durante el desarrollo y con modelos de ejecución local en la entrega, sin modificación del código.
+**Identificadores de modelo.** La tabla especifica perfiles, no identificadores concretos. Los identificadores residen en la configuración del sistema conforme al RNF-06, y su selección definitiva se realiza mediante benchmark controlado. Esta decisión permite cambiar el modelo de un nodo, o su versión, editando la configuración, sin modificación del código. Los modelos de lenguaje son los desplegados en Azure OpenAI, único proveedor de modelos de lenguaje del sistema (ADR-0017).
 
 **Perfil del nodo N10.** Al no disponer de recuperación de contexto, el nodo de generación concentra la exigencia sobre la capacidad del modelo para seguir una especificación extensa con precisión. Se le asigna el perfil más alto disponible, lo que resulta coherente con el principio de reservar el gasto para el trabajo que realmente lo requiere.
 
@@ -218,19 +218,19 @@ La tabla de fragmentos incorpora índice vectorial para la búsqueda semántica,
 
 El sistema se entrega empaquetado en contenedores orquestados mediante un archivo de composición único, conforme al RF-37. La composición incluye los siguientes servicios:
 
-- **Aplicación.** Orquestador, agentes, capa de recuperación e interfaces de operación.
+- **Aplicación.** Orquestador, agentes, capa de recuperación e interfaces de operación. Invoca los modelos de lenguaje desplegados en Azure OpenAI y crea el sandbox mediante el Docker del anfitrión.
 
 - **Base de datos.** PostgreSQL con extensión vectorial, que aloja el estado, los puntos de control y las bases de conocimiento.
 
 - **Servicio de embeddings.** Modelo de vectorización de ejecución local.
 
-- **Servicio de inferencia local.** Servidor de modelos open-weights que habilita el modo sin dependencia de nube.
-
 - **Sandbox.** Contenedor efímero sin red, creado y destruido por cada ejecución de código.
 
 - **Observabilidad.** Traza por nodo en la misma base de datos (`ejecuciones` y `llamadas_modelo`), consultable desde la consola y la web: prompts, tokens, costo y tiempo de cada nodo. No requiere un servicio aparte (ADR-0016).
 
-**Modos de operación.** El sistema admite dos modos intercambiables por configuración. El modo remoto accede a modelos mediante interfaz de proveedor y se emplea durante el desarrollo y la medición de desempeño. El modo local emplea modelos open-weights servidos por el propio contenedor y no requiere credenciales ni conectividad. La entrega debe demostrar el funcionamiento completo en modo local: es la condición que hace verificable el RF-37.
+**Proveedor de modelos.** Los cinco nodos que invocan un modelo de lenguaje usan los desplegados en un recurso de Azure OpenAI, cuyo punto de acceso y credencial residen en variables de entorno; el sistema no emplea modelos de lenguaje de ejecución local (ADR-0017). El modelo de embeddings, en cambio, se ejecuta dentro de la composición, de modo que las bases de conocimiento no salen de la infraestructura de la empresa (RNF-04).
+
+**Arranque.** Un solo comando levanta la composición: descarga y verifica el modelo de embeddings, construye las imágenes de la aplicación y del sandbox, migra la base de datos e indexa las bases de conocimiento antes de habilitar la aplicación. La interfaz web se publica solo en la máquina donde corre la composición.
 
 **9. SEGURIDAD Y CONFIDENCIALIDAD**
 
@@ -238,7 +238,11 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 
 - Los embeddings se generan localmente, de modo que la información de dominio no se transmite a terceros (RNF-04).
 
-- Las credenciales residen en variables de entorno excluidas del control de versiones.
+- Las credenciales residen en variables de entorno excluidas del control de versiones y no se copian a las imágenes, que se construyen en la máquina donde corren y no se publican en ningún registro.
+
+- Los prompts, con la conversación, los fragmentos recuperados y los artefactos de cada sesión, se procesan en Azure OpenAI, dentro de su límite de cumplimiento; con datos reales se prefieren despliegues de zona de datos de EE. UU. sobre los globales.
+
+- La interfaz web no tiene autenticación y solo responde en la máquina donde corre la composición. La aplicación accede al Docker del anfitrión únicamente para crear el sandbox (ADR-0017).
 
 - Durante las pruebas del proyecto se emplean datos sintéticos o anonimizados, conforme al acuerdo de confidencialidad.
 
@@ -262,7 +266,7 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 | Colecciones con filtro obligatorio por agente             | RF-29, RF-30, RNF-04               |
 | Segmentación diferenciada por naturaleza de contenido     | RF-30, RF-31                       |
 | Capa de modelos agnóstica al proveedor                    | RNF-05, RNF-06, RF-37              |
-| Composición en contenedores con inferencia local          | RF-37, RNF-07                      |
+| Composición en contenedores con Azure OpenAI y embeddings locales | RF-37, RNF-04, RNF-07     |
 | Estado tipado con puntos de control                       | RF-26, RF-28, RF-33, RNF-02        |
 | Traza por nodo con tokens y costo                         | RF-34, RNF-10                      |
 | Presupuesto por módulo con pausa antes de los nodos con modelo | RNF-10                       |
@@ -280,13 +284,13 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 | Sin recuperación de contexto, el desarrollador produce código con formato de salida inconsistente. | El formato de salida se fija mediante ejemplos dentro del prompt de sistema y se valida estructuralmente antes de la ejecución en sandbox.                                             |
 | El incremento de agentes eleva la latencia y el costo por unidad procesada.                        | Cinco de diecisiete nodos consumen tokens; el interruptor de presupuesto y los límites de tokens de salida contienen el gasto.                                                             |
 | El alcance de cuatro agentes excede el tiempo disponible del proyecto.                             | El catálogo cerrado de arquitecturas constituye el producto mínimo viable; el diseño arquitectónico libre se difiere a trabajos futuros.                                               |
-| Los modelos locales degradan la calidad respecto del modo remoto.                                  | El modo remoto se emplea para la medición de desempeño; el modo local se verifica funcionalmente y se documenta la diferencia observada.                                               |
+| El sistema depende de un único proveedor de modelos de lenguaje, Azure OpenAI: de su cuota, su disponibilidad, el retiro de versiones, su costo y la región donde procesa los datos. | La capa de modelos es agnóstica al proveedor, y los identificadores, versiones y tarifas residen en configuración (RNF-06); el presupuesto por módulo contiene el gasto (RNF-10); con datos reales se prefieren despliegues de zona de datos de EE. UU. |
 
 *Fuente: Elaboración propia.*
 
 **12. CRITERIO DE APROBACIÓN**
 
-El presente documento se considera aprobado cuando el equipo técnico de Realtix verifique que la topología del grafo cubre la totalidad de los requerimientos funcionales, que las bases de conocimiento reflejan la información que cada agente necesita para cumplir su tarea, que el modelo de datos soporta la trazabilidad exigida y que la vista de despliegue garantiza la operación sin dependencia de proveedores de nube. La aprobación se registra mediante acta firmada y habilita el inicio del tercer objetivo específico.
+El presente documento se considera aprobado cuando el equipo técnico de Realtix verifique que la topología del grafo cubre la totalidad de los requerimientos funcionales, que las bases de conocimiento reflejan la información que cada agente necesita para cumplir su tarea, que el modelo de datos soporta la trazabilidad exigida y que la vista de despliegue garantiza la operación con los modelos de lenguaje de Azure OpenAI, con la información de dominio bajo control de la empresa. La aprobación se registra mediante acta firmada y habilita el inicio del tercer objetivo específico.
 
 **HISTORIAL DE CAMBIOS**
 
@@ -297,3 +301,4 @@ El presente documento se considera aprobado cuando el equipo técnico de Realtix
 | 1.2 | 9 de octubre de 2026 | Flujo sin bloqueos (ADR-0014): N10 pasa a N15 si no logra una versión válida; agotado el ciclo de corrección, N15 escala la sesión a N17, donde no puede aprobarse; N17 devuelve el módulo al desarrollador (N10) o al arquitecto (N8), y cada devolución abre un ciclo nuevo; toda sesión en pausa o detenida puede cerrarse en la fase `cerrada`, con su registro. |
 | 1.3 | 4 de noviembre de 2026 | Calidad de la primera salida (ADR-0015): N12 detecta las pruebas que simulan el efecto del módulo (CAL-FS-006), y el juez de N14 ve las interfaces y el modelo de datos de la especificación y confirma cada rechazo con una segunda opinión. N8 declara el recorrido de cada escenario con interfaces públicas, fuera del Anexo B, y N9 lo verifica; el registro de decisión gana una sección de revisiones. Los métodos se declaran como interfaces `Clase.metodo`, que N9, N10 y N12 verifican. Tras un rediseño, N10 recibe la versión anterior como referencia, con la retroalimentación de N17 y la revisión del diseño, y antes de entregar aplica el estilo que rechazaría el tester. N3 pregunta por casos límite antes del resumen y una vez por algo más, con un límite de 18 turnos; el registro guarda los casos especiales, los ejemplos con cifras y quién más usa lo pedido, aparte del rol, y con el resumen confirmado N5 toma las preguntas abiertas del registro. N6 corrige los defectos que N5 puede resolver aunque haya preguntas abiertas, y escala estas al analista. N17 gana un tercer destino: una enmienda de los requerimientos por el elicitador, que recorre N5, N6 y N16 hasta N10 sin pasar por el diseño, con una arista nueva de N16 a N10. Al cierre, N9 rechaza `self` y `cls` en las funciones de módulo, el resumen muestra la obligatoriedad de un dato solo si el cliente la dijo y N3 reconoce «no aplica» como no saber. |
 | 1.4 | 4 de noviembre de 2026 | Control de costo y traza por nodo (ADR-0016): los nodos con modelo suman su costo al de la sesión y, si alcanzó su presupuesto (1,50 USD por defecto), pausan hasta que una persona lo amplía o la cierra; la traza por nodo pasa a PostgreSQL (`ejecuciones` y `llamadas_modelo`), consultable desde la consola y la web, y Langfuse sale de la vista de despliegue. |
+| 1.5 | 4 de noviembre de 2026 | Entrega con Azure OpenAI (ADR-0017): los modelos de lenguaje son los desplegados en Azure OpenAI, sin modelos de lenguaje locales; salen de la vista de despliegue el servicio de inferencia local y los modos de operación, y el modelo de embeddings sigue local por el RNF-04. La composición levanta con un solo comando la aplicación, la base de datos, los embeddings y el sandbox, que la aplicación crea mediante el Docker del anfitrión; la web solo responde en esa máquina. El riesgo de los modelos locales pasa a ser la dependencia de un único proveedor. |
