@@ -1,0 +1,33 @@
+# Despliegue de demostración en una máquina virtual de Azure (ADR-0020). Se suma a la composición
+# base, que no cambia: la web, la base y los embeddings siguen publicados solo en 127.0.0.1 de la
+# máquina, y este proxy es lo único que responde hacia afuera, con TLS y contraseña.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.azure.yml up -d --build --wait
+#
+# El sitio, el usuario y el hash de la contraseña se leen de .env.azure, que no se versiona
+# (plantilla en docker/proxy/env-azure.ejemplo). scripts/desplegar_azure.sh lo crea.
+
+services:
+  aplicacion:
+    environment:
+      # Con un enlace público, una sesión se detiene antes: una persona la amplía o la cierra.
+      PRESUPUESTO_MAXIMO_POR_MODULO_USD: "1.00"
+
+  proxy:
+    image: caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
+    env_file: .env.azure
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - datos_proxy:/data
+      - config_proxy:/config
+    depends_on:
+      aplicacion:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  datos_proxy:
+  config_proxy:

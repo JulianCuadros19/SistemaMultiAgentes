@@ -10,6 +10,7 @@ dist/
 
 # Secretos: NUNCA versionar
 .env
+.env.azure
 *.key
 *.pem
 

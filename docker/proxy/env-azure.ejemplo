@@ -1,0 +1,11 @@
+# Plantilla de .env.azure, el archivo del proxy en la máquina de Azure (ADR-0020). No se versiona.
+# scripts/desplegar_azure.sh lo crea la primera vez, con una contraseña generada.
+
+# Etiqueta DNS de la IP pública de la máquina.
+SITIO_WEB=multiagente-demo.southcentralus.cloudapp.azure.com
+
+# Usuario de la web. Se comparte junto con la contraseña.
+WEB_USUARIO=demo
+
+# Hash de `caddy hash-password`. Va entre comillas simples, porque lleva el carácter $.
+WEB_CLAVE_HASH='$2a$14$reemplazar'

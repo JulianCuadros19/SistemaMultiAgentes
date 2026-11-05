@@ -1,0 +1,19 @@
+# Proxy del despliegue de demostración en Azure (ADR-0020): TLS automático y contraseña. Lo único
+# expuesto es la web: la base, los embeddings y el socket de Docker no pasan por aquí.
+{$SITIO_WEB} {
+	encode gzip
+
+	basic_auth {
+		{$WEB_USUARIO} {$WEB_CLAVE_HASH}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	reverse_proxy aplicacion:8000
+}
