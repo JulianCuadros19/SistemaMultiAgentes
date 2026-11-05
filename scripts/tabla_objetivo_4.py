@@ -1,12 +1,11 @@
-"""Tabla comparativa del objetivo 4: sistema, modelo único e implementación manual (ADR-0019).
+"""Tabla comparativa del objetivo 4: el sistema y dos líneas base de un solo modelo (ADR-0019).
 
 Se regenera sin costo desde los resultados guardados:
 - las verificaciones de referencia, de `evaluacion/resultados/paso-15/referencia/`;
 - el tiempo y el costo del sistema, de los resultados de cada corrida;
-- los del modelo único, de su `resultado.json`;
-- las horas de la implementación manual, de `evaluacion/manual/<caso>/tiempos.csv`;
-- la revisión humana, de `evaluacion/resultados/paso-15/revision-humana/tiempos.json`, con los
-  segundos de reloj, del sistema y del cliente simulado de cada caso, y su costo, de la traza.
+- los de las líneas base, de su `resultado.json`.
+
+Imprime la tabla por caso y enfoque, y la prueba de signos por caso en costo, tiempo y errores.
 
 Uso:
     python scripts/tabla_objetivo_4.py
@@ -17,83 +16,50 @@ from decimal import Decimal
 from pathlib import Path
 
 from multiagente.evaluacion.comparacion import (
-    TARIFAS_USD_POR_HORA,
     Medicion,
+    Resumen,
     agrupar,
-    costo_total,
-    minutos_de_tiempos,
+    comparar_por_caso,
 )
 
 RAIZ = Path(__file__).resolve().parents[1]
 RESULTADOS = RAIZ / "evaluacion" / "resultados" / "paso-15"
 CORRIDAS_DEL_SISTEMA = ("corrida-ampliada", "sistema-2")
-TRAZA_HUMANA = RAIZ / "docs" / "mediciones" / "paso-11-extremo-a-extremo.jsonl"
-SEGUNDOS_POR_HORA = Decimal(3600)
+CARPETAS_DE_LINEA_BASE = {"modelo_unico": "modelo-unico", "un_prompt": "llm-un-prompt"}
 SEGUNDOS_POR_MINUTO = Decimal(60)
-MINUTOS_POR_HORA = Decimal(60)
-
-
-def _sin_cliente(caso: dict[str, object]) -> Decimal:
-    return Decimal(str(caso["costo_sistema"]))
+NOMBRES = {
+    "sistema": "Sistema multiagente",
+    "modelo_unico": "LLM con diálogo",
+    "un_prompt": "LLM de un solo prompt",
+}
 
 
 def medir_sistema(referencia: dict[str, object]) -> Medicion:
-    """Mide una corrida automática del sistema: sin horas-persona."""
+    """Mide una corrida automática del sistema."""
     etiqueta = str(referencia["etiqueta"])
     orden = int(etiqueta.rsplit("-", 1)[-1])
-    caso = json.loads(
-        (RESULTADOS / CORRIDAS_DEL_SISTEMA[orden - 1] / f"{referencia['caso']}.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    corrida = CORRIDAS_DEL_SISTEMA[orden - 1]
+    caso = json.loads((RESULTADOS / corrida / f"{referencia['caso']}.json").read_text("utf-8"))
     return Medicion(
         caso=str(referencia["caso"]),
         enfoque="sistema",
         etiqueta=etiqueta,
         tiempo_maquina_min=Decimal(str(caso["tiempo_sistema_min"])),
-        horas_persona=Decimal(0),
-        inferencia_usd=_sin_cliente(caso),
+        inferencia_usd=Decimal(str(caso["costo_sistema"])),
         pasan=int(referencia["pasan"]),
         total=int(referencia["total"]),
     )
 
 
-def medir_sistema_humano(referencia: dict[str, object]) -> Medicion:
-    """Mide una corrida con revisión humana: las horas son la espera por la persona."""
-    tiempos = json.loads((RESULTADOS / "revision-humana" / "tiempos.json").read_text("utf-8"))
-    sesiones = json.loads((RESULTADOS / "revision-humana" / "sesiones.json").read_text("utf-8"))
-    caso = str(referencia["caso"])
-    medidos = tiempos[caso]
-    espera = (
-        Decimal(str(medidos["reloj_s"]))
-        - Decimal(str(medidos["sistema_s"]))
-        - Decimal(str(medidos["cliente_s"]))
-    )
-    inferencia = Decimal(0)
-    for linea in TRAZA_HUMANA.read_text("utf-8").splitlines():
-        llamada = json.loads(linea)
-        if llamada.get("sesion") == sesiones[caso] and llamada["nodo"] != "cliente_simulado":
-            inferencia += Decimal(llamada["costo_usd"])
-    return Medicion(
-        caso=caso,
-        enfoque="sistema_humano",
-        etiqueta=str(referencia["etiqueta"]),
-        tiempo_maquina_min=Decimal(str(medidos["sistema_s"])) / SEGUNDOS_POR_MINUTO,
-        horas_persona=espera / SEGUNDOS_POR_HORA,
-        inferencia_usd=inferencia,
-        pasan=int(referencia["pasan"]),
-        total=int(referencia["total"]),
-    )
-
-
-def medir_modelo_unico(referencia: dict[str, object]) -> Medicion:
-    """Mide una corrida del modelo único: sin horas-persona."""
+def medir_linea_base(referencia: dict[str, object]) -> Medicion:
+    """Mide una corrida de una línea base de un solo modelo."""
     etiqueta = str(referencia["etiqueta"])
+    enfoque = str(referencia["enfoque"])
     corrida = etiqueta.rsplit("-", 1)[-1]
     datos = json.loads(
         (
             RESULTADOS
-            / "modelo-unico"
+            / CARPETAS_DE_LINEA_BASE[enfoque]
             / str(referencia["caso"])
             / f"corrida-{corrida}"
             / "resultado.json"
@@ -102,63 +68,56 @@ def medir_modelo_unico(referencia: dict[str, object]) -> Medicion:
     segundos = Decimal(str(datos["tiempo_total_s"])) - Decimal(str(datos["tiempo_cliente_s"]))
     return Medicion(
         caso=str(referencia["caso"]),
-        enfoque="modelo_unico",
+        enfoque=enfoque,
         etiqueta=etiqueta,
         tiempo_maquina_min=segundos / SEGUNDOS_POR_MINUTO,
-        horas_persona=Decimal(0),
         inferencia_usd=Decimal(str(datos["costo_modelo_usd"])),
         pasan=int(referencia["pasan"]),
         total=int(referencia["total"]),
     )
 
 
-def medir_manual(referencia: dict[str, object]) -> Medicion:
-    """Mide una implementación manual: sin cómputo ni inferencia."""
-    caso = str(referencia["caso"])
-    tiempos = (RAIZ / "evaluacion" / "manual" / caso / "tiempos.csv").read_text("utf-8")
-    return Medicion(
-        caso=caso,
-        enfoque="manual",
-        etiqueta=str(referencia["etiqueta"]),
-        tiempo_maquina_min=Decimal(0),
-        horas_persona=minutos_de_tiempos(tiempos) / MINUTOS_POR_HORA,
-        inferencia_usd=Decimal(0),
-        pasan=int(referencia["pasan"]),
-        total=int(referencia["total"]),
-    )
-
-
-MEDIDORES = {
-    "sistema": medir_sistema,
-    "sistema_humano": medir_sistema_humano,
-    "modelo_unico": medir_modelo_unico,
-    "manual": medir_manual,
-}
+def _valores(resumenes: list[Resumen], enfoque: str, magnitud: str) -> dict[str, Decimal]:
+    return {
+        r.caso: getattr(r, magnitud)
+        for r in resumenes
+        if r.enfoque == enfoque and r.caso != "todos"
+    }
 
 
 def main() -> None:
-    """Imprime la tabla por caso y enfoque, y la sensibilidad a la tarifa."""
+    """Imprime la tabla por caso y enfoque, y las comparaciones caso a caso."""
     mediciones = []
     for archivo in sorted((RESULTADOS / "referencia").glob("*.json")):
         if archivo.name == "oraculo.json":
             continue
         referencia = json.loads(archivo.read_text("utf-8"))
-        mediciones.append(MEDIDORES[referencia["enfoque"]](referencia))
-    columnas_tarifa = " | ".join(f"Costo a {t} USD/h" for t in TARIFAS_USD_POR_HORA)
-    print(
-        "| Caso | Enfoque | Corridas | Máquina (min) | Horas-persona | Inferencia (USD) | "
-        f"{columnas_tarifa} | Referencia | Tasa de errores |"
-    )
-    print("|---|---|---|---|---|---|" + "---|" * len(TARIFAS_USD_POR_HORA) + "---|---|")
-    for r in agrupar(mediciones):
-        costos = " | ".join(
-            f"{costo_total(r.inferencia_usd, r.horas_persona, t):.2f}" for t in TARIFAS_USD_POR_HORA
-        )
+        medir = medir_sistema if referencia["enfoque"] == "sistema" else medir_linea_base
+        mediciones.append(medir(referencia))
+    resumenes = agrupar(mediciones)
+    print("| Caso | Enfoque | Corridas | Máquina (min) | Inferencia (USD) | Referencia | Errores |")
+    print("|---|---|---|---|---|---|---|")
+    for r in resumenes:
         print(
-            f"| {r.caso} | {r.enfoque} | {r.corridas} | {r.tiempo_maquina_min:.1f} | "
-            f"{r.horas_persona:.2f} | {r.inferencia_usd:.3f} | {costos} | "
-            f"{r.pasan} de {r.total} | {r.tasa_errores:.3f} |"
+            f"| {r.caso.removeprefix('caso-ampliada-')} | {NOMBRES[r.enfoque]} | {r.corridas} | "
+            f"{r.tiempo_maquina_min:.1f} | {r.inferencia_usd:.3f} | {r.pasan} de {r.total} | "
+            f"{r.tasa_errores * 100:.1f} % |"
         )
+    print("\n| Sistema frente a | Magnitud | Mayor en | Menor en | Empates | Valor p |")
+    print("|---|---|---|---|---|---|")
+    for enfoque in ("modelo_unico", "un_prompt"):
+        for magnitud, nombre in (
+            ("inferencia_usd", "Costo"),
+            ("tiempo_maquina_min", "Tiempo"),
+            ("tasa_errores", "Errores"),
+        ):
+            c = comparar_por_caso(
+                _valores(resumenes, "sistema", magnitud), _valores(resumenes, enfoque, magnitud)
+            )
+            print(
+                f"| {NOMBRES[enfoque]} | {nombre} | {c.mayor} | {c.menor} | {c.empates} | "
+                f"{c.valor_p:.3f} |"
+            )
 
 
 if __name__ == "__main__":

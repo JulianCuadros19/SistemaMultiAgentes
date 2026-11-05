@@ -1,7 +1,7 @@
 """Evalúa implementaciones con las pruebas de aceptación de referencia (paso 15, ADR-0019).
 
-Las mismas pruebas de `evaluacion/referencia/<caso>/` evalúan al sistema, al modelo único y a la
-implementación manual. Corren en el entorno aislado, así que no tienen costo de modelos.
+Las mismas pruebas de `evaluacion/referencia/<caso>/` evalúan al sistema y a las dos líneas base de
+un solo modelo. Corren en el entorno aislado, así que no tienen costo de modelos.
 
 - `--oraculo` comprueba, antes de medir, que las pruebas de cada caso pasan con su implementación
   de control y que cada mutante falla al menos una.
@@ -19,11 +19,10 @@ implementación manual. Corren en el entorno aislado, así que no tienen costo d
 - `--resumen` imprime la tabla de los resultados de la carpeta de salida.
 - `--recolectar` reúne las implementaciones de los casos de referencia en
   `evaluacion/referencia/<caso>/implementaciones/<etiqueta>/`, versionadas con su origen, y escribe
-  el manifiesto `evaluacion/referencia/implementaciones.json`. Reúne cuatro fuentes:
-  - el sistema: la última versión de cada sesión de las corridas automáticas y de la revisión
-    humana;
-  - el modelo único: la entrega de cada corrida;
-  - la implementación manual, que ya está versionada en `evaluacion/manual/<caso>/`.
+  el manifiesto `evaluacion/referencia/implementaciones.json`. Reúne tres fuentes:
+  - el sistema: la última versión de cada sesión de las corridas automáticas;
+  - el modelo con diálogo: la entrega de cada corrida;
+  - el modelo de un solo prompt: la entrega de cada corrida.
 
   Cada entrada espera su adaptador en `evaluacion/referencia/<caso>/adaptadores/<etiqueta>.py`. La
   evaluación salta las que todavía no lo tienen.
@@ -63,8 +62,11 @@ SALIDA = RESULTADOS / "referencia"
 MANIFIESTO = RAIZ_REFERENCIA / "implementaciones.json"
 CORRIDAS_DEL_SISTEMA = ("corrida-ampliada", "sistema-2")
 """Carpetas de las corridas automáticas del sistema, en orden: la ampliada y la adicional."""
-REVISION_HUMANA = RESULTADOS / "revision-humana"
-"""Corridas con revisión humana; `sesiones.json` dice la sesión de cada caso."""
+LINEAS_BASE = (
+    ("modelo-unico", "modelo-unico", "modelo_unico"),
+    ("llm-un-prompt", "un-prompt", "un_prompt"),
+)
+"""Por cada línea base: su carpeta de resultados, el prefijo de su etiqueta y su enfoque."""
 
 
 def oraculo(entorno: EntornoAislado, salida: Path) -> bool:
@@ -203,8 +205,6 @@ def _entrada(etiqueta: str, enfoque: str, caso: str, codigo: Path, origen: Path)
 def recolectar() -> list[dict[str, str]]:
     """Reúne las implementaciones de los casos de referencia y escribe el manifiesto."""
     entradas = []
-    humanas = REVISION_HUMANA / "sesiones.json"
-    mapa = json.loads(humanas.read_text(encoding="utf-8")) if humanas.exists() else {}
     for caso in casos_de_referencia():
         numero = caso.rsplit("-", 1)[-1]
         for orden, nombre in enumerate(CORRIDAS_DEL_SISTEMA, start=1):
@@ -215,34 +215,13 @@ def recolectar() -> list[dict[str, str]]:
             if (version := _ultima_version(RESULTADOS / nombre / sesion)) is not None:
                 etiqueta = f"sistema-{numero}-{orden}"
                 entradas.append(_entrada(etiqueta, "sistema", caso, version, resultado))
-        if caso in mapa:
-            sesion = mapa[caso]
-            if (version := _ultima_version(REVISION_HUMANA / sesion)) is not None:
-                entradas.append(
-                    _entrada(f"sistema-humano-{numero}", "sistema_humano", caso, version, humanas)
-                )
-        for resultado in sorted(
-            (RESULTADOS / "modelo-unico" / caso).glob("corrida-*/resultado.json")
-        ):
-            corrida = resultado.parent.name.removeprefix("corrida-")
-            archivos = resultado.parent / "archivos"
-            if archivos.is_dir():
-                etiqueta = f"modelo-unico-{numero}-{corrida}"
-                entradas.append(_entrada(etiqueta, "modelo_unico", caso, archivos, resultado))
-        manual = RAIZ / "evaluacion" / "manual" / caso
-        if (manual / "src").is_dir():
-            entradas.append(
-                {
-                    "etiqueta": f"manual-{numero}",
-                    "enfoque": "manual",
-                    "caso": caso,
-                    "carpeta": _relativa(manual),
-                    "origen": _relativa(manual / "tiempos.csv"),
-                    "adaptador": _relativa(
-                        RAIZ_REFERENCIA / caso / "adaptadores" / f"manual-{numero}.py"
-                    ),
-                }
-            )
+        for carpeta, prefijo, enfoque in LINEAS_BASE:
+            for resultado in sorted((RESULTADOS / carpeta / caso).glob("corrida-*/resultado.json")):
+                corrida = resultado.parent.name.removeprefix("corrida-")
+                archivos = resultado.parent / "archivos"
+                if archivos.is_dir():
+                    etiqueta = f"{prefijo}-{numero}-{corrida}"
+                    entradas.append(_entrada(etiqueta, enfoque, caso, archivos, resultado))
     MANIFIESTO.write_text(
         json.dumps(entradas, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )

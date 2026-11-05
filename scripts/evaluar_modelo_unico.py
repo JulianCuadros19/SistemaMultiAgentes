@@ -1,11 +1,14 @@
-"""Línea base de un modelo único sobre los casos de referencia (paso 15, ADR-0019).
+"""Líneas base de un solo modelo sobre los casos de referencia (paso 15, ADR-0019).
 
-En cada corrida, un solo despliegue de Azure OpenAI hace todo el trabajo. Es el de N10, con el
-prompt único de `evaluacion/modelo_unico.md`:
-- conversa con el mismo cliente simulado que la evaluación del sistema;
-- entrega en una respuesta el código, las pruebas y `USO.md`.
+En cada corrida, un solo despliegue de Azure OpenAI hace todo el trabajo. Es el de N10, con un
+prompt único. Hay dos líneas base:
+- **Con diálogo** (`evaluacion/modelo_unico.md`), por defecto: conversa con el mismo cliente
+  simulado que la evaluación del sistema y entrega en una respuesta el código, las pruebas y
+  `USO.md`.
+- **De un solo prompt** (`evaluacion/llm_un_prompt.md`), con `--un-prompt`: recibe en un mensaje lo
+  que sabe el cliente y entrega. Sus resultados y su traza van aparte.
 
-No usa recuperación, puntos de control ni tester.
+No usan recuperación, puntos de control ni tester.
 
 **Resultados.** Cada corrida queda en `<salida>/<caso>/corrida-<n>/`:
 - `resultado.json`, con la transcripción, los tiempos, el costo y el error si lo hubo;
@@ -24,6 +27,8 @@ Uso:
     python scripts/evaluar_modelo_unico.py --presupuesto 4.5
     python scripts/evaluar_modelo_unico.py --solo caso-ampliada-12 --corridas 1 --presupuesto 1
     python scripts/evaluar_modelo_unico.py --resumen
+    python scripts/evaluar_modelo_unico.py --un-prompt --corridas 1 --presupuesto 1
+    python scripts/evaluar_modelo_unico.py --un-prompt --resumen
 """
 
 import argparse
@@ -38,7 +43,7 @@ from multiagente.core.configuracion import (
     ConfiguracionOrquestador,
     ConfiguracionRazonamiento,
 )
-from multiagente.evaluacion.modelo_unico import crear_modelo_unico
+from multiagente.evaluacion.modelo_unico import crear_llm_un_prompt, crear_modelo_unico
 from multiagente.evaluacion.referencia import casos_de_referencia
 from multiagente.evaluacion.traza import gastado_en_traza
 from multiagente.interfaces.cliente_simulado import (
@@ -53,9 +58,13 @@ from multiagente.llm.traza import RegistroJsonl
 RAIZ = Path(__file__).resolve().parents[1]
 SALIDA = RAIZ_EVALUACION / "resultados" / "paso-15" / "modelo-unico"
 TRAZA = RAIZ / "docs" / "mediciones" / "paso-15-modelo-unico.jsonl"
+SALIDA_UN_PROMPT = RAIZ_EVALUACION / "resultados" / "paso-15" / "llm-un-prompt"
+TRAZA_UN_PROMPT = RAIZ / "docs" / "mediciones" / "paso-15-llm-un-prompt.jsonl"
 CASOS = RAIZ_EVALUACION / "casos" / "ampliada"
 COSTO_ESTIMADO_POR_CORRIDA = Decimal("0.6")
 """Margen que se reserva antes de empezar una corrida, para no pasar del presupuesto."""
+COSTO_ESTIMADO_UN_PROMPT = Decimal("0.2")
+"""El margen de una corrida de un solo prompt, que no conversa."""
 
 
 def casos(solo: list[str] | None) -> list[CasoElicitacion]:
@@ -73,8 +82,10 @@ def correr(
     salida: Path,
     traza: Path,
     presupuesto: Decimal,
+    un_prompt: bool = False,
 ) -> None:
     """Corre las corridas sin resultado, mientras alcance el presupuesto."""
+    margen = COSTO_ESTIMADO_UN_PROMPT if un_prompt else COSTO_ESTIMADO_POR_CORRIDA
     azure = crear_cliente(ConfiguracionAzureOpenAI())
     modelos = ConfiguracionModelos()
     razonamiento = ConfiguracionRazonamiento()
@@ -84,16 +95,22 @@ def correr(
             carpeta = salida / caso.id / f"corrida-{numero}"
             if (carpeta / "resultado.json").exists():
                 continue
-            if (total := gastado_en_traza(traza)) + COSTO_ESTIMADO_POR_CORRIDA > presupuesto:
+            if (total := gastado_en_traza(traza)) + margen > presupuesto:
                 print(
                     f"Presupuesto: USD {total:.4f} de {presupuesto}. Se detiene antes de {carpeta}."
                 )
                 return
-            corrida = f"modelo-unico-{caso.id}-{numero}"
+            corrida = f"{'llm-un-prompt' if un_prompt else 'modelo-unico'}-{caso.id}-{numero}"
             registro = RegistroJsonl(traza, sesion=corrida)
-            cliente = ClienteSimulado(azure, modelos.despliegue_cliente_simulado, caso, registro)
-            modelo = crear_modelo_unico(azure, registro, modelos, razonamiento, limite)
-            resultado = modelo.resolver(caso, cliente, registro, corrida)
+            if un_prompt:
+                llm = crear_llm_un_prompt(azure, registro, modelos, razonamiento)
+                resultado = llm.resolver(caso, registro, corrida)
+            else:
+                cliente = ClienteSimulado(
+                    azure, modelos.despliegue_cliente_simulado, caso, registro
+                )
+                modelo = crear_modelo_unico(azure, registro, modelos, razonamiento, limite)
+                resultado = modelo.resolver(caso, cliente, registro, corrida)
             for ruta, contenido in resultado.archivos.items():
                 destino = carpeta / "archivos" / ruta
                 destino.parent.mkdir(parents=True, exist_ok=True)
@@ -135,12 +152,15 @@ def main() -> None:
     argumentos.add_argument("--solo", nargs="+", metavar="ID", help="corre solo estos casos")
     argumentos.add_argument("--corridas", type=int, default=3, help="corridas por caso")
     argumentos.add_argument("--presupuesto", type=Decimal, help="tope en USD de la traza")
-    argumentos.add_argument("--salida", type=Path, default=SALIDA, help="carpeta de resultados")
-    argumentos.add_argument("--traza", type=Path, default=TRAZA, help="traza de las llamadas")
+    argumentos.add_argument("--un-prompt", action="store_true", help="línea base de un solo prompt")
+    argumentos.add_argument("--salida", type=Path, help="carpeta de resultados")
+    argumentos.add_argument("--traza", type=Path, help="traza de las llamadas")
     argumentos.add_argument("--resumen", action="store_true", help="solo imprime el resumen")
     opciones = argumentos.parse_args()
+    salida = opciones.salida or (SALIDA_UN_PROMPT if opciones.un_prompt else SALIDA)
+    traza = opciones.traza or (TRAZA_UN_PROMPT if opciones.un_prompt else TRAZA)
     if opciones.resumen:
-        resumir(opciones.salida, opciones.traza)
+        resumir(salida, traza)
         return
     if opciones.presupuesto is None:
         argumentos.error("--presupuesto es obligatorio: la corrida tiene costo")
@@ -148,11 +168,12 @@ def main() -> None:
     correr(
         casos(opciones.solo),
         opciones.corridas,
-        opciones.salida,
-        opciones.traza,
+        salida,
+        traza,
         opciones.presupuesto,
+        opciones.un_prompt,
     )
-    resumir(opciones.salida, opciones.traza)
+    resumir(salida, traza)
 
 
 if __name__ == "__main__":

@@ -3,12 +3,18 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from multiagente.core.estilo import EstiloGenerado
 from multiagente.evaluacion.modelo_unico import (
     NODO_DIALOGO,
     NODO_ENTREGA,
+    NODO_UN_PROMPT,
     RUTA_PROMPT,
+    RUTA_PROMPT_UN_PROMPT,
+    LlmUnPrompt,
     ModeloUnico,
+    lo_que_sabe_el_cliente,
     problemas_de_la_entrega,
 )
 from multiagente.interfaces.cliente_simulado import ClienteSimulado, cargar_caso
@@ -153,3 +159,43 @@ def test_problemas_de_la_entrega():
         problemas_de_la_entrega({a["ruta"]: a["contenido"] for a in ENTREGA_VALIDA["archivos"]})
         == []
     )
+
+
+def test_el_llm_de_un_solo_prompt_recibe_lo_que_sabe_el_cliente_y_entrega(
+    cliente_falso, completar_respuesta
+):
+    modelo = cliente_falso(completar_respuesta(ENTREGA_VALIDA, salida=4000))
+    registro = RegistroEnMemoria()
+    llm = LlmUnPrompt(
+        entrega=InvocadorNodo(
+            modelo,
+            ParametrosNodo(NODO_UN_PROMPT, "gpt-6.1-sol", "medium", 32000),
+            leer_prompt(RUTA_PROMPT_UN_PROMPT),
+            registro,
+        ),
+        estilo=ESTILO,
+        paquetes=("pytest==9.1.1",),
+    )
+    resultado = llm.resolver(CASO, registro, "corrida-1")
+    enviado = datos(modelo.llamadas[0])
+    assert enviado["necesidad"] == CASO.necesidad
+    assert enviado["lo_que_sabe_el_cliente"].startswith("## Lo que sabes")
+    assert "Quién eres" not in enviado["lo_que_sabe_el_cliente"]
+    assert enviado["entorno"]["paquetes"] == ["pytest==9.1.1"]
+    assert resultado.error is None
+    assert set(resultado.archivos) == {
+        "src/nit/__init__.py",
+        "src/nit/digito.py",
+        "tests/test_digito.py",
+        "USO.md",
+    }
+    assert (resultado.turnos_cliente, resultado.llamadas_modelo) == (0, 1)
+    assert resultado.costo_cliente_usd == 0
+
+
+def test_lo_que_sabe_el_cliente_exige_la_seccion_de_la_ficha():
+    sin_seccion = CASO.model_copy(
+        update={"conocimiento": "Solo instrucciones del cliente simulado"}
+    )
+    with pytest.raises(ValueError, match="Lo que sabes"):
+        lo_que_sabe_el_cliente(sin_seccion)

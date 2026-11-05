@@ -1,10 +1,15 @@
-"""Línea base de un modelo único (paso 15, ADR-0019).
+"""Líneas base de un solo modelo de lenguaje (paso 15, ADR-0019).
 
-Un solo despliegue de Azure OpenAI, con un solo prompt (`evaluacion/modelo_unico.md`), atiende la
-necesidad de un caso de principio a fin y sin la arquitectura del sistema:
+**Con diálogo.** Un solo despliegue de Azure OpenAI, con un solo prompt
+(`evaluacion/modelo_unico.md`), atiende la necesidad de un caso de principio a fin y sin la
+arquitectura del sistema:
 1. conversa con el mismo cliente simulado que usa la evaluación del sistema, una intervención por
    turno, hasta que decide que tiene lo suficiente o llega al mismo límite de turnos del cliente;
 2. entrega en una sola respuesta el código, las pruebas y `USO.md`.
+
+**De un solo prompt.** El mismo despliegue recibe en un mensaje lo que sabe el cliente
+(`evaluacion/llm_un_prompt.md`) y entrega, sin diálogo. Es el mejor caso para un modelo solo, porque
+tiene la información completa.
 
 No usa recuperación, puntos de control ni tester. Del entorno recibe lo mismo que N10: la
 configuración de estilo del código generado y los paquetes del entorno aislado. Una entrega que
@@ -40,10 +45,15 @@ from multiagente.sandbox.ejecutor import es_ruta_segura
 from multiagente.sandbox.requisitos import requisitos_del_entorno
 
 RUTA_PROMPT = RAIZ_EVALUACION / "modelo_unico.md"
-"""Prompt único de la línea base."""
+"""Prompt de la línea base con diálogo."""
+RUTA_PROMPT_UN_PROMPT = RAIZ_EVALUACION / "llm_un_prompt.md"
+"""Prompt de la línea base de un solo prompt."""
 
 NODO_DIALOGO = "modelo_unico_dialogo"
 NODO_ENTREGA = "modelo_unico_entrega"
+NODO_UN_PROMPT = "llm_un_prompt"
+SECCION_DEL_CLIENTE = "## Lo que sabes"
+"""Desde aquí, la ficha dice lo que sabe el cliente; antes va la instrucción del simulado."""
 NODO_CLIENTE = "cliente_simulado"
 PYTHON = "3.11"
 """Versión mínima del catálogo tecnológico, la del entorno aislado."""
@@ -278,6 +288,140 @@ class ModeloUnico:
             costo_cliente_usd=sum((ll.costo_usd for ll in del_cliente), Decimal(0)),
             llamadas_modelo=len(del_modelo),
         )
+
+
+def lo_que_sabe_el_cliente(caso: CasoElicitacion) -> str:
+    """Extrae de la ficha lo que sabe el cliente y lo que queda fuera.
+
+    Args:
+        caso: Caso sintético.
+
+    Returns:
+        La ficha desde «Lo que sabes», sin la instrucción para el cliente simulado.
+
+    Raises:
+        ValueError: Si la ficha no trae esa sección.
+    """
+    inicio = caso.conocimiento.find(SECCION_DEL_CLIENTE)
+    if inicio < 0:
+        raise ValueError(f"La ficha {caso.id} no trae la sección «Lo que sabes».")
+    return caso.conocimiento[inicio:].strip()
+
+
+@dataclass(frozen=True)
+class LlmUnPrompt:
+    """Un modelo que recibe todo en un solo prompt y entrega, sin diálogo.
+
+    Attributes:
+        entrega: Invocador de la entrega.
+        estilo: Configuración de estilo del código generado.
+        paquetes: Requisitos del entorno aislado.
+    """
+
+    entrega: InvocadorNodo
+    estilo: EstiloGenerado
+    paquetes: tuple[str, ...]
+
+    def resolver(
+        self, caso: CasoElicitacion, registro: RegistroEnMemoria, corrida: str
+    ) -> ResultadoModeloUnico:
+        """Entrega el módulo de un caso con un solo prompt.
+
+        Args:
+            caso: Caso sintético.
+            registro: Registro de las llamadas, del que sale el costo. Debe estar vacío al empezar.
+            corrida: Identificador de la corrida.
+
+        Returns:
+            El resultado, con la entrega o el error que la impidió.
+        """
+        inicio = time.perf_counter()
+        archivos: dict[str, str] = {}
+        error: str | None = None
+        try:
+            archivos = self.entrega.invocar_validado(
+                [
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            {
+                                "necesidad": caso.necesidad,
+                                "lo_que_sabe_el_cliente": lo_que_sabe_el_cliente(caso),
+                                "entorno": {
+                                    "python": PYTHON,
+                                    "paquetes": list(self.paquetes),
+                                    "ruff": {
+                                        "archivo": self.estilo.archivo,
+                                        "contenido": self.estilo.texto,
+                                    },
+                                },
+                            },
+                            ensure_ascii=False,
+                        ),
+                    }
+                ],
+                Entrega,
+                validar_entrega,
+            )
+        except (ErrorRespuestaModelo, ErrorValidacionSalida) as falla:
+            error = f"{type(falla).__name__}: {falla}"
+        tiempo = time.perf_counter() - inicio
+        llamadas = registro.llamadas
+        return ResultadoModeloUnico(
+            caso=caso.id,
+            corrida=corrida,
+            despliegue=self.entrega.parametros.despliegue,
+            prompt=self.entrega.prompt.identificador,
+            transcripcion=[],
+            turnos_cliente=0,
+            llego_al_limite=False,
+            archivos=archivos,
+            error=error,
+            reintentos_entrega=max(0, len(llamadas) - 1),
+            tiempo_total_s=round(tiempo, 2),
+            tiempo_cliente_s=0.0,
+            tiempo_entrega_s=round(tiempo, 2),
+            costo_modelo_usd=sum((ll.costo_usd for ll in llamadas), Decimal(0)),
+            costo_cliente_usd=Decimal(0),
+            llamadas_modelo=len(llamadas),
+        )
+
+
+def crear_llm_un_prompt(
+    cliente: OpenAI,
+    registro: RegistroEnMemoria,
+    modelos: ConfiguracionModelos,
+    razonamiento: ConfiguracionRazonamiento,
+    estilo: EstiloGenerado | None = None,
+    paquetes: Sequence[str] | None = None,
+) -> LlmUnPrompt:
+    """Arma la línea base de un solo prompt, con el despliegue y los límites de N10.
+
+    Args:
+        cliente: Cliente de la API OpenAI v1.
+        registro: Destino de la traza de cada llamada.
+        modelos: Despliegues de los nodos.
+        razonamiento: Esfuerzo, límite de salida y tiempo de espera de los nodos.
+        estilo: Configuración de estilo; si se omite, la de `config/estilo_generado/`.
+        paquetes: Requisitos del entorno; si se omiten, los de la imagen del entorno aislado.
+
+    Returns:
+        La línea base lista para resolver casos.
+    """
+    requisitos = paquetes if paquetes is not None else list(requisitos_del_entorno().values())
+    entrega = InvocadorNodo(
+        cliente,
+        ParametrosNodo(
+            nodo=NODO_UN_PROMPT,
+            despliegue=modelos.n10_generacion,
+            esfuerzo=razonamiento.esfuerzo_n10_generacion,
+            max_tokens_salida=razonamiento.max_tokens_n10_generacion,
+            tiempo_espera_s=razonamiento.tiempo_espera_n10_generacion,
+        ),
+        leer_prompt(RUTA_PROMPT_UN_PROMPT),
+        registro,
+    )
+    return LlmUnPrompt(entrega, estilo or cargar_estilo(), tuple(requisitos))
 
 
 def crear_modelo_unico(

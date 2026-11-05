@@ -48,9 +48,6 @@ def sesiones_del_caso(caso: str) -> list[tuple[str, Path]]:
         if resultado.exists():
             sesion = json.loads(resultado.read_text(encoding="utf-8"))["sesion"]
             sesiones.append((f"sistema-{numero}-{orden}", RESULTADOS / nombre / sesion))
-    humanas = RESULTADOS / "revision-humana" / "sesiones.json"
-    if humanas.exists() and caso in (mapa := json.loads(humanas.read_text(encoding="utf-8"))):
-        sesiones.append((f"sistema-humano-{numero}", RESULTADOS / "revision-humana" / mapa[caso]))
     return sesiones
 
 
