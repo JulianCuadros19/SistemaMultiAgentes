@@ -1,6 +1,6 @@
 # Paquete de contexto para actualizar el documento de tesis
 
-**Corte:** 4 de noviembre de 2026, al cierre del paso 14 del plan de trabajo.
+**Corte:** 5 de noviembre de 2026, al cierre del paso 15 del plan de trabajo.
 
 **Versión contrastada:** «Trabajo de Grado - Sistema Multiagente Realtix», 112 páginas, exportada
 el 4 de noviembre de 2026. Se guarda solo en local, en `docs/anexos/`.
@@ -19,6 +19,7 @@ Este paquete es un documento derivado. La fuente de verdad son los documentos de
 | `02-avances.md` | Lo que el documento todavía no cuenta y dónde va (ver la lista debajo) |
 | `03-cifras.md` | Todas las cifras con su fuente. Es la referencia única: ninguna cifra se toma de otro lado |
 | `04-arquitectura-final.md` | La arquitectura vigente: nodos, flujo con su diagrama, estado, datos, conocimiento, modelos y despliegue. Sirve para rehacer la Figura 8 y la Tabla 35 |
+| `05-evaluacion-paso-15.md` | **El texto de la evaluación, listo para el documento:** capítulos 1.6.4, 3.8, 4 (despliegue), 5, 6.4, 6.5, 7, 8 y Anexo D. Manda sobre `01` y `02` en lo que se crucen |
 
 **Lo que trae `02-avances.md`:**
 - la corrida ampliada de 20 casos, con su línea base y su corrida final;
@@ -31,7 +32,7 @@ Este paquete es un documento derivado. La fuente de verdad son los documentos de
 ## Cómo usarlo
 
 1. **Archivos para la conversación de redacción:**
-   - **Siempre:** los cuatro archivos de esta carpeta.
+   - **Siempre:** los cinco archivos de esta carpeta.
    - **Como respaldo, si caben:**
      - `docs/requerimientos.md`;
      - `docs/arquitectura.md`;
@@ -50,8 +51,8 @@ Este paquete es un documento derivado. La fuente de verdad son los documentos de
 ## Mensaje para pegar
 
 ```text
-Te comparto el paquete de contexto del sistema multiagente al 4 de noviembre de 2026, al cierre
-del paso 14 del plan de trabajo. Úsalo para actualizar el documento de tesis en dos tiempos.
+Te comparto el paquete de contexto del sistema multiagente al 5 de noviembre de 2026, al cierre
+del paso 15 del plan de trabajo. Úsalo para actualizar el documento de tesis en tres tiempos.
 
 1. Correcciones. Aplica 01-correcciones.md en el orden del documento. Cada entrada trae la
    ubicación, con la página de la versión del 4 de noviembre, lo que dice hoy, lo que debe decir y
@@ -61,6 +62,8 @@ del paso 14 del plan de trabajo. Úsalo para actualizar el documento de tesis en
    actualización de los capítulos 5 y 6, las conclusiones y las recomendaciones, y las tres
    entradas nuevas del Anexo D en el formato de la Tabla 34. Para la Figura 8 y la Tabla 35 del
    Anexo E usa 04-arquitectura-final.md.
+3. Evaluación. Lleva al documento el texto de 05-evaluacion-paso-15.md, que ya está redactado, y numera sus
+   tablas nuevas.
 
 Reglas:
 - Toma toda cifra de 03-cifras.md tal cual, con su unidad. No la recalcules ni la redondees de
@@ -71,9 +74,11 @@ Reglas:
 - Todos los casos de prueba son sintéticos; no hay datos de Realtix.
 - Los modelos de lenguaje son solo los desplegados en Azure OpenAI y BGE-M3 corre local. No
   plantees modelos de lenguaje locales ni de pesos abiertos.
-- La comparación con la implementación manual, la línea base de un modelo único y el benchmark de
-  modelos son el paso 15 y todavía no se hicieron. No escribas resultados de ellos: preséntalos
-  como trabajo pendiente de la fase de evaluación.
+- La comparación con un solo modelo de lenguaje y las métricas RAGs ya se hicieron: sus cifras están en
+  05-evaluacion-paso-15.md y en 03-cifras.md. No se hizo comparación con desarrollo humano ni benchmark
+  de modelos: preséntalos como trabajo futuro, sin resultados.
+- Donde 05-evaluacion-paso-15.md trate lo mismo que 01-correcciones.md o 02-avances.md, manda el 05. Respeta
+  sus marcas [CONFIRMAR] y déjalas señaladas.
 - Los autores son Julián Andrés Cuadros Muñoz y Laura Catalina Riveros Flórez. No atribuyas
   autoría a herramientas.
 - Mantén el estilo del documento: voz impersonal, tiempo pasado, coma decimal y cifras con su
@@ -82,9 +87,6 @@ Reglas:
   arrastran una Tabla 28 y una Figura 9 que ya no existen (C-45).
 ```
 
-## Cuándo se actualiza
+## Estado
 
-Al cerrar el paso 15 (casos de referencia y líneas base), con:
-- los resultados del objetivo 4;
-- el benchmark de modelos;
-- las métricas RAGs, si se calculan.
+Actualizado al cerrar el paso 15. El benchmark de modelos en N3 y N5 quedó fuera por decisión del equipo.

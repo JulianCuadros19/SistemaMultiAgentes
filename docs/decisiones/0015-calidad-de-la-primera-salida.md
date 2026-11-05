@@ -928,17 +928,19 @@ está, y los dos criterios, registrados como no cumplidos.
 
 Criterios, fijados antes de medir, frente a la corrida ampliada final de la fase 7:
 
-| Criterio | Meta | Línea base (ADR-0014) | Fase 7 | ¿Cumple? |
-|---|---|---|---|---|
-| Validados en la v1 | al menos 15 de 19 | 10 de 19 | 18 de 20 | sí |
-| Primeros intentos de N10 rechazados | como máximo 2 de 29 | 7 de 29 | 7 de 23 | no |
-| Sesiones escaladas | 0 | 1 | 0 | sí |
-| Costo medio por módulo validado | como máximo 0,35 USD | 0,28 | 0,342 | sí, al límite |
-| Falsos positivos de «prueba que simula» en el corpus | 0 | — | 0 | sí |
-| Turnos sin exploración, en la primera pausa de N6 | como máximo 211 | 211 | 210 | sí, al límite |
-| Resúmenes confirmados | al menos 17 de 20 | 17 | 16 | no |
-| Reglas ocultas capturadas | al menos 2 de 3 | — | 1,33 de media | aceptado en la fase 5 |
+| Criterio | Meta | Línea base (ADR-0014) | Fase 7 | ¿Cumple? | Paso 15 (ADR-0019) |
+|---|---|---|---|---|---|
+| Validados en la v1 | al menos 15 de 19 | 10 de 19 | 18 de 20 | sí | 11 de 20 |
+| Primeros intentos de N10 rechazados | como máximo 2 de 29 | 7 de 29 | 7 de 23 | no | 4 de 35 |
+| Sesiones escaladas | 0 | 1 | 0 | sí | 4 |
+| Costo medio por módulo validado | como máximo 0,35 USD | 0,28 | 0,342 | sí, al límite | 0,391 |
+| Falsos positivos de «prueba que simula» en el corpus | 0 | — | 0 | sí | 0 |
+| Turnos sin exploración, en la primera pausa de N6 | como máximo 211 | 211 | 210 | sí, al límite | 205 |
+| Resúmenes confirmados | al menos 17 de 20 | 17 | 16 | no | 19 |
+| Reglas ocultas capturadas | al menos 2 de 3 | — | 1,33 de media | aceptado en la fase 5 | no se midió |
 
+- **Paso 15:** la corrida ampliada con las decisiones 37 a 39, sin más cambios en los agentes. Las causas del
+  retroceso en la v1 están en `docs/evaluacion/informe-objetivo-4.md`.
 - **Falsos positivos:** los midió la fase 2 sobre el corpus, con el juez que sigue vigente (prompt
   1.2). Los cambios posteriores de N12, de la fase 4, los cubren las pruebas sin costo del corpus.
   En la corrida final, N12 no marcó CAL-FS-006 en ninguna versión.

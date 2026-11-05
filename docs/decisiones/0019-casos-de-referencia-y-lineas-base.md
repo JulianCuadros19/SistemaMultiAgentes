@@ -1,5 +1,5 @@
 ---
-estado: propuesta
+estado: aceptada
 fecha: 2026-11-05
 decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 modifica: ADR-0001 (subpaquete `evaluacion`)
@@ -7,8 +7,9 @@ modifica: ADR-0001 (subpaquete `evaluacion`)
 
 # ADR-0019 · Casos de referencia y líneas base del objetivo 4
 
-> **Borrador de la fase 1.** Fija el diseño, las métricas y las hipótesis antes de medir. Los
-> resultados se agregan al cerrar el paso 15, y entonces el estado pasa a «aceptada».
+> La fase 1 fijó el diseño, las métricas y las hipótesis antes de medir. El ajuste del diseño, del día de
+> la entrega, retiró la implementación manual. Los resultados están al final y en
+> `docs/evaluacion/informe-objetivo-4.md`.
 
 ## Contexto y planteamiento del problema
 
@@ -241,7 +242,46 @@ decisiones 1, 2 y 3 en lo que aquí se indica. Las pruebas de referencia de 02, 
 
 ## Resultados
 
-Se agregan al cerrar el paso 15.
+El detalle está en `docs/evaluacion/informe-objetivo-4.md`.
+
+**Nueve casos, las seis arquitecturas y 90 verificaciones,** con el oráculo validado por 35 mutantes.
+
+| Métrica | Sistema | LLM con diálogo | LLM de un solo prompt |
+|---|---|---|---|
+| Corridas | 12 | 15 | 9 |
+| Verificaciones que pasan | 115 de 119 | 140 de 148 | 90 de 90 |
+| Tasa de errores | 3,4 % | 5,4 % | 0,0 % |
+| Costo medio por módulo | 0,358 USD | 0,170 USD | 0,104 USD |
+| Tiempo medio de máquina | 5,9 min | 2,9 min | 2,5 min |
+
+**Prueba de signos por caso, exploratoria:** el sistema cuesta y tarda más en los nueve casos frente a cada
+línea base (p = 0,004). En errores, frente al LLM con diálogo, queda 2 a 2, con 5 empates (p = 1,000).
+
+**Hipótesis:**
+- **H1, no se sostiene:** la diferencia en errores es pequeña, depende de una sola corrida del modelo, y sin ella
+  el modelo baja a 0,7 %.
+- **H2, retirada:** no hubo implementación manual.
+- **H3, mixta:** 3 de 7 criterios del ADR-0015. Las decisiones 37 a 39 cumplen su objetivo. La v1 retrocede a 11
+  de 20, por escenarios defectuosos de N5 y por el juez, sin cambios en el sistema.
+- **H4, exploratoria, se sostiene:** el sistema cuesta y tarda el doble que el LLM con diálogo.
+- **H5, exploratoria, en parte:** el tester detuvo un error real de fórmula y no dejó aprobar el caso 16, pero
+  aprobó 2 versiones con error.
+
+**Matriz del tester:** con defectos inyectados, 63 de 63 y 9 de 9. Frente al oráculo, en 21 versiones, exactitud
+de 0,52, precisión de 0,33, sensibilidad de 0,67 y F1 de 0,44. El tester y el oráculo no miden lo mismo: el informe
+explica cada celda.
+
+**Métricas RAGs (20 sesiones):** fidelidad de 0,81 en el elicitador, 0,84 en el arquitecto y 0,47 en el tester,
+subestimada porque el juez no recibió la ejecución. La relevancia del contexto de `dominio_negocio` es de 0,10.
+
+**Costo del paso:** 16,74 USD, frente al tope de 17.
+
+**Desvíos frente al diseño de la fase 1:**
+- **Juez de RAGs:** alcanzó para las 20 sesiones con `gpt-6.1-sol`, porque el modelo único costó 0,194 USD por corrida y
+  no 0,5.
+- **Evaluador:** la clasificación de «ausente» tomaba por ausente un fallo que citaba una docstring; se corrigió, sin
+  cambiar cuántas verificaciones pasan.
+- **Adaptadores:** un adaptador puede agrupar con `Counter` lo que la implementación ya contó, como en el caso 14.
 
 ## Cambios para el documento de tesis
 

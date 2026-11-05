@@ -583,15 +583,16 @@ En el texto de las entradas:
 - **ADR-0003:** dice que Chat Completions es «la interfaz que también exponen los servidores de
   modelos locales». Conviene la nota del ADR-0017.
 
-## 8. Lo que queda para el paso 15 (fase 4 de la metodología)
+## 8. Paso 15 (fase 4 de la metodología)
 
-**Lo que no se ha hecho:**
-- **Comparación con la implementación manual:** seleccionar casos de referencia, implementarlos
-  manualmente y medir con el sistema el tiempo, el costo y los errores.
-- **Línea base de un modelo único:** resolver los mismos casos con un solo despliegue de Azure
-  OpenAI, sin arquitectura multiagente.
-- **Benchmark de modelos en N3 y N5:** gpt-5-nano, gpt-5-mini y gpt-5.4-mini.
-- **Métricas RAGs:** calcularlas sobre las trazas, por colección.
-- **Decisiones 37 a 39 del ADR-0015:** medirlas.
+**Hecho.** El texto para el documento está en `05-evaluacion-paso-15.md`, y las cifras, en la sección 13 de
+`03-cifras.md`:
+- la comparación con dos líneas base de un solo modelo de lenguaje, en nueve casos;
+- las métricas RAGs, sobre las 20 sesiones de la corrida ampliada;
+- la medición de las decisiones 37 a 39 del ADR-0015;
+- la matriz del tester frente a las pruebas de referencia;
+- el despliegue de demostración en Azure.
 
-Hasta entonces, el documento no debe presentar resultados de esa comparación.
+**No se hizo, y se presenta como trabajo futuro:**
+- la comparación con desarrollo humano;
+- el benchmark de modelos en N3 y N5.

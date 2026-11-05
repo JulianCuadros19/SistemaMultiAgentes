@@ -266,3 +266,82 @@ Fuentes:
 | Turnos de diálogo | 7, media 3,7 s, máximo 4,8 s |
 | Tiempo total | 6,6 min |
 | Costo | 0,41 USD, 0,28 de ellos en N10 |
+
+## 13. Evaluación del paso 15 (ADR-0019)
+
+Fuente: `docs/evaluacion/informe-objetivo-4.md`. Regenerables con `scripts/tabla_objetivo_4.py` y
+`scripts/matriz_tester_oraculo.py`.
+
+### Comparación con las pruebas de referencia
+
+| Métrica | Sistema | Modelo con diálogo | Modelo de un solo prompt |
+|---|---|---|---|
+| Implementaciones | 12 | 15 | 9 |
+| Verificaciones aprobadas | 115 de 119 | 140 de 148 | 90 de 90 |
+| Tasa de errores | 3,4 % | 5,4 % | 0,0 % |
+| Implementaciones sin errores | 9 de 12 | 13 de 15 | 9 de 9 |
+| Costo medio por módulo | 0,358 USD | 0,170 USD | 0,104 USD |
+| Tiempo medio de máquina | 5,9 min | 2,9 min | 2,5 min |
+| Con pruebas propias que fallan | 1 de 12 | 3 de 15 | 2 de 9 |
+| Hallazgos de Ruff por implementación | 0,3 | 1,2 | 1,0 |
+
+- **Casos:** 9, con las seis arquitecturas; 90 verificaciones y 35 mutantes detectados.
+- **Prueba de signos:** costo y tiempo, 9 a 0 frente a cada línea base (p = 0,004). Errores frente al modelo con diálogo: 2 a 2,
+  con 5 empates (p = 1,000).
+- **Modelo con diálogo sin la corrida 3 del caso 16:** 137 de 138, 0,7 %.
+- **Modelo con diálogo:** 14,0 turnos del cliente de media y 1 corrida en el límite.
+
+### Corrida ampliada de 20 casos
+
+| Concepto | Valor |
+|---|---|
+| Desenlace | 16 validados, 11 en la v1; 4 escalados |
+| Arquitectura esperada | 20 de 20 |
+| Tiempo del sistema | media de 6,6 min, de 3,3 a 10,3 |
+| Costo por módulo | media de 0,403 USD, de 0,181 a 0,690 |
+| Costo por módulo validado | media de 0,391 USD |
+| Costo por nodo | N10 44,8 %, N8 27,1 %, N3 18,2 %, N5 9,3 % y N14 0,7 % |
+| Turno más largo | 16,2 s (caso 05); el siguiente, 12,4 s |
+| Cierre de la elicitación más largo | 77,3 s (caso 15) |
+| Diálogo en la primera pausa de N6 | 272 turnos, 205 sin exploración, 19 resúmenes confirmados y 1 sesión en el límite |
+| Primeros intentos de N10 rechazados | 4 de 35 |
+
+**Corrida adicional:** los casos 02, 12 y 16, sin escalar; 2 en la v1 y 1 en la v2.
+
+### Tester
+
+| Medición | Resultado |
+|---|---|
+| Corpus de 21 defectos y 3 controles, 3 corridas | 63 de 63 y 9 de 9; precisión, sensibilidad, F1 y exactitud de 1,00; 0,04 USD |
+| Juez por caso en el corpus | 261 casos, 5 rechazos falsos, sin cambiar veredictos |
+| Frente al oráculo, 21 versiones | 4 verdaderos positivos, 8 falsos positivos, 2 falsos negativos y 7 verdaderos negativos |
+| Métricas frente al oráculo | exactitud 0,52, precisión 0,33, sensibilidad 0,67 y F1 0,44 |
+| Si los 2 rechazos justificados del caso 10 cuentan como aciertos | exactitud 0,62, precisión 0,50, sensibilidad 0,75 y F1 0,60 |
+| Rejuicios de una prueba idéntica en la corrida ampliada | 3 cambios de 124 |
+
+### Métricas RAGs, 20 sesiones
+
+| Colección | Agente | Fidelidad | Relevancia de la respuesta | Relevancia del contexto |
+|---|---|---|---|---|
+| `elicitacion` | Elicitador | 0,81 | 0,56 | 0,57 |
+| `dominio_negocio` | Elicitador | 0,81 | 0,56 | 0,10 |
+| `arquitecturas_referencia` | Arquitecto | 0,84 | 0,51 | 0,67 |
+| `criterios_calidad` | Tester | 0,47 (cerca de 0,68 sin las afirmaciones de ejecución) | 0,37 | 0,42 |
+
+### Despliegue de demostración (ADR-0020)
+
+| Concepto | Valor |
+|---|---|
+| Máquina | `Standard_D4s_v4`, 4 vCPU y 16 GiB, Central US, Ubuntu 24.04 |
+| Arranque desde cero | unos 5 min |
+| Módulo de verificación | caso 01, validado en la v1, 3,15 min y 0,198 USD |
+| Reinicio | el enlace volvió en 32 s |
+| Memoria de los embeddings | 11,17 GiB |
+
+### Pruebas sin costo al cierre
+
+812 unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado.
+
+### Costo del paso
+
+16,74 USD de inferencia, con el cliente simulado, frente a un tope de 17.

@@ -431,47 +431,34 @@ Mantener esta sección actualizada al cerrar cada paso.
   Verificado: 771 pruebas unitarias, 34 de integración, 19 de embeddings y 33 del entorno aislado;
   capturas en claro, en oscuro y a 390 px con Edge sin ventana. La imagen de la aplicación se
   reconstruye con `docker compose up -d --build --wait` para ver la web nueva en el puerto 8000.
-- **Paso actual: 15, casos de referencia y líneas base, en curso** (ADR-0019 en borrador). Terminado
-  cuando hay métricas calculadas con un oráculo común contra líneas base de un solo modelo de
-  lenguaje, que también son despliegues de Azure OpenAI (ADR-0019). **El estado exacto, las decisiones y los comandos para
-  retomarlo están en `docs/evaluacion/estado-paso-15.md`: leerlo antes de seguir.**
-  - **Decisiones del equipo (2026-11-05):**
-    - sin implementación manual: Realtix no puede compartir sus desarrollos y los autores no son
-      independientes;
-    - nueve casos sintéticos: 01, 02, 04, 07, 10, 12, 14, 16 y 17, con las seis arquitecturas;
-    - dos líneas base con `gpt-6.1-sol`: con diálogo, ante el mismo cliente simulado, y de un solo
-      prompt, con la ficha completa;
-    - métricas RAGs y una corrida ampliada para las decisiones 37 a 39;
-    - tope de 17 USD para todo el paso.
-  - **Fase 1, cerrada:** el oráculo de pruebas de aceptación de referencia (`evaluacion/referencia/`),
-    validado con control y mutantes; el paquete `multiagente.evaluacion` y sus guiones; la plantilla
-    `evaluacion/manual/`. Pasan 790 pruebas unitarias, 34 de integración, 19 de embeddings y 38 del
-    entorno aislado.
-  - **Fase 3, en curso.** Gastados 10,56 USD del tope de 17; quedan 6,44.
-    - **Modelo único, terminado:** 9 de 9 entregas, sin errores, por 1,75 USD. Cada corrida costó
-      0,166 USD y 2,8 min de media, sin el cliente. Su tasa de errores la da la fase 4.
+- **Paso 15: cerrado el 2026-11-05.** Casos de referencia y líneas base (ADR-0019, aceptado). Informe en
+  `docs/evaluacion/informe-objetivo-4.md`; estado y comandos en `docs/evaluacion/estado-paso-15.md`.
+  - **Decisión del equipo:** sin implementación manual. Realtix no puede compartir sus desarrollos y los autores no son
+    independientes. Se compara contra un LLM independiente; el ahorro frente a lo manual queda como recomendación.
+  - **Diseño:** tres enfoques, nueve casos con las seis arquitecturas y un mismo oráculo, de 90 verificaciones
+    validadas con 35 mutantes (`evaluacion/referencia/`).
+  - **Resultados:**
+    - sistema: 3,4 % de errores, 0,358 USD y 5,9 min por módulo;
+    - LLM con diálogo: 5,4 %, 0,170 USD y 2,9 min;
+    - LLM de un solo prompt: 0,0 %, 0,104 USD y 2,5 min.
 
-    La corrida ampliada de 20 casos terminó el 2026-11-05 a las 11:20:
-    - costó 8,82 USD;
-    - 16 validados, 11 en la v1, y 4 escalados (02, 03, 14 y 16);
-    - resúmenes confirmados: 19 de 20.
-
-    Ningún cambio del sistema explica el retroceso frente a la corrida final del ADR-0015, que dio
-    20 validados, 18 en la v1, y 16 resúmenes confirmados:
-    - **Causa principal:** escenarios defectuosos de N5, que nada revisa antes de N10 (02, 03, 13 y
-      19). Sin ellos, serían 15 de 20 en la v1.
-    - **Juez de N14:** cambió de veredicto en 3 de 124 rejuicios de una prueba idéntica.
-    - **Validados con defecto:** 13 y 19 llevan el defecto del requerimiento al código.
-    - **Decisión del equipo:** el sistema no cambia hasta terminar de medir; las correcciones
-      recomendadas van al informe.
-    - **Regla de los informes:** hasta terminar la fase 2, de las salidas de 02, 12 y 16 los autores
-      solo reciben clasificación, costo, tiempo, turnos y errores.
-    - **Dónde está el detalle:** en el documento de estado.
-  - **Pendiente:**
-    - los casos nuevos, las corridas del LLM y la evaluación;
-    - el despliegue de demostración en Azure (ADR-0020);
-    - los adaptadores, la evaluación de referencia y las RAGs;
-    - el informe `docs/evaluacion/informe-objetivo-4.md` y el cierre.
+    H1 no se sostiene: el sistema no tiene menos errores, y cuesta y tarda el doble. Su aporte son los requerimientos, el
+    diseño, la validación independiente, el control humano y la traza. Sus errores nacen en la síntesis y en el diseño, no al
+    escribir el código.
+  - **Tester:** 63 de 63 y 9 de 9 con defectos inyectados; frente al oráculo, en 21 versiones, exactitud de 0,52, con matices
+    que explica el informe.
+  - **Corrida ampliada de 20 casos:** 16 validados, 11 en la v1, y 4 escalados; las decisiones 37 a 39 cumplieron su objetivo.
+    Los módulos 13 y 19 salieron validados con defectos del requerimiento fijados en el código.
+  - **RAGs:** fidelidad de 0,81, 0,84 y 0,47 (subestimada); relevancia del contexto de `dominio_negocio`, 0,10.
+  - **Despliegue de demostración (ADR-0020):** `scripts/desplegar_azure.sh` y `docker-compose.azure.yml`, en una máquina de
+    Azure con TLS y contraseña, solo con datos sintéticos.
+  - **Costo:** 16,74 USD de los 17 del tope.
+  - **Verificado:** 812 pruebas unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado.
+  - **Pendiente del equipo:**
+    - revisar los oráculos frente a las fichas y 5 juicios de RAGs (`evaluacion/resultados/paso-15/rag/revision.md`);
+    - aplicar `docs/tesis/` al documento, con `05-evaluacion-paso-15.md`, y resolver sus marcas `[CONFIRMAR]`;
+    - rotar la clave de Azure OpenAI y borrar la máquina cuando no se necesite.
+  - **Correcciones recomendadas, sin aplicar:** en la sección 10 del informe. El sistema no cambió durante la medición.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.
   Claude nunca hace push; pide al usuario ejecutar `git push origin master` en su consola.
 - **Azure OpenAI: operativo y conectado desde código.** Recurso en southcentralus, procesado en

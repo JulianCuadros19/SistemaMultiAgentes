@@ -636,6 +636,15 @@ elicitador.»
   - la «segunda opinión» del juez de N14, como verificación de un rechazo;
   - los «recorridos» de los escenarios en N8, como descomposición en pasos verificables.
 
+## Corrección posterior al paso 15
+
+### C-46 · Capítulos 1.6.4, 3.8, 5, 6.4, 6.5, 7 y 8
+
+- **Lo que pasó:** el paso 15 terminó el 5 de noviembre, y `05-evaluacion-paso-15.md` trae el texto de estas secciones.
+- **Regla:** donde las entradas C-29 a C-31 y C-35 a C-38 traten lo mismo que ese archivo, manda él.
+- **También cambia en C-45, tabla de indicadores:** OE4 queda con los niveles del plan vigente aplicados. La comparación
+  con desarrollo humano queda como trabajo futuro.
+
 ## Detalles de edición
 
 ### C-45 · Listas de tablas y de figuras, pp. 8 y 10
