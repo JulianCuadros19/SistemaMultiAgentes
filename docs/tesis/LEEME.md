@@ -69,13 +69,13 @@ REGLAS
 - Conserva la terminología del documento: especificación de diseño (nunca contrato), requerimiento formal, punto de control humano, revisión o validación final, entorno aislado, enmienda, traza por nodo y presupuesto por módulo.
 - Todos los casos de prueba son sintéticos; no hay datos de Realtix.
 - Los modelos de lenguaje son solo los desplegados en Azure OpenAI y BGE-M3 corre local. No plantees modelos de lenguaje locales ni de pesos abiertos.
-- No se hizo comparación con desarrollo humano ni benchmark de modelos: preséntalos como trabajo futuro, sin resultados.
+- La comparación se hizo con código generado por un solo modelo de lenguaje, porque Realtix no pudo compartir su código. No afirmes ningún ahorro frente al trabajo manual. El benchmark de modelos queda como trabajo futuro, sin resultados.
 - No suavices los resultados desfavorables: el sistema no tuvo menos errores que un solo modelo de lenguaje, costó y tardó el doble o más, y la exactitud del tester frente a las pruebas de referencia fue de 0,52.
 - Los autores son Julián Andrés Cuadros Muñoz y Laura Catalina Riveros Flórez. No atribuyas autoría a herramientas.
 - Mantén el estilo del documento: voz impersonal, tiempo pasado, coma decimal y cifras con su unidad.
 
 COMPROBACIÓN FINAL
-Al terminar, busca en el documento y repórtame dónde siguen apareciendo, fuera del Anexo D: «38 requerimientos», «38 functional», «582», «catorce registros», «186 fragmentos», «seis niveles», «six-level», «modelos remotos», «remote models», «¡Error!» y «[Tabla». Confirma también que el documento dice 39 requerimientos funcionales, 909 pruebas, veinte registros de decisión, once niveles de prueba, y siete requerimientos no funcionales cumplidos y tres parciales.
+Al terminar, busca en el documento y repórtame dónde siguen apareciendo, fuera del Anexo D: «38 requerimientos», «38 functional», «582», «catorce registros», «186 fragmentos», «seis niveles», «six-level», «modelos remotos», «remote models», «desarrollo manual», «desarrollo humano», «¡Error!» y «[Tabla». Confirma también que el documento dice 39 requerimientos funcionales, 909 pruebas, veinte registros de decisión, once niveles de prueba, y siete requerimientos no funcionales cumplidos y tres parciales.
 ```
 
 ## Estado

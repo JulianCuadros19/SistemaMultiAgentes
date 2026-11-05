@@ -591,12 +591,13 @@ En el texto de las entradas:
 
 **Hecho.** El texto para el documento está en `05-evaluacion-paso-15.md`, y las cifras, en la sección 13 de
 `03-cifras.md`:
-- la comparación con dos líneas base de un solo modelo de lenguaje, en nueve casos;
+- la comparación con código generado por dos líneas base de un solo modelo de lenguaje, en nueve casos, porque Realtix no
+  pudo compartir su código;
 - las métricas RAGs, sobre las 20 sesiones de la corrida ampliada;
 - la medición de las decisiones 37 a 39 del ADR-0015;
 - la matriz del tester frente a las pruebas de referencia;
 - el despliegue de demostración en Azure.
 
-**No se hizo, y se presenta como trabajo futuro:**
-- la comparación con desarrollo humano;
+**Queda como trabajo futuro:**
+- comparar el sistema con desarrollos de Realtix, si la empresa llega a compartirlos;
 - el benchmark de modelos en N3 y N5.

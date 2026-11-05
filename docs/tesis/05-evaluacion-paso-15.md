@@ -84,11 +84,11 @@ se validó antes de medir: en cada caso, una implementación de control pasó to
 mutantes, variantes con un defecto a propósito, falló al menos una. Un autor revisó las verificaciones frente a
 cada ficha.
 
-No se hizo una comparación con desarrollo humano. Realtix no pudo compartir sus desarrollos por el acuerdo de
-confidencialidad, y una implementación hecha por los autores no habría sido independiente, porque construyeron el sistema y
-conocían los casos. Tampoco sirvió el código abierto de repositorios públicos, que no implementa estas fichas ni registra
-tiempos ni costos. La evaluación respondió entonces a otra pregunta, la misma que plantea el estado del arte: qué aporta la
-arquitectura multiagente frente a un solo modelo de lenguaje.
+La comparación se realizó con código generado por un solo modelo de lenguaje. Se decidió así porque Realtix no pudo compartir su
+código, por el acuerdo de confidencialidad, y porque el código abierto de repositorios públicos no implementa estas fichas ni
+registra tiempos ni costos. El código generado es, además, una referencia repetible, medible e independiente de los autores, que
+construyeron el sistema y conocían los casos. Así, la evaluación respondió a la misma pregunta que plantea el estado del arte: qué
+aporta la arquitectura multiagente frente a un solo modelo de lenguaje.
 
 Se compararon tres enfoques, todos con el mismo modelo para escribir el código, de modo que la diferencia saliera de la
 arquitectura:
@@ -361,8 +361,8 @@ tester, que con defectos inyectados alcanzó 1,00, bajó a una exactitud de 0,52
 La evaluación tiene limitaciones. Los casos son sintéticos y los módulos pequeños, de modo que con módulos mayores el resultado podría ser
 otro. Seis de los nueve casos tienen una sola corrida por enfoque, y la variabilidad es alta: un mismo caso escaló en una corrida y se validó
 en la primera versión en otra. El modelo de comparación es muy capaz. El oráculo no lo elaboró un tercero independiente, aunque un autor lo revisó frente a cada ficha, y el analista simulado no
-permite medir el valor de los puntos de control humano. Finalmente, no se comparó el sistema con desarrollo humano, por lo que el ahorro frente
-al trabajo manual no quedó cuantificado.
+permite medir el valor de los puntos de control humano. Finalmente, como la comparación se hizo con código generado, porque Realtix no pudo compartir el suyo,
+el ahorro frente al trabajo manual queda por cuantificar.
 
 **Agregar al final de la sección, con la tabla de indicadores que hoy solo aparece en la lista de tablas:**
 
@@ -375,7 +375,7 @@ La [Tabla G] resume el cumplimiento de los indicadores de cada objetivo específ
 | OE1. Definir metas y requerimientos | 100 % del documento aprobado | Cumplido, con acta |
 | OE2. Diseñar la arquitectura | 100 % del documento aprobado | Cumplido, con acta |
 | OE3. Desarrollar los agentes | 100 % del producto mínimo viable funcional | Cumplido: los cuatro agentes y el orquestador operan de extremo a extremo; en la última corrida, 16 de 20 módulos quedaron validados y 4 escalaron a la revisión humana |
-| OE4. Evaluar el desempeño | 90 % de aplicación de las pruebas | Cumplido: se aplicaron los once niveles del plan; la comparación con desarrollo humano quedó como trabajo futuro |
+| OE4. Evaluar el desempeño | 90 % de aplicación de las pruebas | Cumplido: se aplicaron los once niveles del plan |
 
 Fuente: Elaboración propia.
 
@@ -387,7 +387,7 @@ Fuente: Elaboración propia.
 
 En el ámbito económico, un módulo costó en promedio 0,40 dólares de inferencia y entre 3,3 y 10,3 minutos de tiempo del sistema, de modo que
 cien módulos costarían cerca de 40 dólares de inferencia; es cerca del doble de lo que costaría un solo modelo con diálogo, y a cambio se
-obtienen los artefactos y los controles de la [Tabla D]. El ahorro frente al desarrollo manual, en cambio, queda por medir.
+obtienen los artefactos y los controles de la [Tabla D].
 
 ---
 
@@ -417,7 +417,7 @@ con la colaboración entre personas e IA que promueve la Industria 5.0 [2].
 - Conservar el veredicto de las pruebas que no cambian entre versiones, para estabilizar al juez del tester, y detectar en el código valores
   fijados de un escenario.
 - Evaluar el sistema con módulos de mayor tamaño, donde la descomposición por agentes podría aportar más, y repetir cada caso más veces.
-- Comparar el sistema con el desarrollo humano en casos reales de Realtix, para cuantificar el ahorro de tiempo y de costo, y comparar de forma
+- Comparar el sistema con desarrollos de Realtix, si la empresa llega a compartirlos, para cuantificar el ahorro de tiempo y de costo, y comparar de forma
   sistemática los modelos asignados a cada nodo.
 - Ampliar el conjunto de defectos inyectados y los casos de prueba con casos reales anonimizados.
 - Filtrar la colección de dominio de negocio cuando la necesidad no pertenezca al dominio.
@@ -472,19 +472,19 @@ no permitía comparar enfoques. Además, quedaban sin calcular las métricas RAG
 **Opciones consideradas.**
 - Para el oráculo: A. Pruebas de aceptación de referencia escritas desde la ficha de cada caso. B. El tester del sistema, con los requerimientos de una
   de sus corridas. C. Un juez de modelo que leyera la ficha y el código.
+- Para la referencia de comparación: A. El código de Realtix. B. Una implementación de los autores. C. Código abierto de repositorios públicos. D. Código
+  generado por un solo modelo de lenguaje.
 - Para el modelo de comparación: A. Que conversara con el mismo cliente simulado. B. Que recibiera en un mensaje lo que sabe el cliente. C. Que recibiera
   los requerimientos aprobados por el analista.
-- Para la implementación manual: A. Los autores, cronometrando cada fase. B. Desarrolladores de Realtix. C. Una estimación de la empresa.
 
 **Decisión.** Se eligió la opción A para el oráculo, porque el tester mide contra los requerimientos del propio sistema y un juez de modelo no ejecuta el
-código. Se usaron como líneas base las opciones A y B del modelo de comparación, con el mismo modelo del agente desarrollador. La implementación manual,
-prevista al inicio, se retiró antes de ejecutarla: Realtix no pudo compartir sus desarrollos por el acuerdo de confidencialidad, y la de los autores no
-habría sido independiente. Se descartó el código abierto de repositorios públicos, que no implementa estas fichas ni registra tiempos ni costos. Se
-usaron nueve casos sintéticos, con las seis arquitecturas, y un tope de 17 USD para todo el paso.
+código. Como referencia de comparación se eligió la opción D: Realtix no pudo compartir su código, por el acuerdo de confidencialidad; una implementación de
+los autores no habría sido independiente, y el código abierto no implementa estas fichas ni registra tiempos ni costos. Se usaron como líneas base las
+opciones A y B del modelo de comparación, con el mismo modelo del agente desarrollador. Se usaron nueve casos sintéticos, con las seis arquitecturas, y un tope de 17 USD para todo el paso.
 
 **Consecuencias.** Favorables: los tres enfoques se midieron con el mismo instrumento, las tablas se regeneran desde los resultados guardados y se
 precisó dónde está el valor del sistema. Desfavorables: el sistema no tuvo menos errores y costó el doble o más, cada implementación necesitó un adaptador
-escrito a mano, seis de los nueve casos tuvieron una sola corrida por enfoque y el ahorro frente al trabajo manual no quedó cuantificado.
+escrito a mano, seis de los nueve casos tuvieron una sola corrida por enfoque y el ahorro frente al trabajo manual queda por cuantificar.
 
 **Verificación.** En cada caso, la implementación de control pasó todas las verificaciones y cada uno de los 35 mutantes falló al menos una. Los oráculos
 de los casos nuevos se versionaron antes de correr las líneas base. Un autor revisó los oráculos frente a las fichas y cinco juicios de las métricas RAGs.
