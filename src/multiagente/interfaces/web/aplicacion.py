@@ -32,7 +32,7 @@ from fastapi.templating import Jinja2Templates
 
 from multiagente.core.esquemas.especificacion_diseno import EspecificacionDiseno
 from multiagente.core.esquemas.requerimiento import HistoriaUsuario, RequerimientoFormal
-from multiagente.interfaces.documentos import ErrorExportacion, resumen_pruebas_propias
+from multiagente.interfaces.documentos import ErrorExportacion, resumen_pruebas_propias, usd
 from multiagente.interfaces.operacion import (
     ACUSE_CONFIRMACION,
     NOMBRES_DE_NODO,
@@ -227,8 +227,8 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             }
         if pausa.punto == PAUSA_PRESUPUESTO:
             return {
-                "gastado": datos["gastado_usd"],
-                "presupuesto": datos["presupuesto_usd"],
+                "gastado": usd(datos["gastado_usd"]),
+                "presupuesto": usd(datos["presupuesto_usd"]),
                 "nodo": NOMBRES_DE_NODO.get(datos["nodo"], datos["nodo"]),
             }
         if pausa.punto == "final":

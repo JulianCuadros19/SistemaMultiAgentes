@@ -297,12 +297,12 @@ def test_la_web_amplia_el_presupuesto_y_muestra_el_gasto_y_la_traza(entorno_fals
 
     pagina = cliente.get(f"/sesiones/{id_sesion}").text
     assert "Pausa por presupuesto" in pagina
-    assert "La sesión gastó 0.05 USD de su presupuesto de 0.05 USD" in pagina
+    assert "La sesión gastó 0.0500 USD de su presupuesto de 0.0500 USD" in pagina
     assert "N3 · diálogo con el cliente" in pagina
-    assert "gastado 0.0500 USD de\n    0.05 USD" in pagina
+    assert "gastado 0.0500 USD de\n    0.0500 USD" in pagina
     assert f'action="/sesiones/{id_sesion}/presupuesto"' in pagina
     assert PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO in cliente.get(f"/conversacion/{id_sesion}").text
-    assert "0.0500 de 0.05" in cliente.get("/").text
+    assert "0.0500 de 0.0500" in cliente.get("/").text
 
     pagina = cliente.post(
         f"/sesiones/{id_sesion}/presupuesto", data={"presupuesto_usd": "muchos"}

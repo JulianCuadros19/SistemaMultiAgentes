@@ -388,7 +388,7 @@ def test_la_consola_amplia_el_presupuesto_y_muestra_el_gasto_y_la_traza(
 
     salida = capsys.readouterr().out
     assert "=== Pausa por presupuesto ===" in salida
-    assert "La sesión gastó 0.05 USD de su presupuesto de 0.05 USD." in salida
+    assert "La sesión gastó 0.0500 USD de su presupuesto de 0.0500 USD." in salida
     assert "Escriba el presupuesto como un número, por ejemplo 2.50." in salida
     [vista] = op.sesiones()
     assert vista.fase is Fase.VALIDADO
@@ -396,7 +396,7 @@ def test_la_consola_amplia_el_presupuesto_y_muestra_el_gasto_y_la_traza(
     assert (ampliacion.revisor, ampliacion.nuevo) == ("Laura", Decimal("1.00"))
 
     assert ejecutar(op, comando("sesiones"), configuracion(tmp_path), Teclado()) == 0
-    assert f"gastado {vista.costo_usd:.4f} USD, presupuesto 1.00 USD" in capsys.readouterr().out
+    assert f"gastado {vista.costo_usd:.4f} USD, presupuesto 1.0000 USD" in capsys.readouterr().out
     assert ejecutar(op, comando(f"traza {vista.id_sesion}"), configuracion(tmp_path)) == 0
     documento = capsys.readouterr().out
     assert documento.startswith(f"# Traza de la sesión {vista.id_sesion}")

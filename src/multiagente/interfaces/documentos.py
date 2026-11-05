@@ -393,6 +393,18 @@ def _segundos(milisegundos: int) -> str:
     return f"{milisegundos / 1000:.1f}"
 
 
+def usd(valor: Decimal | str) -> str:
+    """Un monto en USD con cuatro decimales, para mostrarlo: `0.0079`, `1.5000`.
+
+    Args:
+        valor: Monto exacto, como `Decimal` o como texto.
+
+    Returns:
+        El monto redondeado a cuatro decimales, sin el símbolo.
+    """
+    return f"{Decimal(valor):.4f}"
+
+
 def gasto_md(control: Control) -> list[str]:
     """Líneas con lo gastado, el presupuesto y sus ampliaciones (RNF-10).
 
@@ -403,12 +415,12 @@ def gasto_md(control: Control) -> list[str]:
         Una línea de Markdown por dato, en lista.
     """
     presupuesto = (
-        f"{control.presupuesto_usd} USD" if control.presupuesto_usd is not None else "sin tope"
+        f"{usd(control.presupuesto_usd)} USD" if control.presupuesto_usd is not None else "sin tope"
     )
-    lineas = [f"- Gastado: {control.costo_acumulado_usd:.4f} USD · presupuesto: {presupuesto}"]
+    lineas = [f"- Gastado: {usd(control.costo_acumulado_usd)} USD · presupuesto: {presupuesto}"]
     lineas += [
-        f"  - Ampliado por {_linea(a.revisor)} el {a.fecha:%Y-%m-%d %H:%M} UTC, de {a.anterior} a "
-        f"{a.nuevo} USD, con {a.gastado:.4f} USD gastados"
+        f"  - Ampliado por {_linea(a.revisor)} el {a.fecha:%Y-%m-%d %H:%M} UTC, de "
+        f"{usd(a.anterior)} a {usd(a.nuevo)} USD, con {usd(a.gastado)} USD gastados"
         + (f": {_linea(a.motivo)}" if a.motivo else "")
         for a in control.ampliaciones
     ]

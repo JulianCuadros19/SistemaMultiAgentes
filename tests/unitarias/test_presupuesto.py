@@ -177,7 +177,7 @@ def test_la_traza_de_la_sesion_muestra_por_nodo_los_prompts_tokens_costos_y_tiem
     documento = operador.traza(recorrido.id_sesion)
     trabajos = sum(simulacion.llamadas[trabajo] for trabajo in TRABAJOS_CON_MODELO)
     assert documento.startswith(f"# Traza de la sesión {recorrido.id_sesion}\n")
-    assert f"- Gastado: {CENTAVO * trabajos:.4f} USD · presupuesto: 1.50 USD" in documento
+    assert f"- Gastado: {CENTAVO * trabajos:.4f} USD · presupuesto: 1.5000 USD" in documento
     assert f"llamadas al modelo: {trabajos} · costo registrado: {CENTAVO * trabajos:.4f} USD" in (
         documento
     )

@@ -26,6 +26,7 @@ from multiagente.interfaces.documentos import (
     paquete_del_modulo,
     traza_md,
     trazabilidad_md,
+    usd,
 )
 from multiagente.llm.traza import RegistroPorSesion
 from multiagente.orquestador.ejecucion import (
@@ -154,9 +155,9 @@ class VistaSesion(BaseModel):
                 return "Escalada: el tester no aprobó el módulo; espera la decisión de una persona"
             if self.pausa.punto == PAUSA_PRESUPUESTO:
                 return (
-                    f"Detenida por presupuesto: gastó {self.pausa.datos['gastado_usd']} de "
-                    f"{self.pausa.datos['presupuesto_usd']} USD; espera que una persona lo amplíe "
-                    "o cierre la sesión"
+                    f"Detenida por presupuesto: gastó {usd(self.pausa.datos['gastado_usd'])} de "
+                    f"{usd(self.pausa.datos['presupuesto_usd'])} USD; espera que una persona lo "
+                    "amplíe o cierre la sesión"
                 )
             return ESPERAS[self.pausa.punto]
         if self.pendientes:

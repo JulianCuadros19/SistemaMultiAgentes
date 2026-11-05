@@ -44,6 +44,7 @@ from multiagente.interfaces.documentos import (
     especificacion_md,
     recorridos_md,
     requerimientos_md,
+    usd,
 )
 from multiagente.interfaces.operacion import (
     ACUSE_CONFIRMACION,
@@ -189,9 +190,9 @@ def mostrar_presupuesto(datos: dict[str, Any]) -> None:
     """Imprime por qué la sesión se detuvo: alcanzó su presupuesto antes de un nodo con modelo."""
     print("\n=== Pausa por presupuesto ===\n")
     print(
-        f"La sesión gastó {datos['gastado_usd']} USD de su presupuesto de "
-        f"{datos['presupuesto_usd']} USD. Antes de seguir con {datos['nodo']}, que usa un modelo, "
-        "una persona debe ampliarlo, o cerrar la sesión."
+        f"La sesión gastó {usd(datos['gastado_usd'])} USD de su presupuesto de "
+        f"{usd(datos['presupuesto_usd'])} USD. Antes de seguir con {datos['nodo']}, que usa un "
+        "modelo, una persona debe ampliarlo, o cerrar la sesión."
     )
 
 
@@ -740,10 +741,10 @@ def _listar(operador: Operador) -> None:
     if not sesiones:
         print("No hay sesiones guardadas.")
     for vista in sesiones:
-        presupuesto = f"{vista.presupuesto_usd} USD" if vista.presupuesto_usd else "sin tope"
+        presupuesto = f"{usd(vista.presupuesto_usd)} USD" if vista.presupuesto_usd else "sin tope"
         print(
             f"{vista.id_sesion}  {vista.creada:%Y-%m-%d %H:%M}  {vista.cliente} · "
-            f"{vista.proyecto}\n    {vista.describir()} · gastado {vista.costo_usd:.4f} USD, "
+            f"{vista.proyecto}\n    {vista.describir()} · gastado {usd(vista.costo_usd)} USD, "
             f"presupuesto {presupuesto}"
         )
 

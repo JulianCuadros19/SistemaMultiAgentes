@@ -146,7 +146,7 @@ def test_una_sesion_que_alcanza_su_presupuesto_se_amplia_o_se_cierra(tmp_path, e
     vista = op.vista(ampliada)
     assert vista.pausa.punto == "presupuesto"
     assert (vista.costo_usd, vista.presupuesto_usd) == (Decimal("0.05"), Decimal("0.05"))
-    assert vista.describir().startswith("Detenida por presupuesto: gastó 0.05 de 0.05 USD")
+    assert vista.describir().startswith("Detenida por presupuesto: gastó 0.0500 de 0.0500 USD")
     with pytest.raises(ErrorOperacion, match="no espera dialogo"):
         op.responder(ampliada, "Otra respuesta")
     avance = op.ampliar_presupuesto(ampliada, "Laura", Decimal("0.04"))
@@ -158,7 +158,7 @@ def test_una_sesion_que_alcanza_su_presupuesto_se_amplia_o_se_cierra(tmp_path, e
     op.cerrar(cerrada, "Julián", "El presupuesto no alcanza")
     cierre = op.estado(cerrada)["sesion"].cierre
     assert cierre.desde == "Espera que una persona amplíe el presupuesto"
-    assert "- Gastado: 0.0500 USD · presupuesto: 0.05 USD" in op.trazabilidad(cerrada)
+    assert "- Gastado: 0.0500 USD · presupuesto: 0.0500 USD" in op.trazabilidad(cerrada)
     assert len(op.ejecuciones(cerrada)) > 0
 
 

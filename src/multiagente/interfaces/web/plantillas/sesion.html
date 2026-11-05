@@ -68,7 +68,7 @@
     Sesión {{ id_sesion }} · abierta el {{ vista.creada.strftime('%Y-%m-%d %H:%M') }} UTC ·
     fase {{ vista.fase.value }} · iteración {{ vista.iteracion }} de {{ vista.limite_iteraciones }} ·
     gastado {{ '%.4f' | format(vista.costo_usd) }} USD de
-    {{ '%s USD' | format(vista.presupuesto_usd) if vista.presupuesto_usd else 'un presupuesto sin tope' }}
+    {{ '%.4f USD' | format(vista.presupuesto_usd) if vista.presupuesto_usd else 'un presupuesto sin tope' }}
   </p>
   <p><span class="etiqueta {{ vista.fase.value }}">{{ vista.describir() }}</span></p>
   <nav class="enlaces">
