@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo**      | **Contenido**                                               |
 |----------------|-------------------------------------------------------------|
 | Producto       | Entregable del Objetivo Específico 2                        |
-| Versión        | 1.5                                                         |
+| Versión        | 1.6                                                         |
 | Fecha          | 14 de septiembre de 2026                                    |
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |

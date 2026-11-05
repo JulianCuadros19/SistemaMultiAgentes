@@ -196,7 +196,9 @@ pytest -m "sandbox and not nube"
 - [Arquitectura](docs/arquitectura.md)
 - [Plan de trabajo](docs/plan_de_trabajo.md)
 - [Registros de decisión](docs/decisiones/)
+- [Manual de uso](docs/manual-de-uso.md)
+- [Informe de evaluación](docs/evaluacion/informe-objetivo-4.md)
 
 ## Estado
 
-En desarrollo. Ver la sección «Estado actual» de `CLAUDE.md`.
+Pasos 0 a 15 del plan cerrados. El historial está en la sección «Estado actual» de `CLAUDE.md`.

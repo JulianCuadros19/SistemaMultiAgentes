@@ -86,7 +86,8 @@ En la máquina, el 2026-11-05:
   (`docs/mediciones/paso-15-despliegue-azure.jsonl`).
 - **Reinicio:** tras `sudo reboot`, el enlace volvió en 32 s y conservó la sesión.
 
-Sin verificar: el ciclo completo de detener e iniciar desde el portal, que lo hace el equipo.
+Sin verificar, a cargo del equipo: el ciclo completo de detener e iniciar desde el portal, y el apagado
+automático.
 
 ## Cambios para el documento de tesis
 

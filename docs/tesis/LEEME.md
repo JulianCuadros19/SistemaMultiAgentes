@@ -7,7 +7,7 @@ el 4 de noviembre de 2026. Se guarda solo en local, en `docs/anexos/`.
 
 Este paquete es un documento derivado. La fuente de verdad son los documentos del repositorio:
 - `docs/requerimientos.md`, versión 1.3;
-- `docs/arquitectura.md`, versión 1.5;
+- `docs/arquitectura.md`, versión 1.6;
 - los registros de decisión de `docs/decisiones/`;
 - las mediciones de `docs/mediciones/`.
 
@@ -15,7 +15,7 @@ Este paquete es un documento derivado. La fuente de verdad son los documentos de
 
 | Archivo | Para qué sirve |
 |---|---|
-| `01-correcciones.md` | Lo que el documento dice hoy y ya no es cierto, en su orden y con su página, y lo que debe decir. 45 entradas |
+| `01-correcciones.md` | Lo que el documento dice hoy y ya no es cierto, en su orden y con su página, y lo que debe decir. 46 entradas |
 | `02-avances.md` | Lo que el documento todavía no cuenta y dónde va (ver la lista debajo) |
 | `03-cifras.md` | Todas las cifras con su fuente. Es la referencia única: ninguna cifra se toma de otro lado |
 | `04-arquitectura-final.md` | La arquitectura vigente: nodos, flujo con su diagrama, estado, datos, conocimiento, modelos y despliegue. Sirve para rehacer la Figura 8 y la Tabla 35 |
@@ -34,6 +34,7 @@ Este paquete es un documento derivado. La fuente de verdad son los documentos de
 1. **Archivos para la conversación de redacción:**
    - **Siempre:** los cinco archivos de esta carpeta.
    - **Como respaldo, si caben:**
+     - `docs/evaluacion/informe-objetivo-4.md`;
      - `docs/requerimientos.md`;
      - `docs/arquitectura.md`;
      - `docs/decisiones/0015-calidad-de-la-primera-salida.md`;

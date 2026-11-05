@@ -1,6 +1,6 @@
 # Arquitectura final del sistema
 
-Arquitectura vigente al 4 de noviembre de 2026: `docs/arquitectura.md` versión 1.5, con los
+Arquitectura vigente al 5 de noviembre de 2026: `docs/arquitectura.md` versión 1.6, con los
 requerimientos 1.3.
 
 Sirve para rehacer en el documento de tesis:
@@ -189,6 +189,10 @@ y se retoma desde otro proceso (RF-28 y RNF-02).
 - La aplicación corre sin root, con el dueño de `data/local` y el grupo del socket de Docker.
 - En `data/local` quedan la traza, las carpetas de trabajo y las exportaciones.
 
+**Despliegue de demostración (ADR-0020):** para compartir el sistema con datos sintéticos, una máquina virtual de Azure
+corre la misma composición más un proxy, definido en un archivo aparte, que publica la web con TLS y contraseña. No
+sustituye la entrega en la infraestructura de la empresa.
+
 ## 8. Seguridad y confidencialidad
 
 - **Código generado:** se ejecuta en un contenedor efímero sin red, de solo lectura y sin root, sin
@@ -203,7 +207,9 @@ y se retoma desde otro proceso (RF-28 y RNF-02).
     ningún registro.
 - **Web:**
   - no tiene autenticación y solo responde en la máquina donde corre la composición;
-  - el acceso remoto queda como trabajo futuro (ADR-0017).
+  - en el despliegue de demostración responde por internet solo a través del proxy, con TLS y una contraseña compartida. La
+    base de datos, los embeddings y el socket de Docker no quedan expuestos;
+  - el acceso remoto con un enlace por sesión para el cliente queda como trabajo futuro (ADR-0017 y ADR-0020).
 - **Docker del anfitrión:** la aplicación lo usa únicamente para crear el entorno aislado.
 - **Datos de prueba:** todos los casos son sintéticos.
 

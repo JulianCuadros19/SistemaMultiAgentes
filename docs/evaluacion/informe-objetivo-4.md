@@ -11,8 +11,8 @@ de trabajo, 5 de noviembre de 2026. El diseño está en el ADR-0019.
 - **El sistema no entrega menos errores que un modelo de lenguaje solo.** Con las mismas pruebas de
   referencia, la tasa de errores es de 3,4 % en el sistema y de 5,4 % en el modelo con diálogo, y queda
   empatada caso a caso (mejor en 2, peor en 2 e igual en 5). La hipótesis H1 no se sostiene.
-- **El sistema cuesta y tarda el doble,** en los nueve casos: 0,358 USD y 5,9 min por módulo, frente a
-  0,170 USD y 2,9 min.
+- **El sistema cuesta y tarda el doble o más,** en los nueve casos: 0,358 USD y 5,9 min por módulo, frente a
+  0,170 USD y 2,9 min del LLM con diálogo, y 0,104 USD y 2,5 min del LLM de un solo prompt.
 - **Con la información completa, un modelo solo no falló ninguna verificación:** 90 de 90. En estos módulos
   pequeños, escribir el código no es el cuello de botella. Los errores nacen al transmitir la información.
 - **Lo que el sistema agrega no es corrección del código, sino lo que rodea al código:** requerimientos
@@ -97,6 +97,14 @@ independientes de las que cada uno escribe para sí.
 | Hallazgos de Ruff por entrega | 0,3 | 1,2 | 1,0 |
 
 El costo no cuenta al cliente simulado, y el tiempo no cuenta su latencia.
+
+**Las pruebas propias que fallan no señalan errores del código.** Las seis entregas pasan todas las
+verificaciones de referencia:
+- **LLM, cinco entregas:** lo que falla es, en su mayoría, el valor que esperaba la prueba que escribió el modelo,
+  como `assert '8' == '7'`. Un modelo solo no ejecuta lo que entrega, así que no lo nota, y su `USO.md` no lo
+  advierte. Quien recibe el módulo ve pruebas en rojo y debe averiguar si falla el código o la prueba.
+- **Sistema, una entrega:** `sistema-02-1` es la sesión escalada por el escenario imposible del caso 02. El tester
+  rechazó sus tres versiones, y N17 no permite aprobarla.
 
 ### 3.2 Por caso
 
@@ -275,7 +283,7 @@ Las 20 sesiones de la corrida ampliada, por 2,84 USD. Cada métrica va de 0 a 1.
 | **H1:** el sistema tiene menos errores que el modelo único | Antes de medir | **No se sostiene:** 3,4 % frente a 5,4 %, por una sola corrida del modelo, y empate caso a caso |
 | **H2:** el sistema cuesta y tarda menos que lo manual | Antes de medir | **Retirada, sin evaluar:** no hubo implementación manual |
 | **H3:** los criterios del ADR-0015 con las decisiones 37 a 39 | Antes de medir | **Mixto:** 3 de 7 cumplidos; las tres decisiones cumplen su objetivo |
-| **H4:** el sistema cuesta y tarda más que un LLM solo | Exploratoria | **Se sostiene:** el doble, en los nueve casos |
+| **H4:** el sistema cuesta y tarda más que un LLM solo | Exploratoria | **Se sostiene:** el doble o más, en los nueve casos |
 | **H5:** el tester detiene defectos que un LLM solo entrega sin aviso | Exploratoria | **En parte:** detuvo el error de fórmula del caso 12 y no dejó aprobar el caso 16, pero aprobó 2 versiones con error |
 
 ## 9. Amenazas a la validez

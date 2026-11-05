@@ -89,7 +89,8 @@ arquitectura:
 
 Se usaron nueve casos sintéticos, sin datos de Realtix, que cubren las seis arquitecturas del catálogo. Tres se eligieron antes
 de medir; los otros seis fueron el primer caso de cada arquitectura, por número, sin mirar su resultado. Las pruebas de esos seis
-se versionaron antes de abrir sus salidas y de correr las líneas base.
+se versionaron antes de abrir sus implementaciones y de correr las líneas base; de dos de ellos ya se conocían hallazgos del tester, no
+su código.
 
 **Niveles que se agregan a la Tabla 24:**
 
@@ -130,8 +131,8 @@ La generación de código concentró el 44,8 % del costo, la selección y parame
 Fuente: Elaboración propia.
 
 El retroceso frente a la corrida previa no se debió a un cambio en los modelos ni en los prompts, que fueron los mismos. La causa
-principal fueron escenarios de aceptación defectuosos del elicitador en cuatro casos, que contradecían sus propias reglas o incluían
-una pregunta abierta; sin ellos, la primera versión habría sido válida en 15 de 20. Se sumó que el juez del tester cambió de veredicto
+principal fueron escenarios de aceptación defectuosos del elicitador en cuatro casos, que contradecían las reglas, inventaban datos o
+incluían una pregunta abierta; se estima que, sin ellos, 15 de 20 módulos habrían quedado validados en la primera versión. Se sumó que el juez del tester cambió de veredicto
 en 3 de 124 rejuicios de una prueba idéntica. Una corrida adicional de tres casos terminó sin escalamientos, lo que muestra la
 variabilidad de estas mediciones.
 
@@ -172,8 +173,9 @@ Fuente: Elaboración propia.
 
 La hipótesis de que el sistema tendría menos errores que un modelo solo no se sostuvo. La diferencia frente al modelo con diálogo
 fue pequeña y dependió de una sola corrida, en la que el modelo dejó el cálculo pendiente porque el cliente no definió el redondeo;
-sin ella, su tasa bajó a 0,7 %. Caso a caso, el sistema fue mejor en 2, peor en 2 e igual en 5. En cambio, costó y tardó cerca del
-doble, en los nueve casos, frente a cada línea base (prueba de signos, exploratoria, p = 0,004).
+sin ella, su tasa bajó a 0,7 %. Caso a caso, el sistema fue mejor en 2, peor en 2 e igual en 5. En cambio, costó y tardó más en los nueve
+casos frente a cada línea base (prueba de signos, exploratoria, p = 0,004): cerca del doble que el modelo con diálogo, y 3,4 veces el costo y
+2,4 veces el tiempo del modelo de un solo prompt.
 
 El análisis de los errores fue más revelador que su cantidad. El modelo de un solo prompt no falló ninguna verificación, lo que
 indica que, en módulos de este tamaño y con la información completa, escribir el código no fue el cuello de botella. Los errores
@@ -199,9 +201,13 @@ Lo que el sistema agregó no fue corrección del código, sino lo que la rodea, 
 
 Fuente: Elaboración propia.
 
-Un modelo solo entregó en cinco de 24 implementaciones pruebas propias que fallaban, sin advertirlo, y nada le impidió entregar un
-módulo que no calculaba. En el sistema, esos casos habrían llegado a una persona con un reporte. Esa diferencia de gobierno, y no
-la de errores, es lo que justifica el mayor costo, que sigue siendo de centavos de dólar por módulo.
+Un modelo solo entregó en cinco de 24 implementaciones pruebas propias que fallaban, sin advertirlo. Las cinco pasaron todas las
+verificaciones de referencia: el código estaba bien y lo que fallaba era, en su mayoría, el valor que esperaba la prueba escrita por
+el modelo, que no ejecuta lo que entrega. Aun así, quien recibe el módulo ve pruebas en rojo sin aviso y debe averiguar si falla el
+código o la prueba. Tampoco hubo nada que le impidiera entregar, en una corrida, un módulo que dejaba el cálculo pendiente. En el sistema, la
+única implementación con pruebas que fallaban fue la del escenario imposible del reajuste del canon: el tester rechazó sus tres
+versiones y la sesión escaló a la revisión final con su reporte, sin poder aprobarse. Esa diferencia de gobierno, y no la de errores, es lo que
+puede justificar el mayor costo, que sigue siendo de centavos de dólar por módulo.
 
 ---
 
@@ -256,7 +262,7 @@ contra los que juzga.
 **Reemplazar la sección por:**
 
 Las tres dimensiones de RAGs [66] de la Tabla 14 se midieron sobre las 20 sesiones de la corrida ampliada, con una muestra por sesión y por
-agente y un modelo de lenguaje externo al flujo como juez.
+agente y, como juez, un modelo de lenguaje que esos agentes no usan.
 
 **[Tabla F]. Métricas RAGs por colección**
 
@@ -301,7 +307,7 @@ cumplieron su objetivo, con 19 resúmenes confirmados frente a 16, pero la valid
 
 La comparación con un solo modelo de lenguaje fue el resultado más importante, y no favoreció al sistema en lo que se esperaba. Con las
 mismas pruebas, la tasa de errores fue de 3,4 % en el sistema, de 5,4 % en el modelo con diálogo y de 0,0 % en el modelo de un solo prompt,
-y el sistema costó y tardó cerca del doble. Se valora como un hallazgo y no como un fracaso, porque precisó dónde está el valor de la
+y el sistema costó y tardó cerca del doble que el modelo con diálogo, y más aún frente al de un solo prompt. Se valora como un hallazgo y no como un fracaso, porque precisó dónde está el valor de la
 arquitectura: en módulos de este tamaño, un modelo capaz escribe bien el código si tiene la información; lo difícil es conseguirla,
 conservarla y demostrar que el resultado cumple. Ahí aportó el sistema, con requerimientos trazables, diseño de un catálogo cerrado,
 validación independiente y control humano, y ahí mismo mostró sus debilidades: la información se perdió en la síntesis y en el diseño, y el
@@ -320,7 +326,7 @@ al trabajo manual no quedó cuantificado.
 **Reemplazar la primera frase del ámbito económico por:**
 
 En el ámbito económico, un módulo costó en promedio 0,40 dólares de inferencia y entre 3,3 y 10,3 minutos de tiempo del sistema, de modo que
-cien módulos costarían cerca de 40 dólares de inferencia; es cerca del doble de lo que costaría un solo modelo de lenguaje, y a cambio se
+cien módulos costarían cerca de 40 dólares de inferencia; es cerca del doble de lo que costaría un solo modelo con diálogo, y a cambio se
 obtienen los artefactos y los controles de la [Tabla D]. El ahorro frente al desarrollo manual, en cambio, queda por medir.
 
 ---
@@ -331,7 +337,7 @@ obtienen los artefactos y los controles de la [Tabla D]. El ahorro frente al des
 
 La evaluación confirmó que el sistema opera dentro de sus umbrales de tiempo y de costo, con la excepción de un turno de diálogo, pero
 no que produzca menos errores que un solo modelo de lenguaje: en módulos pequeños y con un modelo capaz, ambos enfoques escribieron código
-correcto cuando tuvieron la información, y el sistema costó el doble. El valor de la arquitectura multiagente no estuvo en la corrección del
+correcto cuando tuvieron la información, y el sistema costó el doble o más. El valor de la arquitectura multiagente no estuvo en la corrección del
 código, sino en lo que la rodea: convertir una conversación en requerimientos trazables, elegir el diseño de un catálogo cerrado, validar de
 forma independiente y dejar la decisión final en manos de una persona. También quedó claro su principal riesgo: cada paso de la cadena puede
 perder información, y un validador solo es tan bueno como los requerimientos contra los que juzga.
@@ -366,7 +372,7 @@ recursos externos, con fuentes servidas por la aplicación.
 
 **ADR-0019. Casos de referencia y líneas base.** Contexto: la tasa de errores con el tester propio no permitía comparar enfoques. Decisión: un oráculo
 común de pruebas de aceptación, en nueve casos, frente a dos líneas base de un solo modelo de lenguaje; se retiró la implementación manual, por no
-ser independiente. Consecuencia: el sistema no tuvo menos errores y costó el doble, y se precisó dónde está su valor.
+ser independiente. Consecuencia: el sistema no tuvo menos errores y costó el doble o más, y se precisó dónde está su valor.
 
 **ADR-0020. Despliegue de demostración en Azure.** Contexto: se necesitaba un enlace público. Decisión: una máquina virtual con la misma composición y
 un proxy con TLS y contraseña, solo con datos sintéticos. Consecuencia: el enlace funciona sin cambiar el sistema, con una sola contraseña y sin tope

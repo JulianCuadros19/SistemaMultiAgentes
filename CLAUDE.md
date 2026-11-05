@@ -442,7 +442,7 @@ Mantener esta sección actualizada al cerrar cada paso.
     - LLM con diálogo: 5,4 %, 0,170 USD y 2,9 min;
     - LLM de un solo prompt: 0,0 %, 0,104 USD y 2,5 min.
 
-    H1 no se sostiene: el sistema no tiene menos errores, y cuesta y tarda el doble. Su aporte son los requerimientos, el
+    H1 no se sostiene: el sistema no tiene menos errores, y cuesta y tarda el doble o más. Su aporte son los requerimientos, el
     diseño, la validación independiente, el control humano y la traza. Sus errores nacen en la síntesis y en el diseño, no al
     escribir el código.
   - **Tester:** 63 de 63 y 9 de 9 con defectos inyectados; frente al oráculo, en 21 versiones, exactitud de 0,52, con matices
