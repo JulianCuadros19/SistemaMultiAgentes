@@ -65,7 +65,7 @@ REGLAS
 - Si puedes editar el archivo de Word, hazlo con control de cambios y conserva sus estilos. Si no, dame el texto final de cada sección, listo para pegar, e indica dónde va.
 - Lleva tal cual el texto entre comillas « » de las entradas de 01 y el texto de 05. El material de 02 redáctalo con el estilo del documento.
 - Toma las cifras de 03 y 05 tal cual, con su unidad. No las recalcules ni las redondees de otra forma. Si necesitas una que no está, pregunta antes de escribirla.
-- Los números de tabla y de figura del paquete son los de la versión del 4 de noviembre. [Tabla A] a [Tabla G] son tablas nuevas. Numera todas en orden de aparición, con la leyenda arriba y «Fuente:» abajo, como las demás.
+- Los números de tabla y de figura del paquete son los de la versión del 4 de noviembre. [Tabla A] a [Tabla H] son tablas nuevas. Numera todas en orden de aparición, con la leyenda arriba y «Fuente:» abajo, como las demás.
 - Conserva la terminología del documento: especificación de diseño (nunca contrato), requerimiento formal, punto de control humano, revisión o validación final, entorno aislado, enmienda, traza por nodo y presupuesto por módulo.
 - Todos los casos de prueba son sintéticos; no hay datos de Realtix.
 - Los modelos de lenguaje son solo los desplegados en Azure OpenAI y BGE-M3 corre local. No plantees modelos de lenguaje locales ni de pesos abiertos.
@@ -75,7 +75,7 @@ REGLAS
 - Mantén el estilo del documento: voz impersonal, tiempo pasado, coma decimal y cifras con su unidad.
 
 COMPROBACIÓN FINAL
-Al terminar, busca en el documento y repórtame dónde siguen apareciendo, fuera del Anexo D: «38 requerimientos», «38 functional», «582», «catorce registros», «186 fragmentos», «seis niveles», «six-level», «modelos remotos», «remote models», «desarrollo manual», «desarrollo humano», «¡Error!» y «[Tabla». Confirma también que el documento dice 39 requerimientos funcionales, 909 pruebas, veinte registros de decisión, once niveles de prueba, y siete requerimientos no funcionales cumplidos y tres parciales.
+Al terminar, busca en el documento y repórtame dónde siguen apareciendo, fuera del Anexo D: «38 requerimientos», «38 functional», «582», «catorce registros», «186 fragmentos», «seis niveles», «six-level», «modelos remotos», «remote models», «desarrollo manual», «desarrollo humano», «¡Error!» y «[Tabla». Confirma también que el documento dice 39 requerimientos funcionales, 946 pruebas, veinte registros de decisión, once niveles de prueba, y siete requerimientos no funcionales cumplidos y tres parciales.
 ```
 
 ## Estado

@@ -22,7 +22,7 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   nodo vive en PostgreSQL, y Langfuse salió del stack (ADR-0016).
 - **Cifras del sistema:**
   - 20 registros de decisión, no 14;
-  - 909 pruebas automatizadas, no 582;
+  - 946 pruebas automatizadas, no 582;
   - 187 fragmentos, no 186.
 - **Evaluación:**
   - la corrida ampliada de 20 casos se hizo en tres momentos. En la línea base, 10 de 19 módulos se validaron en
@@ -68,7 +68,8 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
   Frente a un solo modelo de lenguaje, en nueve casos, el sistema no tuvo menos errores (3,4 %, frente a 5,4 %
   del modelo con diálogo y 0,0 % del modelo con toda la información en un solo prompt) y costó y tardó el doble
   o más; su aporte estuvo en los requerimientos trazables, el diseño, la validación independiente y el control
-  humano. Se aprobaron 909 pruebas automatizadas y, de los diez requerimientos no funcionales, siete se
+  humano, y, frente al modelo con diálogo, en menos implementaciones con hallazgos de estilo y en ninguna entrega lista
+  con pruebas en rojo. Se aprobaron 946 pruebas automatizadas y, de los diez requerimientos no funcionales, siete se
   cumplieron y tres de forma parcial.»
 - **Por qué:**
   - última corrida ampliada y comparación con un solo modelo (ADR-0019);
@@ -101,8 +102,9 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
     accuracy fell to 0.52 against independent acceptance tests. Compared with a single language model on nine
     cases, the system did not have fewer errors (3.4%, against 5.4% for the model with dialogue and 0.0% for the
     model given all the information in a single prompt) and took at least twice the cost and time; its
-    contribution lay in traceable requirements, design, independent validation and human control. In addition,
-    909 automated tests passed and, of the ten non-functional requirements, seven were met and three partially.»
+    contribution lay in traceable requirements, design, independent validation and human control and, compared with
+    the model with dialogue, in fewer implementations with style findings and no finished delivery with failing tests. In addition,
+    946 automated tests passed and, of the ten non-functional requirements, seven were met and three partially.»
 - **Por qué:** coherencia con el resumen.
 
 ### C-04 · Introducción, «Alcance y limitaciones», p. 19
@@ -334,8 +336,8 @@ Las cifras vienen de `03-cifras.md`. Cuando una corrección pide texto nuevo lar
 - **Dice hoy:** «En la última ejecución registrada se aprobaron 507 pruebas unitarias, 30 pruebas de
   integración, 19 pruebas de representaciones vectoriales y 26 pruebas del entorno aislado, que en
   conjunto suman 582 pruebas.»
-- **Debe decir:** «…se aprobaron 812 pruebas unitarias, 34 pruebas de integración, 19 pruebas de
-  representaciones vectoriales y 44 pruebas del entorno aislado, que en conjunto suman 909
+- **Debe decir:** «…se aprobaron 849 pruebas unitarias, 34 pruebas de integración, 19 pruebas de
+  representaciones vectoriales y 44 pruebas del entorno aislado, que en conjunto suman 946
   pruebas.»
 - **Por qué:** cierre del paso 15.
 
@@ -375,7 +377,7 @@ Después de la 4.10 y antes de «Pruebas automatizadas», agregar cuatro seccion
   tres a cuatro por arquitectura del catálogo, sin datos de Realtix, con una línea base, una corrida
   tras el pulido y una última corrida con el sistema final.»
 - **Tabla 24:**
-  - «582 pruebas en la última ejecución» → «909 pruebas en la última ejecución».
+  - «582 pruebas en la última ejecución» → «946 pruebas en la última ejecución».
   - Nivel «Desempeño del tester», con el corpus ampliado en el ADR-0015:
     - casos: «21 defectos inyectados y 3 controles, 3 corridas»;
     - criterio: «Detectar los 21 defectos con su regla y aprobar los controles».
@@ -482,7 +484,7 @@ control de la empresa y que los embeddings se generan localmente.
   - «…187 fragmentos…»;
   - «…en nueve de nueve corridas de integración; en la corrida ampliada posterior al pulido del ADR-0015 se
     validaron veinte de veinte casos y, en la última, dieciséis de veinte.»;
-  - «…909 pruebas… veinte registros…»;
+  - «…946 pruebas… veinte registros…»;
   - en las debilidades, agregar «…y, en las corridas ampliadas, en 7 de 23 y en 4 de 35 primeros intentos».
 
 ### C-35 · 6.4, pp. 78 y 79
@@ -495,7 +497,7 @@ control de la empresa y que los embeddings se generan localmente.
 - **Dice hoy, más adelante:** «…un activo propio que reúne 38 requerimientos, un grafo de diecisiete nodos,
   catorce registros de decisión, cuatro bases de conocimiento y 582 pruebas automatizadas…»
 - **Debe decir:** «…39 requerimientos, un grafo de diecisiete nodos, veinte registros de decisión, cuatro bases
-  de conocimiento y 909 pruebas automatizadas, empaquetado en contenedores…».
+  de conocimiento y 946 pruebas automatizadas, empaquetado en contenedores…».
 - **Opcional:** mencionar que el presupuesto por módulo, de 1,50 dólares por defecto, acota el gasto
   de cada sesión.
 

@@ -308,6 +308,13 @@ explica cada celda.
 **Métricas RAGs (20 sesiones):** fidelidad de 0,81 en el elicitador, 0,84 en el arquitecto y 0,47 en el tester,
 subestimada porque el juez no recibió la ejecución. La relevancia del contexto de `dominio_negocio` es de 0,10.
 
+**Ampliación de calidad estática** (informe, sección 3.6), sin costo:
+- **A favor del sistema:** complejidad media por función de 2,00, frente a 2,78 y 2,49, y proporción de pruebas que esperan un rechazo de
+  45 %, frente a 31 % y 36 %.
+- **Sin diferencia:** en dinero, credenciales, `global` y recursos ningún enfoque tiene hallazgos, y la complejidad máxima empata.
+- **En contra o con matiz:** más líneas de código y menos pruebas, algo más de usos no deterministas en las pruebas (0,25, frente a 0,07 y 0,22), y más
+  pruebas de rechazo en cantidad en el modelo de un solo prompt.
+
 **Costo del paso:** 16,74 USD, frente al tope de 17.
 
 **Desvíos frente al diseño de la fase 1:**

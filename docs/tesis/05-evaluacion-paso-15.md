@@ -227,6 +227,45 @@ código o la prueba. Tampoco hubo nada que le impidiera entregar, en una corrida
 versiones y la sesión escaló a la revisión final con su reporte, sin poder aprobarse. Esa diferencia de gobierno, y no la de errores, es lo que
 puede justificar el mayor costo, que sigue siendo de centavos de dólar por módulo.
 
+Para medir con cifras lo que el sistema agrega, se reunieron las mediciones de la [Tabla H]. Las de calidad del código salen de las reglas
+basadas en la ISO/IEC 25010 de su base de conocimiento: se fijaron antes de calcularlas y se reportan todas, también las que no favorecen al
+sistema. Son exploratorias y usan detectores aproximados.
+
+**[Tabla H]. Mediciones del aporte del sistema**
+
+| Medición | Sistema multiagente | Modelo con diálogo | Modelo de un solo prompt |
+|---|---|---|---|
+| Implementaciones con hallazgos de estilo | 3 de 12 | 10 de 15 | 4 de 9 |
+| Hallazgos de estilo de severidad media | 0 | 2 | 1 |
+| Pruebas propias en rojo en una entrega que queda como lista | 0 de 12 | 3 de 15 | 2 de 9 |
+| Peor implementación frente al oráculo | 80 % | 30 % | 100 % |
+| Requerimientos formales por sesión | 2,25 | 0 | 0 |
+| Casos de aceptación con veredicto propio, por sesión | 8,25 | 0 | 0 |
+| Complejidad ciclomática media por función | 2,00 | 2,78 | 2,49 |
+| Complejidad ciclomática máxima, por implementación | 5,75 | 6,00 | 5,67 |
+| Proporción de pruebas que esperan un rechazo | 45 % | 31 % | 36 % |
+| Pruebas que esperan un rechazo, por implementación | 8,9 | 6,9 | 10,4 |
+| Usos no deterministas en las pruebas, por implementación | 0,25 | 0,07 | 0,22 |
+| Nombres privados importados de otro módulo, por implementación | 0 | 0,07 | 0 |
+| Usos de punto flotante en dinero, credenciales en el código, sentencias `global` y recursos fuera de `with` | 0 | 0 | 0 |
+| Funciones de prueba por implementación | 19,8 | 23,1 | 27,6 |
+| Líneas de código por implementación | 298 | 180 | 208 |
+| Módulos por implementación | 4,5 | 1,7 | 1,8 |
+
+Fuente: Elaboración propia.
+
+Frente al modelo con diálogo, el único que parte de la misma información, el sistema tuvo menos implementaciones con hallazgos de estilo, ninguna
+entrega lista con pruebas en rojo y una peor implementación mucho menos grave, y el ciclo de corrección bajó su tasa de errores de 9,2 % en la
+primera versión a 3,4 % en la final, aunque esa mejora provino de un solo caso. La complejidad media por función fue menor en 8 de 9 casos frente al
+modelo con diálogo y en los 9 frente al de un solo prompt, y la proporción de pruebas que esperan un rechazo fue mayor en 7 y en 6 casos,
+respectivamente. El tester no revisa esta última regla, de modo que el sistema no tenía ahí una ventaja de entrada. El sobrecosto frente al modelo
+con diálogo fue de 0,19 dólares y 3 minutos por módulo.
+
+Los demás resultados matizan esa lectura. La complejidad máxima no cambió, lo que indica que la media bajó sobre todo por tener más funciones
+pequeñas. El sistema escribió más código y menos pruebas, y tuvo algo más de usos no deterministas en sus pruebas que el modelo con diálogo. En usos de
+punto flotante en dinero, credenciales, sentencias `global` y recursos fuera de `with` no hubo diferencia: ningún enfoque los presentó, de modo que un
+modelo capaz ya cumple esas reglas sin el sistema.
+
 ---
 
 ## 5.4 Desempeño del agente tester (antes 5.3)
@@ -355,7 +394,9 @@ mismas pruebas, la tasa de errores fue de 3,4 % en el sistema, de 5,4 % en el mo
 y el sistema costó y tardó cerca del doble que el modelo con diálogo, y más aún frente al de un solo prompt. Se valora como un hallazgo y no como un fracaso, porque precisó dónde está el valor de la
 arquitectura: en módulos de este tamaño, un modelo capaz escribe bien el código si tiene la información; lo difícil es conseguirla,
 conservarla y demostrar que el resultado cumple. Ahí aportó el sistema, con requerimientos trazables, diseño de un catálogo cerrado,
-validación independiente y control humano, y ahí mismo mostró sus debilidades: la información se perdió en la síntesis y en el diseño, y el
+validación independiente y control humano. Frente al modelo con diálogo, además, tuvo menos implementaciones con hallazgos de estilo, 3 de 12 frente a
+10 de 15, ninguna entrega lista con pruebas en rojo, frente a 3 de 15, y menor complejidad media por función, 2,00 frente a 2,78, a cambio de 0,19
+dólares y 3 minutos más por módulo. También mostró sus debilidades: la información se perdió en la síntesis y en el diseño, y el
 tester, que con defectos inyectados alcanzó 1,00, bajó a una exactitud de 0,52 frente al oráculo.
 
 La evaluación tiene limitaciones. Los casos son sintéticos y los módulos pequeños, de modo que con módulos mayores el resultado podría ser
@@ -399,7 +440,8 @@ La evaluación confirmó que el sistema opera dentro de su límite de tiempo por
 de diálogo, pero no que produzca menos errores que un solo modelo de lenguaje: en módulos pequeños y con un modelo capaz, ambos enfoques escribieron código
 correcto cuando tuvieron la información, y el sistema costó el doble o más. El valor de la arquitectura multiagente no estuvo en la corrección del
 código, sino en lo que la rodea: convertir una conversación en requerimientos trazables, elegir el diseño de un catálogo cerrado, validar de
-forma independiente y dejar la decisión final en manos de una persona. También quedó claro su principal riesgo: cada paso de la cadena puede
+forma independiente y dejar la decisión final en manos de una persona. Frente a un modelo con la misma información, eso se tradujo además en menos
+hallazgos de estilo y en ninguna entrega lista con pruebas en rojo. También quedó claro su principal riesgo: cada paso de la cadena puede
 perder información, y un validador solo es tan bueno como los requerimientos contra los que juzga. En conjunto, el producto mínimo viable
 constituye para Realtix un activo tecnológico propio y una base verificable para incorporar IA generativa a su fábrica de software, en línea
 con la colaboración entre personas e IA que promueve la Industria 5.0 [2].

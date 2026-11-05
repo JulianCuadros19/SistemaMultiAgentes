@@ -85,7 +85,7 @@ desarrollador.
 | Cierre del paso 12 | 731 | 31 | 19 | 33 | 814 | ADR-0015 |
 | Cierre del paso 13 | 741 | 34 | 19 | 33 | 827 | ADR-0016 |
 | Cierre del paso 14 | 754 | 34 | 19 | 33 | 840 | ADR-0017 |
-| **Cierre del paso 15 (vigente)** | **812** | **34** | **19** | **44** | **909** | ADR-0019 |
+| **Cierre del paso 15 (vigente)** | **849** | **34** | **19** | **44** | **946** | ADR-0019 |
 
 ## 5. Pruebas de cada agente (sin cambios frente a la Tabla 22 del documento)
 
@@ -295,6 +295,43 @@ Fuente: `docs/evaluacion/informe-objetivo-4.md`. Regenerables con `scripts/tabla
 - **Modelo con diálogo sin la corrida 3 del caso 16:** 137 de 138, 0,7 %.
 - **Modelo con diálogo:** 14,0 turnos del cliente de media y 1 corrida en el límite.
 
+### Mediciones del aporte del sistema
+
+Las reglas de calidad se fijaron antes de calcularlas (ADR-0019, ampliación) y se reportan todas. Son exploratorias, con detectores
+aproximados. Se regeneran con `scripts/calidad_estatica.py`.
+
+| Medición | Sistema | Modelo con diálogo | Modelo de un solo prompt |
+|---|---|---|---|
+| Implementaciones con hallazgos de estilo | 3 de 12 | 10 de 15 | 4 de 9 |
+| Hallazgos de estilo de severidad media | 0 | 2 | 1 |
+| Pruebas propias en rojo en una entrega que queda como lista | 0 de 12 | 3 de 15 | 2 de 9 |
+| Peor implementación frente al oráculo | 80 % | 30 % | 100 % |
+| Requerimientos formales por sesión | 2,25 | 0 | 0 |
+| Casos de aceptación con veredicto propio, por sesión | 8,25 | 0 | 0 |
+| Complejidad ciclomática media por función | 2,00 | 2,78 | 2,49 |
+| Complejidad ciclomática máxima, por implementación | 5,75 | 6,00 | 5,67 |
+| Proporción de pruebas que esperan un rechazo | 45 % | 31 % | 36 % |
+| Pruebas que esperan un rechazo, por implementación | 8,9 | 6,9 | 10,4 |
+| Usos no deterministas en las pruebas, por implementación | 0,25 | 0,07 | 0,22 |
+| Nombres privados importados de otro módulo, por implementación | 0 | 0,07 | 0 |
+| Usos de `float` monetario, credenciales en el código, sentencias `global` y recursos fuera de `with` | 0 | 0 | 0 |
+| Funciones de prueba por implementación | 19,8 | 23,1 | 27,6 |
+| Pruebas propias ejecutadas por implementación | 46 | 79 | 78 |
+| Líneas de código por implementación | 298 | 180 | 208 |
+| Módulos por implementación | 4,5 | 1,7 | 1,8 |
+
+**Tasa de errores del sistema frente al oráculo:** 9,2 % en la primera versión (108 de 119) y 3,4 % en la final (115 de 119). Toda la
+mejora viene del caso 12.
+
+**Sobrecosto frente al modelo con diálogo:** 0,19 USD y 3,0 min por módulo.
+
+**Por caso, frente al modelo con diálogo y al de un solo prompt (mejor, peor e igual):**
+- complejidad media: 8, 1 y 0, y 9, 0 y 0;
+- complejidad máxima: 4, 4 y 1, y 2, 3 y 4;
+- proporción de pruebas de rechazo: 7, 2 y 0, y 6, 3 y 0;
+- cantidad de pruebas de rechazo: 6, 2 y 1, y 5, 4 y 0;
+- usos no deterministas: 0, 2 y 7, y 0, 1 y 8.
+
 ### Corrida ampliada de 20 casos
 
 | Concepto | Valor |
@@ -344,7 +381,7 @@ Fuente: `docs/evaluacion/informe-objetivo-4.md`. Regenerables con `scripts/tabla
 
 ### Pruebas sin costo al cierre
 
-812 unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado, en total 909.
+849 unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado, en total 946.
 
 ### Costo del paso
 

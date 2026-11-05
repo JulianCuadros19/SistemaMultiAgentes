@@ -18,6 +18,9 @@ de trabajo, 5 de noviembre de 2026. El diseño está en el ADR-0019.
 - **Lo que el sistema agrega no es corrección del código, sino lo que rodea al código:** requerimientos
   formales y trazables, diseño de un catálogo cerrado, validación independiente con reporte, ciclo de
   corrección, puntos de control humano y control de costo. Un modelo solo no produce nada de eso.
+- **Frente al modelo con la misma información, el sistema deja código con menos hallazgos:** 3 de 12 implementaciones con
+  hallazgos, frente a 10 de 15, y ninguna entrega lista con pruebas en rojo, frente a 3 de 15. Otras mediciones no marcan
+  diferencia o van en contra (sección 3.6).
 
 La evaluación mide el sistema, no busca demostrar su superioridad: el resultado es mixto y se reporta tal cual.
 
@@ -178,6 +181,63 @@ Prueba de signos sobre los nueve casos. Es exploratoria, con muestra pequeña y 
 | Ejecución en un entorno aislado antes de entregar | Sí | No |
 | Puntos de control humano | Tres | Ninguno |
 | Traza de costo por nodo y presupuesto por módulo | Sí | No |
+
+### 3.6 Mediciones del aporte del sistema
+
+Reúne con cifras lo que el sistema agrega. Las reglas de calidad se fijaron y se versionaron antes de calcularlas (`b55405e`), y sus
+detectores, antes de medir (`f0c5255`). Se reportan todas. Son exploratorias, con detectores aproximados, y se regeneran con
+`python scripts/calidad_estatica.py`.
+
+**De métricas ya fijadas o de resultados existentes:**
+
+| Medición | Sistema | LLM con diálogo | LLM de un solo prompt |
+|---|---|---|---|
+| Implementaciones con hallazgos de Ruff | 3 de 12 | 10 de 15 | 4 de 9 |
+| Hallazgos de severidad media | 0 | 2 | 1 |
+| Pruebas propias en rojo en una entrega que queda como lista | 0 de 12 | 3 de 15 | 2 de 9 |
+| Peor implementación frente al oráculo | 80 % | 30 % | 100 % |
+| Requerimientos formales por sesión | 2,25 | 0 | 0 |
+| Casos de aceptación con veredicto propio, por sesión | 8,25 | 0 | 0 |
+| Pruebas propias ejecutadas por implementación | 46 | 79 | 78 |
+
+**Ciclo de corrección:** la tasa de errores del sistema frente al oráculo baja de 9,2 % en la primera versión (108 de 119) a 3,4 % en la
+final (115 de 119). Toda la mejora viene del caso 12.
+
+**De las reglas de calidad,** media por implementación:
+
+| Regla y métrica | Mejor | Sistema | LLM con diálogo | LLM de un solo prompt | Frente al diálogo: mejor, peor, igual | Frente a un prompt: mejor, peor, igual |
+|---|---|---:|---:|---:|---:|---:|
+| CAL-FS-005, usos de `float` monetario | menos | 0 | 0 | 0 | 0, 0, 9 | 0, 0, 9 |
+| CAL-SG-001, credenciales en el código | menos | 0 | 0 | 0 | 0, 0, 9 | 0, 0, 9 |
+| CAL-MT-003, complejidad media por función | menos | 2,00 | 2,78 | 2,49 | 8, 1, 0 | 9, 0, 0 |
+| CAL-MT-003, complejidad máxima | menos | 5,75 | 6,00 | 5,67 | 4, 4, 1 | 2, 3, 4 |
+| CAL-MT-010, nombres privados importados | menos | 0 | 0,07 | 0 | 1, 0, 8 | 0, 0, 9 |
+| CAL-FB-001, sentencias `global` | menos | 0 | 0 | 0 | 0, 0, 9 | 0, 0, 9 |
+| CAL-FB-003, recursos fuera de `with` | menos | 0 | 0 | 0 | 0, 0, 9 | 0, 0, 9 |
+| CAL-FB-004, usos no deterministas en las pruebas | menos | 0,25 | 0,07 | 0,22 | 0, 2, 7 | 0, 1, 8 |
+| CAL-FS-004, pruebas que esperan un rechazo | más | 8,92 | 6,93 | 10,44 | 6, 2, 1 | 5, 4, 0 |
+| CAL-FS-004, proporción de pruebas de rechazo | más | 45 % | 31 % | 36 % | 7, 2, 0 | 6, 3, 0 |
+| Contexto, módulos | — | 4,50 | 1,67 | 1,78 | | |
+| Contexto, líneas de código | — | 298 | 180 | 208 | | |
+| Contexto, líneas de pruebas | — | 183 | 215 | 278 | | |
+| Contexto, funciones de prueba | — | 19,75 | 23,07 | 27,56 | | |
+
+**Lectura:**
+- **A favor:** menos implementaciones con hallazgos, ninguna entrega lista con pruebas en rojo, una peor implementación menos grave que la del
+  LLM con diálogo, menor complejidad media y mayor proporción de pruebas de rechazo. El tester no revisa CAL-FS-004, así que ahí el sistema no tenía
+  ventaja de entrada.
+- **Sin diferencia:** en dinero, credenciales, `global` y recursos, ningún enfoque tiene hallazgos, así que un modelo capaz ya cumple esas reglas.
+  La complejidad máxima también empata.
+- **En contra o con matiz:** el sistema escribe más código y menos pruebas, y tiene algo más de usos no deterministas en las pruebas. La complejidad
+  media baja sobre todo por tener más funciones pequeñas, y el LLM de un solo prompt escribe más pruebas de rechazo en cantidad.
+- **Sobrecosto frente al LLM con diálogo:** 0,19 USD y 3,0 min por módulo, además de la razón de dos a uno. El LLM de un solo prompt es un techo: supone
+  que alguien ya hizo la elicitación.
+- **No evaluables en un modelo solo,** porque exigen especificación o requerimientos: CAL-AR-001 a CAL-AR-005, CAL-MT-005, CAL-MT-006, CAL-MT-008,
+  CAL-FS-001 y CAL-SG-005.
+- **Revisión a mano de dos implementaciones,** `sistema-16-2` y `modelo-unico-16-1`: módulos, pruebas, líneas y complejidad coinciden. También se revisaron
+  todas las aperturas de recursos, 13, todas con `with`.
+- **Límite del detector de dinero:** no ve uniones de tipos. La palabra `float` aparece en el código 0 veces en el sistema, 2 en el LLM con diálogo y 8 en el
+  de un solo prompt, como tipo de entrada aceptado o en promedios, y esas implementaciones pasan el oráculo.
 
 ## 4. Desempeño del tester
 

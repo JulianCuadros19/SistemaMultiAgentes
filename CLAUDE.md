@@ -453,7 +453,10 @@ Mantener esta sección actualizada al cerrar cada paso.
   - **Despliegue de demostración (ADR-0020):** `scripts/desplegar_azure.sh` y `docker-compose.azure.yml`, en una máquina de
     Azure con TLS y contraseña, solo con datos sintéticos.
   - **Costo:** 16,74 USD de los 17 del tope.
-  - **Verificado:** 812 pruebas unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado. Un autor revisó los
+  - **Calidad estática (ampliación del ADR-0019):** `scripts/calidad_estatica.py`, sin costo. Frente al LLM con diálogo: 3 de 12 entregas con
+    hallazgos de Ruff, frente a 10 de 15; complejidad media de 2,00, frente a 2,78. Sin diferencia en dinero, credenciales, `global` y recursos; más código y
+    menos pruebas que los LLM.
+  - **Verificado:** 849 pruebas unitarias, 34 de integración, 19 de embeddings y 44 del entorno aislado. Un autor revisó los
     oráculos frente a las fichas y 5 juicios de RAGs.
   - **Pendiente del equipo:**
     - aplicar `docs/tesis/` al documento, con `05-evaluacion-paso-15.md`;
