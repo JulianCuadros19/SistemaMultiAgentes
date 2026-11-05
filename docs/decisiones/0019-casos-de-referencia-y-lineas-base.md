@@ -240,6 +240,40 @@ decisiones 1, 2 y 3 en lo que aquí se indica. Las pruebas de referencia de 02, 
 - **Extracción de las muestras de RAGs:** se comprobó en solo lectura sobre las 20 sesiones de la
   corrida final del ADR-0015.
 
+## Ampliación: calidad estática (2026-11-05, decisión del equipo)
+
+Tomada después de ver los resultados de la comparación, para medir con cifras el aporte del sistema. **Es exploratoria.**
+Las métricas se fijan y se versionan aquí antes de calcular cualquiera de ellas, y **todas se reportan, también las que
+salgan en contra.** El sistema, las implementaciones y el oráculo no cambian, y no se llama a ningún modelo.
+
+**De dónde salen:** de las reglas de `knowledge_base/criterios_calidad/iso25010/`, escritas antes de evaluar, cuya
+verificación es estática y no exige especificación ni requerimientos.
+
+**Alcance:** las 36 implementaciones de `evaluacion/referencia/implementaciones.json`, tal como se evaluaron. Código: los
+`.py` fuera de `tests/`. Pruebas: los `.py` dentro de `tests/`.
+
+| Regla | Métrica por implementación | Detector | Mejor | ¿El tester la revisa? |
+|---|---|---|---|---|
+| CAL-FS-005 | Usos de `float` en valores monetarios, en el código | `_usos_de_float_monetario` del tester | menos | sí |
+| CAL-SG-001 | Credenciales escritas en el código | `_secretos_embebidos` del tester | menos | sí |
+| CAL-MT-003 | Complejidad ciclomática media y máxima por función, en el código | Ruff C901 con umbral 0 | menos | sí |
+| CAL-MT-010 | Nombres con un guion bajo inicial importados de otro módulo, en el código | `ast`: `from x import _y` | menos | sí |
+| CAL-FB-001 | Sentencias `global`, en el código | `ast` | menos | no |
+| CAL-FB-003 | Llamadas a `open`, `connect`, `urlopen` o `socket`, con o sin prefijo, fuera de la expresión de un `with`, en el código | `ast` | menos | no |
+| CAL-FB-004 | Usos en las pruebas de `now`, `utcnow`, `today`, `time.time`, `time.sleep`, `random.*` salvo `seed`, `uuid1`, `uuid4`, `secrets.*` y `urandom` | `ast` | menos | no |
+| CAL-FS-004 | Funciones `test*` que usan `pytest.raises` o comparan con un literal de 400 a 499: cantidad y proporción del total | `ast` | más | no |
+| Contexto | Módulos sin `__init__.py`, líneas no vacías de código y de pruebas, y funciones `test*` | conteo | no aplica | no aplica |
+
+**Lectura:**
+- **Descriptiva:** medias por implementación y, por cada línea base, en cuántos casos el sistema queda mejor, peor o igual.
+  Sin afirmar significancia: son muchas comparaciones, sobre pocos casos.
+- **Control:** el tester no revisa CAL-FB-001, CAL-FB-003, CAL-FB-004 ni CAL-FS-004, así que ahí el sistema no tiene ventaja de
+  entrada. En las otras cuatro, la que aparezca viene en parte de que el sistema las verifica.
+- **Detectores aproximados:** por ejemplo, CAL-FB-003 cuenta también una conexión que se cierra con `try` y `finally`, y CAL-FS-004
+  no ve un rechazo que se exprese con otro valor de retorno.
+- **No evaluables en un modelo solo,** porque exigen especificación o requerimientos: CAL-AR-001 a CAL-AR-005, CAL-MT-005,
+  CAL-MT-006, CAL-MT-008, CAL-FS-001 y CAL-SG-005.
+
 ## Resultados
 
 El detalle está en `docs/evaluacion/informe-objetivo-4.md`.
