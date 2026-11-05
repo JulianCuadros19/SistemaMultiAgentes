@@ -20,7 +20,7 @@ from multiagente.llm.cliente import (
 )
 from multiagente.llm.costos import Tarifa, buscar_tarifa, calcular_costo, cargar_tarifas
 from multiagente.llm.prompts import Prompt
-from multiagente.llm.traza import RegistradorLlamadas, RegistroLlamada
+from multiagente.llm.traza import RegistradorLlamadas, RegistroLlamada, anotar_llamada
 
 M = TypeVar("M", bound=BaseModel)
 R = TypeVar("R")
@@ -190,21 +190,22 @@ class InvocadorNodo:
     def _registrar(self, respuesta: RespuestaModelo, error: str | None = None) -> None:
         parametros = self.parametros
         costo = calcular_costo(respuesta.consumo, buscar_tarifa(self.tarifas, respuesta.modelo))
-        self.registrador.registrar(
-            RegistroLlamada(
-                fecha=datetime.now(UTC),
-                nodo=parametros.nodo,
-                prompt=self.prompt.identificador,
-                huella_prompt=self.prompt.huella,
-                despliegue=parametros.despliegue,
-                modelo=respuesta.modelo,
-                region_procesamiento=respuesta.region,
-                esfuerzo=parametros.esfuerzo,
-                max_tokens_salida=parametros.max_tokens_salida,
-                motivo_fin=respuesta.motivo_fin,
-                consumo=respuesta.consumo,
-                costo_usd=costo,
-                latencia_ms=respuesta.latencia_ms,
-                error=error,
-            )
+        llamada = RegistroLlamada(
+            fecha=datetime.now(UTC),
+            nodo=parametros.nodo,
+            prompt=self.prompt.identificador,
+            huella_prompt=self.prompt.huella,
+            despliegue=parametros.despliegue,
+            modelo=respuesta.modelo,
+            region_procesamiento=respuesta.region,
+            esfuerzo=parametros.esfuerzo,
+            max_tokens_salida=parametros.max_tokens_salida,
+            motivo_fin=respuesta.motivo_fin,
+            consumo=respuesta.consumo,
+            costo_usd=costo,
+            latencia_ms=respuesta.latencia_ms,
+            error=error,
         )
+        self.registrador.registrar(llamada)
+        # El nodo del grafo que hizo la llamada la suma a su costo y a su traza (ADR-0016).
+        anotar_llamada(llamada)

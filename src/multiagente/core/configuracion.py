@@ -1,5 +1,6 @@
 """Configuración del sistema leída de variables de entorno o del archivo .env."""
 
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
@@ -126,17 +127,20 @@ class ConfiguracionRazonamiento(BaseSettings):
 
 
 class ConfiguracionOrquestador(BaseSettings):
-    """Límites de los ciclos del grafo.
+    """Límites de los ciclos del grafo y presupuesto de cada sesión.
 
     MAX_ITERACIONES_CORRECCION acota el ciclo N10–N15, MAX_TURNOS_ELICITACION el ciclo N3–N4,
     MAX_CORRECCIONES_CALIDAD los retornos automáticos de N6 a N5 y MAX_CORRECCIONES_DISENO los
-    de N9 a N8, antes de escalar a la persona.
+    de N9 a N8, antes de escalar a la persona. PRESUPUESTO_MAXIMO_POR_MODULO_USD es el costo de
+    los modelos que puede gastar una sesión antes de detenerse a esperar que alguien lo amplíe
+    (RNF-10). Una variable vacía toma el valor por defecto.
     """
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        env_ignore_empty=True,
     )
 
     max_iteraciones_correccion: PositiveInt = 3
@@ -145,6 +149,9 @@ class ConfiguracionOrquestador(BaseSettings):
     max_turnos_elicitacion: PositiveInt = 18
     max_correcciones_calidad: PositiveInt = 2
     max_correcciones_diseno: PositiveInt = 2
+    # Decisión del equipo del paso 13 (ADR-0016): cubre con holgura el máximo de la corrida final
+    # (0,87 USD) y la sesión de pensiones, con sus devoluciones (0,97 USD).
+    presupuesto_maximo_por_modulo_usd: Decimal = Field(default=Decimal("1.50"), gt=0)
 
 
 class ConfiguracionTester(BaseSettings):

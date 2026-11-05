@@ -2,8 +2,9 @@
 
 Cada llamada, también la que falla, queda registrada con su prompt, sus tokens, su costo y su
 latencia, porque se cobra igual. El registro no guarda el contenido de los mensajes: la traza
-puede versionarse sin exponer lo que dijo el cliente. Hasta que exista la tabla `ejecuciones`
-(paso 13), los registros van a memoria o a un archivo JSONL.
+puede versionarse sin exponer lo que dijo el cliente. Los registros van a memoria o a un archivo
+JSONL; además, el grafo captura las llamadas de cada nodo (`capturar_llamadas`) para sumar su
+costo al de la sesión y guardarlas en la traza por nodo (paso 13, ADR-0016).
 """
 
 import json
@@ -108,6 +109,40 @@ class RegistroJsonl(RegistroEnMemoria):
             linea = json.dumps({"sesion": self.sesion, **datos}, ensure_ascii=False)
         with self.ruta.open("a", encoding="utf-8") as archivo:
             archivo.write(linea + "\n")
+
+
+LLAMADAS_DEL_NODO: ContextVar[list[RegistroLlamada] | None] = ContextVar(
+    "llamadas_del_nodo", default=None
+)
+"""Llamadas del nodo del grafo en curso, si un nodo las está capturando (`capturar_llamadas`)."""
+
+
+@contextmanager
+def capturar_llamadas() -> Iterator[list[RegistroLlamada]]:
+    """Reúne las llamadas al modelo hechas dentro del bloque, como las de un nodo del grafo.
+
+    Las llamadas hechas fuera de una captura, como las del cliente simulado, no se reúnen.
+
+    Yields:
+        La lista, que se llena con cada llamada que se anota con `anotar_llamada`.
+    """
+    llamadas: list[RegistroLlamada] = []
+    marca = LLAMADAS_DEL_NODO.set(llamadas)
+    try:
+        yield llamadas
+    finally:
+        LLAMADAS_DEL_NODO.reset(marca)
+
+
+def anotar_llamada(llamada: RegistroLlamada) -> None:
+    """Anota una llamada en la captura en curso; fuera de una captura no hace nada.
+
+    Args:
+        llamada: Registro de la llamada.
+    """
+    llamadas = LLAMADAS_DEL_NODO.get()
+    if llamadas is not None:
+        llamadas.append(llamada)
 
 
 SESION_ACTUAL: ContextVar[str | None] = ContextVar("sesion_actual", default=None)

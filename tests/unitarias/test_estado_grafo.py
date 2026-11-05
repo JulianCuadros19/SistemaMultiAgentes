@@ -17,6 +17,7 @@ from multiagente.orquestador.estado import (
     MAX_PREGUNTAS_CASOS_LIMITE,
     PARTICIONES,
     RESERVA_TURNOS_CONFIRMACION,
+    AmpliacionPresupuesto,
     AprobacionHumana,
     Arquitectura,
     CasoPrueba,
@@ -396,6 +397,17 @@ def estado_completo() -> list:
             limite_correcciones=2,
             limite_correcciones_diseno=2,
             costo_acumulado_usd=Decimal("0.000825"),
+            presupuesto_usd=Decimal("2.00"),
+            ampliaciones=(
+                AmpliacionPresupuesto(
+                    revisor="Laura",
+                    anterior=Decimal("1.50"),
+                    nuevo=Decimal("2.00"),
+                    gastado=Decimal("1.5123"),
+                    motivo="Falta un ciclo de corrección",
+                    fecha=AHORA,
+                ),
+            ),
         ),
     ]
 

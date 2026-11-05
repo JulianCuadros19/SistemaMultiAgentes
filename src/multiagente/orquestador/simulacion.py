@@ -7,6 +7,8 @@ lenguaje. Los textos de este módulo son datos de simulación, no prompts de nin
 
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import Decimal
 
 from langgraph.graph.state import CompiledStateGraph
 
@@ -26,6 +28,8 @@ from multiagente.core.esquemas.requerimiento import (
     RequerimientoFormal,
     TipoSolicitud,
 )
+from multiagente.llm.costos import ConsumoTokens
+from multiagente.llm.traza import RegistroLlamada, anotar_llamada
 from multiagente.orquestador.ejecucion import Avance, RespuestaPausa, avanzar, iniciar_sesion
 from multiagente.orquestador.estado import (
     Arquitectura,
@@ -167,6 +171,8 @@ class ServiciosSimulados:
             solo resuelve el cliente.
         errores_validacion: Cuántas validaciones iniciales de la especificación fallan.
         fallos_ejecucion: Cuántas ejecuciones iniciales lanzan `ErrorSimulado`.
+        costo_por_llamada: Costo que anota cada trabajo de un nodo con modelo (N3, N5, N8, N10 y
+            N14), como si llamara al modelo: sirve para probar el presupuesto sin costo.
         llamadas: Conteo de llamadas por método, para las pruebas.
         defectos_recibidos: Defectos que recibió cada síntesis para corregir, para las pruebas.
     """
@@ -177,6 +183,7 @@ class ServiciosSimulados:
     pregunta_abierta: bool = False
     errores_validacion: int = 0
     fallos_ejecucion: int = 0
+    costo_por_llamada: Decimal = Decimal(0)
     llamadas: Counter[str] = field(default_factory=Counter)
     defectos_recibidos: list[tuple[str, ...]] = field(default_factory=list)
 
@@ -191,6 +198,27 @@ class ServiciosSimulados:
     def _contar(self, metodo: str) -> int:
         self.llamadas[metodo] += 1
         return self.llamadas[metodo]
+
+    def _gastar(self, nodo: str) -> None:
+        """Anota una llamada simulada al modelo con `costo_por_llamada`, si lo hay."""
+        if self.costo_por_llamada:
+            anotar_llamada(
+                RegistroLlamada(
+                    fecha=datetime.now(UTC),
+                    nodo=nodo,
+                    prompt="simulado@0.0",
+                    huella_prompt="0" * 64,
+                    despliegue="simulado",
+                    modelo="simulado",
+                    region_procesamiento=None,
+                    esfuerzo="low",
+                    max_tokens_salida=1,
+                    motivo_fin="stop",
+                    consumo=ConsumoTokens(entrada=1, salida=1),
+                    costo_usd=self.costo_por_llamada,
+                    latencia_ms=0,
+                )
+            )
 
     # Elicitador ---------------------------------------------------------------------------
 
@@ -211,6 +239,7 @@ class ServiciosSimulados:
         límite ni pregunta por algo más antes del resumen.
         """
         self._contar("dialogar")
+        self._gastar("N3")
         registro = conversacion.registro.model_copy(
             update={"casos_limite_cerrados": True, "algo_mas_preguntado": True}
         )
@@ -234,6 +263,7 @@ class ServiciosSimulados:
     ) -> Sintesis:
         """Construye una historia y un requerimiento formal válidos (N5)."""
         self._contar("sintetizar")
+        self._gastar("N5")
         self.defectos_recibidos.append(previos.defectos)
         registro = conversacion.registro
         enunciado = Enunciado(
@@ -293,6 +323,7 @@ class ServiciosSimulados:
     ) -> Sintesis:
         """Agrega a RF-01 la regla de la enmienda y un escenario, en la versión siguiente (N5)."""
         self._contar("enmendar")
+        self._gastar("N5")
         self.defectos_recibidos.append(requerimientos.defectos)
         return enmienda_simulada(requerimientos)
 
@@ -325,6 +356,7 @@ class ServiciosSimulados:
     ) -> Diseno:
         """Produce una especificación válida que cubre todos los requerimientos (N8)."""
         self._contar("disenar")
+        self._gastar("N8")
         cubiertos = [r.id_requerimiento for r in requerimientos.requerimientos]
         version = previa.disenos + 1
         especificacion = EspecificacionDiseno(
@@ -391,6 +423,7 @@ class ServiciosSimulados:
     ) -> VersionCodigo:
         """Genera una versión que declara los defectos que atiende (N10)."""
         self._contar("generar")
+        self._gastar("N10")
         numero = previa.numero + 1 if previa is not None else 1
         return VersionCodigo(
             numero=numero,
@@ -435,6 +468,7 @@ class ServiciosSimulados:
     ) -> Dictamen:
         """Marca todos los casos como no cumplidos en los primeros dictámenes configurados (N14)."""
         cumple = self._contar("dictaminar") > self.fallos_veredicto
+        self._gastar("N14")
         veredictos = tuple(
             VeredictoCaso(id_caso=caso.id, cumple=cumple, evidencia=f"Prueba simulada de {caso.id}")
             for caso in plan

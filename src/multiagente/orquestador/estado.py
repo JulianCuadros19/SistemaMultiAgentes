@@ -731,13 +731,58 @@ class Contexto(Particion):
         )
 
 
+PAUSA_PRESUPUESTO = "presupuesto"
+"""Punto de la pausa en que la sesión espera que una persona amplíe el presupuesto (RNF-10)."""
+
+
+class RespuestaPresupuesto(ModeloEstricto):
+    """Respuesta de la persona en la pausa por presupuesto: el presupuesto nuevo de la sesión.
+
+    Attributes:
+        revisor: Quién lo amplía.
+        presupuesto_usd: Presupuesto nuevo, en USD; debe superar lo gastado.
+        motivo: Por qué, si la persona lo dice.
+    """
+
+    revisor: TextoObligatorio
+    presupuesto_usd: Decimal = Field(gt=0)
+    motivo: TextoObligatorio | None = None
+
+
+class AmpliacionPresupuesto(ModeloEstricto):
+    """Ampliación del presupuesto de una sesión que lo alcanzó, con su momento (RF-33, RNF-10).
+
+    Attributes:
+        revisor: Quién lo amplió.
+        anterior: Presupuesto que la sesión alcanzó, en USD.
+        nuevo: Presupuesto nuevo, en USD.
+        gastado: Lo gastado al ampliarlo, en USD.
+        motivo: Por qué, si la persona lo dijo.
+        fecha: Cuándo.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    revisor: TextoObligatorio
+    anterior: Decimal
+    nuevo: Decimal
+    gastado: Decimal
+    motivo: TextoObligatorio | None = None
+    fecha: datetime
+
+
 class Control(Particion):
-    """Iteración del ciclo de corrección, límites configurados y costo acumulado.
+    """Iteración del ciclo de corrección, límites configurados, costo y presupuesto.
 
     Attributes:
         iteracion: Iteración del ciclo de corrección en curso; cada devolución de la persona en
             N17 abre un ciclo nuevo, que empieza en 1.
         retornos_humanos: Devoluciones de N17 ya contadas por N15.
+        costo_acumulado_usd: Costo de las llamadas al modelo de los nodos de la sesión, sin el
+            del cliente simulado (ADR-0016).
+        presupuesto_usd: Presupuesto de la sesión, que es un módulo (RNF-10); None en las
+            sesiones anteriores al paso 13, que no tienen tope.
+        ampliaciones: Cada ampliación del presupuesto, en orden.
     """
 
     iteracion: NonNegativeInt = 0
@@ -747,6 +792,15 @@ class Control(Particion):
     limite_correcciones: PositiveInt
     limite_correcciones_diseno: PositiveInt
     costo_acumulado_usd: Decimal = Decimal(0)
+    presupuesto_usd: Decimal | None = None
+    ampliaciones: tuple[AmpliacionPresupuesto, ...] = ()
+
+    @property
+    def presupuesto_alcanzado(self) -> bool:
+        """Si lo gastado alcanzó el presupuesto: el siguiente nodo con modelo no corre."""
+        return self.presupuesto_usd is not None and (
+            self.costo_acumulado_usd >= self.presupuesto_usd
+        )
 
 
 PARTICIONES: tuple[type[Particion], ...] = (

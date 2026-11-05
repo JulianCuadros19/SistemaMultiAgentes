@@ -3,14 +3,23 @@
 Las aristas, los enrutadores y los nodos determinísticos son la implementación real del
 orquestador. El trabajo de modelos de lenguaje, recuperación y ejecución llega por los
 servicios inyectados (`multiagente.orquestador.servicios`).
+
+Cada nodo corre envuelto (`_instrumentado`): suma al costo de la sesión el de sus llamadas al
+modelo, informa su traza a un observador y, si es uno de los nodos con modelo y la sesión alcanzó
+su presupuesto, antes de correr pausa hasta que una persona lo amplía (RNF-10, RF-34, ADR-0016).
 """
 
+import inspect
 import logging
+import time
+from collections.abc import Callable
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 from pydantic import ValidationError
@@ -19,8 +28,11 @@ from multiagente.core.configuracion import ConfiguracionOrquestador
 from multiagente.core.esquemas.requerimiento import RequerimientoFormal
 from multiagente.llm.cliente import ErrorRespuestaModelo
 from multiagente.llm.invocador import ErrorValidacionSalida
+from multiagente.llm.traza import RegistroLlamada, capturar_llamadas
 from multiagente.orquestador.estado import (
+    PAUSA_PRESUPUESTO,
     RESERVA_TURNOS_CONFIRMACION,
+    AmpliacionPresupuesto,
     AprobacionHumana,
     Arquitectura,
     CasoPrueba,
@@ -38,12 +50,14 @@ from multiagente.orquestador.estado import (
     PuntoControl,
     Requerimientos,
     RespuestaHumana,
+    RespuestaPresupuesto,
     Sesion,
     Turno,
     Validacion,
     Veredicto,
 )
 from multiagente.orquestador.servicios import Rediseno, Servicios, VerificacionCalidad
+from multiagente.orquestador.traza import EjecucionNodo, ObservadorNodos
 
 _log = logging.getLogger(__name__)
 
@@ -87,6 +101,10 @@ class Nodo(StrEnum):
     N15 = "n15_decision"
     N16 = "n16_plan_pruebas"
     N17 = "n17_aprobacion_final"
+
+
+NODOS_CON_MODELO = frozenset({Nodo.N3, Nodo.N5, Nodo.N8, Nodo.N10, Nodo.N14})
+"""Los cinco nodos que invocan un modelo de lenguaje: antes de correr, verifican el presupuesto."""
 
 
 def _ahora() -> datetime:
@@ -139,6 +157,132 @@ def _pedir_decision(
             aviso = "El destino de un rechazo solo se elige en la aprobación final del módulo."
             continue
         return AprobacionHumana(**validada.model_dump(), punto=punto, fecha=_ahora())
+
+
+def _pedir_ampliacion(control: Control, nodo: Nodo) -> AmpliacionPresupuesto:
+    """Pausa hasta que una persona amplía el presupuesto que la sesión alcanzó (RNF-10).
+
+    Como `_pedir_decision`, una respuesta inválida vuelve a pausar con un aviso, en lugar de hacer
+    fallar el nodo. El presupuesto nuevo debe superar lo gastado. Para no seguir, la persona
+    cierra la sesión.
+
+    Args:
+        control: Control de la sesión, con lo gastado y el presupuesto alcanzado.
+        nodo: Nodo con modelo que espera para correr.
+
+    Returns:
+        La ampliación válida, con su momento.
+    """
+    gastado = control.costo_acumulado_usd
+    aviso: str | None = None
+    while True:
+        respuesta = interrupt(
+            {
+                "punto": PAUSA_PRESUPUESTO,
+                "gastado_usd": str(gastado),
+                "presupuesto_usd": str(control.presupuesto_usd),
+                "nodo": nodo.value,
+                "aviso": aviso,
+            }
+        )
+        try:
+            validada = RespuestaPresupuesto.model_validate(respuesta)
+        except ValidationError as error:
+            aviso = f"Respuesta inválida: {_motivo(error)}"
+            continue
+        if validada.presupuesto_usd <= gastado:
+            aviso = f"El presupuesto nuevo debe superar lo gastado, {gastado} USD."
+            continue
+        return AmpliacionPresupuesto(
+            revisor=validada.revisor,
+            anterior=control.presupuesto_usd,
+            nuevo=validada.presupuesto_usd,
+            gastado=gastado,
+            motivo=validada.motivo,
+            fecha=_ahora(),
+        )
+
+
+def _informar(
+    observador: ObservadorNodos | None,
+    config: RunnableConfig,
+    nodo: Nodo,
+    inicio: datetime,
+    reloj: float,
+    llamadas: list[RegistroLlamada],
+    error: str | None,
+) -> None:
+    """Entrega al observador la traza de un nodo; si no puede, lo registra y sigue.
+
+    La traza es para observar: que falle no debe detener la sesión.
+    """
+    if observador is None:
+        return
+    ejecucion = EjecucionNodo(
+        sesion=config["configurable"]["thread_id"],
+        nodo=nodo.value,
+        inicio=inicio,
+        duracion_ms=round((time.perf_counter() - reloj) * 1000),
+        llamadas=tuple(llamadas),
+        error=error,
+    )
+    try:
+        observador.registrar_nodo(ejecucion)
+    except Exception:
+        _log.exception("No se pudo registrar la traza de %s", nodo.value)
+
+
+def _instrumentado(
+    nodo: Nodo,
+    funcion: Callable[..., dict[str, Any]],
+    observador: ObservadorNodos | None,
+) -> Callable[[EstadoGrafo, RunnableConfig], dict[str, Any]]:
+    """Envuelve un nodo con el control de presupuesto, el costo y la traza (ADR-0016).
+
+    Antes de un nodo con modelo, si la sesión alcanzó su presupuesto, pausa hasta que una persona
+    lo amplía. El nodo corre capturando sus llamadas al modelo: su costo se suma al de la sesión y
+    la ejecución se informa al observador, también si falla. Las pausas del propio nodo se
+    propagan sin informarse, y al reanudar LangGraph entrega las respuestas en orden, también la
+    de la ampliación. Solo se escribe `control` si hubo costo o ampliación, de modo que dos nodos
+    sin modelo que corren en paralelo, como N7 y N16, no lo escriben a la vez.
+
+    Args:
+        nodo: Nodo que se envuelve.
+        funcion: Implementación del nodo; recibe `config` solo si lo declara.
+        observador: Destino de la traza, si lo hay.
+
+    Returns:
+        El nodo envuelto, que siempre recibe `config` para conocer la sesión.
+    """
+    recibe_config = "config" in inspect.signature(funcion).parameters
+
+    def envuelto(estado: EstadoGrafo, config: RunnableConfig) -> dict[str, Any]:
+        control = estado.get("control")
+        ampliacion = None
+        if nodo in NODOS_CON_MODELO and control is not None and control.presupuesto_alcanzado:
+            ampliacion = _pedir_ampliacion(control, nodo)
+        inicio = _ahora()
+        reloj = time.perf_counter()
+        with capturar_llamadas() as llamadas:
+            try:
+                cambios = funcion(estado, config) if recibe_config else funcion(estado)
+            except GraphBubbleUp:
+                raise
+            except Exception as error:
+                _informar(observador, config, nodo, inicio, reloj, llamadas, repr(error))
+                raise
+        _informar(observador, config, nodo, inicio, reloj, llamadas, None)
+        costo = sum((llamada.costo_usd for llamada in llamadas), Decimal(0))
+        if not costo and ampliacion is None:
+            return cambios
+        base: Control = cambios.get("control", control)
+        actualizacion: dict[str, Any] = {"costo_acumulado_usd": base.costo_acumulado_usd + costo}
+        if ampliacion is not None:
+            actualizacion["presupuesto_usd"] = ampliacion.nuevo
+            actualizacion["ampliaciones"] = (*base.ampliaciones, ampliacion)
+        return {**cambios, "control": base.model_copy(update=actualizacion)}
+
+    return envuelto
 
 
 def _volver_a_preguntar(conversacion: Conversacion) -> Conversacion:
@@ -327,7 +471,7 @@ class NodosGrafo:
         self.configuracion = configuracion
 
     def n1_apertura(self, estado: EstadoGrafo, config: RunnableConfig) -> dict[str, Any]:
-        """Abre la sesión: identificador, necesidad del cliente y límites configurados.
+        """Abre la sesión: identificador, necesidad del cliente, límites y presupuesto.
 
         La necesidad queda como primer turno del cliente, para que N2 recupere con ella el
         contexto de dominio (RF-01, RF-04).
@@ -354,6 +498,7 @@ class NodosGrafo:
                 limite_turnos=self.configuracion.max_turnos_elicitacion,
                 limite_correcciones=self.configuracion.max_correcciones_calidad,
                 limite_correcciones_diseno=self.configuracion.max_correcciones_diseno,
+                presupuesto_usd=self.configuracion.presupuesto_maximo_por_modulo_usd,
             ),
         }
 
@@ -918,13 +1063,16 @@ class NodosGrafo:
 
 
 def construir_grafo(
-    servicios: Servicios, configuracion: ConfiguracionOrquestador | None = None
+    servicios: Servicios,
+    configuracion: ConfiguracionOrquestador | None = None,
+    observador: ObservadorNodos | None = None,
 ) -> StateGraph:
     """Construye el grafo de 17 nodos con sus aristas y enrutadores.
 
     Args:
         servicios: Trabajo de los cuatro agentes, real o simulado.
-        configuracion: Límites de los ciclos; si se omite, se lee del entorno.
+        configuracion: Límites de los ciclos y presupuesto; si se omite, se lee del entorno.
+        observador: Destino de la traza de cada nodo (RF-34); si se omite, no se guarda.
 
     Returns:
         Grafo sin compilar; se compila con un checkpointer para habilitar las pausas humanas.
@@ -932,7 +1080,7 @@ def construir_grafo(
     nodos = NodosGrafo(servicios, configuracion or ConfiguracionOrquestador())
     grafo = StateGraph(EstadoGrafo, input_schema=EntradaSesion)
     for nodo in Nodo:
-        grafo.add_node(nodo.value, getattr(nodos, nodo.value))
+        grafo.add_node(nodo.value, _instrumentado(nodo, getattr(nodos, nodo.value), observador))
 
     grafo.add_edge(START, Nodo.N1)
     for origen, destino in [
