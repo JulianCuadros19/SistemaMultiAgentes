@@ -146,6 +146,19 @@ docker compose down -v                # borra contenedores, sesiones, base y mod
 - **Web:** no tiene autenticación, por eso solo se publica en `127.0.0.1`.
 - **Más detalle:** `docs/decisiones/0017-entrega-en-contenedores-con-azure-openai.md`.
 
+### Despliegue de demostración en Azure
+
+Para un enlace público, solo con datos sintéticos, hay una máquina virtual con un proxy que agrega TLS
+y contraseña (ADR-0020). La composición base no cambia. Requiere una máquina Ubuntu con 16 GB de memoria,
+los puertos 80 y 443 abiertos, una etiqueta DNS y la llave SSH en `~/.ssh/multiagente_azure`:
+
+```bash
+scripts/desplegar_azure.sh multiagente-demo.centralus.cloudapp.azure.com
+```
+
+El comando publica la versión de `HEAD`. La primera vez instala Docker y genera la contraseña, que
+imprime una sola vez. Las instrucciones de uso están en `docs/manual-de-uso.md`.
+
 ## Desarrollo
 
 Desde Ubuntu, con Python 3.11 o superior:
