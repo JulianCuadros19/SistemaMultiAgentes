@@ -1,0 +1,126 @@
+{
+  "caso": "caso-ampliada-02",
+  "corrida": "modelo-unico-caso-ampliada-02-3",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Cada año debemos reajustar el canon de los contratos de arriendo según el IPC sin pasarnos de lo pactado; hoy lo hacemos en hojas de cálculo y cometemos errores."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Quién hará estos reajustes y cómo espera usar la herramienta en su trabajo diario: revisar un contrato a la vez o procesar una lista de contratos para obtener los nuevos cánones?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Lo hará el analista de cartera. No sé si la herramienta se usará contrato por contrato o para procesar una lista; eso no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo determinan el porcentaje de reajuste de un contrato: qué IPC toman y qué límite pactado deben respetar?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Tomamos el IPC del año calendario anterior y comparamos ese valor con el porcentaje pactado en el contrato. Se aplica el menor de los dos, así no se pasa de lo acordado; si el IPC del año anterior es cero o negativo, el canon no cambia."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Puede darme un ejemplo con el canon actual, el IPC del año anterior y el porcentaje pactado, indicando el nuevo canon que esperan obtener y cómo redondean cuando el cálculo da decimales?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí. Por ejemplo, con un canon actual de 1.200.000, un IPC del año anterior de 5,20 % y un porcentaje pactado de 10 %, se aplica 5,20 % y el nuevo canon queda en 1.262.400, con un incremento de 62.400. Cuando el cálculo da decimales, se redondea a la centena de peso más cercana; por ejemplo, 1.234.567 queda en 1.234.600."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué datos tendrá disponibles el analista para cada reajuste y qué resultados necesita recibir, además del nuevo canon y el incremento?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Para cada reajuste, el analista tendrá el canon actual, el porcentaje pactado, el IPC del año anterior, la fecha de inicio o del último reajuste y la fecha del reajuste. Además del nuevo canon y el incremento, necesita recibir también el porcentaje aplicado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué condición deben cumplir la fecha de inicio o del último reajuste y la fecha del reajuste para permitir el aumento, y qué debe ocurrir si todavía no se cumple?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La fecha de inicio o del último reajuste y la fecha del reajuste deben tener al menos doce meses de diferencia para poder aplicar el aumento. Si todavía no se cumple, se rechaza con: «El contrato aún no cumple doce meses desde el último reajuste»."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿En qué formato entregarán los valores y las fechas, y qué valores deben rechazarse como inválidos (por ejemplo, canon cero o negativo, porcentaje pactado negativo, datos faltantes o una fecha de reajuste anterior a la de inicio)?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El formato exacto de los valores y de las fechas no lo tengo definido. Sí sé que el canon debe ser mayor que cero, el porcentaje pactado debe estar entre 0 y 100 con hasta dos decimales, y no pueden faltar el canon, el porcentaje, el IPC, la fecha de inicio o último reajuste, ni la fecha de reajuste. Sobre una fecha de reajuste anterior a la de inicio, no lo sé; no está especificado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para calcular los doce meses, ¿se permite el reajuste desde el mismo día del año siguiente y, si la fecha inicial es el 29 de febrero, desde el 28 de febrero del año siguiente?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; eso no está especificado. Solo sé que deben haber pasado al menos doce meses entre la fecha de inicio o del último reajuste y la fecha del reajuste."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si el cálculo queda exactamente a mitad de dos centenas, por ejemplo en 1.234.550, ¿debe quedar en 1.234.500 o en 1.234.600, y si el IPC es cero o negativo quieren conservar el canon actual tal cual, sin redondearlo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Lo de quedar exactamente a la mitad no lo sé; no está especificado si en ese caso se baja o se sube. Si el IPC es cero o negativo, el canon no cambia y se mantiene el canon actual."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para el IPC del año anterior, ¿hay algún límite de valor o de cantidad de decimales que debamos aceptar, aparte de permitir cero y valores negativos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No tengo otro límite definido para el IPC. Solo sé que debe venir con hasta dos decimales; sobre un valor máximo o mínimo, no está especificado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Además del mensaje por no cumplir los doce meses, ¿qué mensajes debe recibir el analista cuando falte un dato, el canon no sea mayor que cero, el porcentaje pactado esté fuera de 0 a 100 o alguno de los porcentajes tenga más de dos decimales?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; eso no está especificado en lo que conozco. Solo sé que esos datos son obligatorios, que el canon debe ser mayor que cero y que el porcentaje pactado debe estar entre 0 y 100 con hasta dos decimales."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si el redondeo a la centena más cercana hace que el aumento supere el porcentaje pactado —por ejemplo, canon de 1.000.001 y límite de 5 %, cuyo resultado redondeado sería 1.050.000—, ¿debe mantenerse ese redondeo o bajar a la centena anterior cuando realmente se supere el límite?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; eso no está especificado. Solo sé que primero se aplica el menor entre el porcentaje pactado y el IPC, y luego el resultado se redondea a la centena más cercana."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entiendo que el analista suministrará el canon actual, el porcentaje pactado, el IPC del año calendario anterior y las dos fechas. Se rechazará el reajuste si no han pasado doce meses, con el mensaje indicado. El canon debe ser positivo; ambos porcentajes tendrán hasta dos decimales y el pactado estará entre 0 y 100. Con IPC positivo se aplica el menor porcentaje y después se redondea el nuevo canon a la centena más cercana; con IPC cero o negativo se conserva el canon sin redondear. Se devolverán nuevo canon, incremento y porcentaje aplicado, incluyendo el ejemplo de 1.200.000 que pasa a 1.262.400 con 5,20 %. Los formatos, los mensajes restantes, el tratamiento del 29 de febrero y de los empates de redondeo no están definidos, por lo que documentaré decisiones sencillas para ellos. La herramienta calculará con el IPC que entregue el analista, sin buscarlo en fuentes externas, y inicialmente permitirá calcular un contrato por vez, pues el procesamiento de listas no está definido. ¿Confirma este alcance o necesita corregir algo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Casi todo está correcto, pero no daría por cerrado que la herramienta calcule un contrato por vez, porque eso no lo tengo definido. Tampoco están definidos los formatos ni qué hacer con el 29 de febrero o con los empates del redondeo, así que eso no lo confirmo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Corrijo el resumen: están acordados los datos obligatorios, sus límites, la espera de doce meses y su mensaje de rechazo, el cálculo con el menor porcentaje, el redondeo posterior, la conservación del canon con IPC cero o negativo y los tres resultados. Quedan sin definir el uso individual o por listas, los formatos, el tratamiento del 29 de febrero, los empates del redondeo y los demás mensajes de error; no los consideraré requisitos confirmados y dejaré expresamente documentadas las decisiones mínimas necesarias para entregar el módulo. ¿Confirma este resumen con esos puntos pendientes, sin dar por aprobada ninguna opción sobre ellos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 14,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 172.51,
+  "tiempo_cliente_s": 41.67,
+  "tiempo_entrega_s": 88.29,
+  "costo_modelo_usd": "0.1402440",
+  "costo_cliente_usd": "0.02645310",
+  "llamadas_modelo": 15
+}

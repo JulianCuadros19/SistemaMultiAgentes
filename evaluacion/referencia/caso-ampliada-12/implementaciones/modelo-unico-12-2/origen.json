@@ -1,0 +1,94 @@
+{
+  "caso": "caso-ampliada-12",
+  "corrida": "modelo-unico-caso-ampliada-12-2",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "El portal de registro y el sistema de facturación necesitan consultar por la red si un NIT es válido calculando su dígito de verificación; queremos un servicio único con un contrato documentado para no repetir esa lógica en cada sistema."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿De qué país son los NIT que deben validar y qué debe responder el servicio: solo el dígito calculado, si coincide con el dígito recibido, o ambas cosas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé, el caso no especifica de qué país son los NIT. El servicio debe tener dos opciones: una para calcular solo el dígito de verificación y otra para validar el NIT completo, diciendo si es válido y, si no lo es, cuál era el dígito esperado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que ambos sistemas obtengan el mismo resultado, ¿pueden indicar la regla que usan para calcular el dígito de verificación, o quién puede confirmarla, junto con algún NIT de ejemplo y su dígito correcto?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, la regla es tomar los dígitos de derecha a izquierda, multiplicarlos por los pesos 3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67 y 71, sumar todo y sacar el residuo entre 11; si el residuo es 0 o 1, ese es el dígito, y si no, es 11 menos el residuo. Como ejemplo, 900123456 tiene dígito 8 y 123456789 tiene dígito 6; yo lo puedo confirmar desde la cámara."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo enviarán los sistemas el NIT en cada opción: qué formatos deben aceptarse (por ejemplo, solo números, puntos, espacios o guion antes del dígito de verificación), cuántos dígitos puede tener y qué debe pasar si empieza por cero?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Pueden enviarlo con solo números, y si viene con puntos o guiones se quitan antes de calcular; no sé si también deben aceptarse espacios. El número puede tener de 1 a 15 dígitos, y sobre si empieza por cero el caso no lo especifica."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "En la opción de validar, ¿enviarán el número y el dígito de verificación en dos campos separados, o juntos en un solo campo, tomando el último dígito como el de verificación?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé, el caso no especifica si irán en dos campos separados o en uno solo. Solo sé que la validación es del NIT completo, con su número y su dígito."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Al aplicar la regla indicada, para 900123456 obtengo 8, pero para 123456789 obtengo 6; ¿confirma que esa regla y esos dos resultados son los que debemos usar como referencia definitiva?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para documentar cómo se conectarán el portal y facturación, ¿ya tienen definido cómo harán las consultas por la red y si deberán identificarse con alguna clave, o podemos proponer una conexión HTTP con mensajes JSON y sin clave de acceso en esta primera versión?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé, el caso no especifica si deben identificarse con alguna clave ni el detalle de cómo irán los mensajes. Solo sé que se consultará por la red mediante HTTP y que necesitamos un contrato documentado de qué enviar y qué reciben."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué respuesta esperan cuando la consulta contiene datos que no se pueden procesar, por ejemplo un NIT vacío, letras o más de 15 dígitos: tienen mensajes y códigos de error definidos o podemos proponerlos y dejarlos documentados?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo tenemos definidos estos mensajes: para letras, «El NIT solo admite dígitos», y para más de 15 dígitos, «El NIT admite como máximo 15 dígitos». Del NIT vacío y de códigos de error no lo sé; el caso no lo especifica, así que eso habría que definirlo y dejarlo documentado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este alcance para la primera versión: un servicio HTTP con mensajes JSON, sin clave de acceso, con una operación para calcular el dígito y otra para comprobar si coincide (sin consultar registros oficiales); en ambas se envía el NIT como texto y, para validar, su dígito en un campo separado; se eliminan puntos y guiones, se rechazan espacios y letras, se conservan los ceros iniciales y se admiten entre 1 y 15 dígitos del número, sin contar el de verificación; se aplica la fórmula y los dos ejemplos confirmados; el cálculo devuelve el dígito y la validación devuelve si coincide y el dígito esperado; los datos incorrectos reciben un error HTTP 400 con los mensajes definidos para letras y exceso de longitud, y documentaremos mensajes para vacío, dígito incorrectamente escrito y solicitudes mal formadas, dejando fuera la comprobación de existencia del NIT y las reglas de un país concreto?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, hay partes que no están confirmadas por el caso: no sé si se rechazan los espacios, si se conservan los ceros iniciales, ni si el dígito de verificación irá en un campo separado. Tampoco tengo definido que sea error HTTP 400 ni los mensajes para vacío, solicitud mal formada o dígito incorrecto; solo están definidos los mensajes para letras y para más de 15 dígitos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entiendo: están confirmados las dos operaciones por HTTP, la fórmula, los dos ejemplos, la eliminación de puntos y guiones, el límite de 1 a 15 dígitos y los mensajes para letras y exceso de longitud; el resto sigue sin definir. ¿Confirma que entreguemos ese alcance, documentando como decisiones de implementación —no como requisitos suyos— el formato de las consultas, el tratamiento de espacios y ceros iniciales y las respuestas a los demás errores?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, pueden entregar ese alcance. Solo dejen claro que el formato de las consultas, el manejo de espacios y ceros iniciales, y las demás respuestas de error no vienen definidos por el caso y quedan como decisiones de implementación/documentación."
+    }
+  ],
+  "turnos_cliente": 10,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 188.64,
+  "tiempo_cliente_s": 31.23,
+  "tiempo_entrega_s": 120.63,
+  "costo_modelo_usd": "0.1382820",
+  "costo_cliente_usd": "0.01892565",
+  "llamadas_modelo": 11
+}

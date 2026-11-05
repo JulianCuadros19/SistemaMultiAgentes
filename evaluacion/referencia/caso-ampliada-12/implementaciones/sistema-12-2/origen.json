@@ -1,0 +1,67 @@
+{
+  "caso": "caso-ampliada-12",
+  "titulo": "Servicio de validación del dígito de verificación del NIT",
+  "sesion": "30eb6113-dc5e-447e-95e6-e8b7a7aa61b7",
+  "esperadas": [
+    "ARQ-04"
+  ],
+  "elegida": "ARQ-04",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 3,
+  "dependencias": [
+    "fastapi",
+    "pydantic"
+  ],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 2,
+  "casos_plan": 6,
+  "rechazos_n6": [],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-002": 11
+      },
+      "bajas": 1
+    },
+    {
+      "numero": 2,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 0
+    }
+  ],
+  "iteracion": 2,
+  "elicitacion": {
+    "turnos": 10,
+    "exploracion": 2,
+    "sin_exploracion": 8,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 10,
+  "llamadas_n10": 2,
+  "generaciones_n10": 2,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 4.63,
+  "turno_maximo_s": 6.9,
+  "cierres_s": [
+    19.0
+  ],
+  "costo_por_nodo": {
+    "N10": "0.1385166",
+    "N14": "0.001528760",
+    "N3": "0.04340505",
+    "N5": "0.01951695",
+    "N8": "0.06413600",
+    "cliente_simulado": "0.02234820"
+  },
+  "costo_sistema": "0.267103360",
+  "costo_cliente_simulado": "0.02234820"
+}

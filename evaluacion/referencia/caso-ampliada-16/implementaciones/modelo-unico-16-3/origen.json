@@ -1,0 +1,126 @@
+{
+  "caso": "caso-ampliada-16",
+  "corrida": "modelo-unico-caso-ampliada-16-3",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Nuestros asesores necesitan una herramienta de terminal para calcular la cuota mensual de un crédito de vivienda y generar su tabla de amortización cuando atienden a un asociado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo sería una atención típica: qué datos ingresa el asesor y qué resultados necesita ver o entregar al asociado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El asesor ingresa el monto del crédito, el plazo en meses y la tasa efectiva anual. Con eso necesita ver la cuota mensual, la tabla de amortización completa y el resumen con el total pagado y los intereses; si lo pide, la tabla también se entrega en un archivo CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué reglas usan para convertir la tasa efectiva anual a mensual y calcular las cuotas, y el crédito incluye seguros, comisiones u otros cargos que debamos considerar?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La tasa mensual se calcula como (1 + la tasa efectiva anual) elevada a 1/12, menos 1, y con esa tasa se calcula la cuota fija: monto por tasa mensual, dividido entre 1 menos (1 + tasa mensual) elevado al plazo en negativo. Cada mes el interés es el saldo por la tasa mensual y el abono a capital es la cuota menos el interés; la última cuota se ajusta para que el saldo quede en cero, redondeando todo al peso. No se consideran seguros, comisiones ni otros cargos en esta herramienta."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando dicen «redondear todo al peso», ¿cómo redondean los valores que terminan en medio peso y en qué pasos lo hacen: tasa mensual, cuota, interés, abono a capital y saldo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No sé si el medio peso lo redondean hacia arriba o hacia abajo; eso no lo tengo definido. Lo que sí sé es que redondean al peso todos los valores del cálculo y se hace sin errores de punto flotante, incluyendo la tasa mensual, la cuota, el interés, el abono a capital y el saldo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "La tasa mensual es una proporción, no un valor en pesos: por ejemplo, una tasa anual del 12 % da aproximadamente 0,00948879 mensual; si la redondeamos a un entero queda en cero y desaparecen los intereses. ¿Podemos conservar la precisión de la tasa y redondear solo los importes en pesos, llevando los medios pesos hacia arriba?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, así no está definido. Lo que sabemos es que redondean al peso todos los valores del cálculo, incluida la tasa mensual, y no tengo definido si los medios pesos se van hacia arriba o hacia abajo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para respetar esa regla literalmente, con $1.200.000 a 12 meses y una tasa efectiva anual del 12 %, la tasa mensual redondeada sería cero: resultarían 12 cuotas de $100.000 sin intereses; ¿ese es el resultado que debe entregar la herramienta o prefieren dejar ese cálculo pendiente hasta definir cómo redondear la tasa?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, así no nos sirve dejarlo en cero; ese cálculo quedaría pendiente hasta definir cómo se redondea la tasa mensual. Lo que necesitamos es que la herramienta entregue una cuota correcta y consistente, como en el ejemplo, no 12 cuotas sin intereses."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Mientras queda pendiente la regla de redondeo de la tasa mensual, ¿qué ejemplo aprobado tienen —monto, plazo, tasa anual y cuota esperada— para comprobar qué consideran una cuota correcta?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, el ejemplo que usamos para verificar es un crédito de 100.000.000 pesos a 120 meses, con tasa efectiva anual del 12 %. La cuota esperada es de 1.399.472 pesos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para poder entregar ese ejemplo con la cuota de $1.399.472, ¿autorizan que conservemos la precisión de la tasa mensual y redondeemos únicamente los importes en pesos, con los medios pesos hacia arriba, dejando expresamente documentado que esta decisión reemplaza la regla pendiente sobre el redondeo de la tasa?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, así no lo autorizamos. No tengo definido que se conserve la precisión de la tasa mensual ni que los medios pesos vayan hacia arriba; eso sigue pendiente de definir."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Mientras esas reglas de redondeo sigan pendientes, ¿qué debe hacer la herramienta cuando el asesor intente calcular un crédito: impedir el cálculo con un mensaje de «Reglas de redondeo pendientes de definir», o permitir que el asesor indique las reglas que debe aplicar en esa atención?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Eso no está definido; quedó pendiente de definir cómo se redondea la tasa mensual. No puedo confirmar si debe impedir el cálculo o permitir que el asesor indique las reglas, porque eso no lo tenemos decidido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Dejando registrada como pendiente la regla de redondeo, ¿cómo deben ingresar los asesores el monto, el plazo y la tasa anual en la terminal, y qué valores mínimos o máximos se permiten para cada uno?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No sé la forma exacta en que los ingresan en la terminal; eso no está definido. Lo que sí deben digitar es el monto del crédito, el plazo en meses y la tasa efectiva anual. El monto va entre 10.000.000 y 500.000.000 pesos, el plazo entre 12 y 240 meses, y la tasa entre 1 % y 30 %, con hasta dos decimales."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué columnas debe mostrar la tabla de amortización y llevar el archivo CSV, y qué formato necesitan para los valores y el nombre del archivo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido; no sé exactamente qué columnas debe llevar la tabla ni el archivo CSV. Tampoco tengo definido el formato de los valores ni el nombre del archivo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si el asesor ingresa un monto, plazo o tasa fuera de los límites, o escribe un dato que no es un número, ¿qué mensaje debe recibir y debe poder corregirlo en la misma atención?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Si está fuera de los rangos, debe rechazarse con un mensaje claro y un código de salida distinto de cero. Pero si escribe algo que no sea un número, eso no lo tengo definido, y tampoco sé si se puede corregir en la misma atención; no me lo han especificado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen de lo acordado y de lo pendiente? La herramienta será de terminal para asesores: recibirá monto entre $10.000.000 y $500.000.000, plazo entero entre 12 y 240 meses y tasa efectiva anual entre 1 % y 30 %, con hasta dos decimales; mostrará cuota mensual, tabla completa, total pagado e intereses, y permitirá exportar la tabla a CSV. Aplicará las fórmulas que indicó, ajustará la última cuota para dejar saldo cero y no incluirá seguros, comisiones ni otros cargos. Los datos fuera de rango se rechazarán con un mensaje claro y código de salida distinto de cero. El ejemplo de verificación es $100.000.000, 120 meses y 12 % anual, con cuota esperada de $1.399.472. Siguen sin definir el redondeo de la tasa mensual y de los medios pesos, y qué hacer mientras falten esas reglas; no está autorizado conservar la precisión de la tasa ni redondear medios pesos hacia arriba. También quedan sin definir la forma de ingreso en terminal, las columnas y formatos de la tabla y del CSV, el nombre del archivo y el tratamiento de entradas no numéricas. Por tanto, todavía no hay una regla de cálculo completamente definida que permita garantizar la cuota esperada."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no está del todo correcto: la cuota, la tabla y el resumen son operaciones separadas, no una sola salida conjunta, y el CSV de la tabla solo se genera si el asesor lo pide. También el plazo lo sé solo como entre 12 y 240 meses; no me habían dicho expresamente que fuera entero."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Corrijo el resumen: la cuota mensual, la tabla de amortización y el resumen de total pagado e intereses son operaciones separadas; el CSV de la tabla solo se genera si el asesor lo solicita. El plazo está entre 12 y 240 meses, pero no está definido si admite fracciones de mes. Se mantienen los límites de monto y tasa, las fórmulas indicadas, el ajuste de la última cuota a saldo cero, la exclusión de cargos adicionales, el rechazo de valores fuera de rango con mensaje claro y código distinto de cero, y el ejemplo de $100.000.000 a 120 meses y 12 % anual con cuota esperada de $1.399.472. Siguen pendientes las reglas de redondeo y qué hacer mientras no estén definidas; no está autorizado conservar la precisión de la tasa ni redondear medios pesos hacia arriba. También quedan pendientes la forma de ingreso, las columnas y formatos, el nombre del CSV y el tratamiento de entradas no numéricas. Sin esas reglas de redondeo no podemos garantizar el cálculo esperado. ¿Confirma este resumen corregido?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 14,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 213.39,
+  "tiempo_cliente_s": 34.32,
+  "tiempo_entrega_s": 131.29,
+  "costo_modelo_usd": "0.1668455",
+  "costo_cliente_usd": "0.02787240",
+  "llamadas_modelo": 15
+}

@@ -1,0 +1,79 @@
+{
+  "caso": "caso-ampliada-16",
+  "titulo": "Simulador de amortización de créditos de vivienda",
+  "sesion": "937d30ed-e10e-4362-82d0-de693c44224c",
+  "esperadas": [
+    "ARQ-05"
+  ],
+  "elegida": "ARQ-05",
+  "coincide": true,
+  "desenlace": "escalado",
+  "motivo_pausa": "N17: El tester no aprobó el módulo y no puede aprobarse: devuélvalo con observaciones al desarrollador o al arquitecto, pida una enmienda de los requerimientos, o cierre la sesión.",
+  "modulos": 4,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 3,
+  "casos_plan": 9,
+  "rechazos_n6": [
+    "Resolver con el cliente antes de aprobar: HU-01 · C4 Completo · preguntas_abiertas: quedan 1 preguntas sin resolver con el cliente; No se sabe si el mensaje de rechazo cambia según el campo que falle."
+  ],
+  "aprobados_con_defectos": [
+    "HU-01 · C4 Completo · preguntas_abiertas: quedan 1 preguntas sin resolver con el cliente"
+  ],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-001": 3
+      },
+      "bajas": 0
+    },
+    {
+      "numero": 2,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-001": 1
+      },
+      "bajas": 0
+    },
+    {
+      "numero": 3,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-001": 1
+      },
+      "bajas": 0
+    }
+  ],
+  "iteracion": 3,
+  "elicitacion": {
+    "turnos": 13,
+    "exploracion": 3,
+    "sin_exploracion": 10,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 18,
+  "llamadas_n10": 3,
+  "generaciones_n10": 3,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 7.48,
+  "turno_maximo_s": 6.8,
+  "cierres_s": [
+    27.8,
+    38.4
+  ],
+  "costo_por_nodo": {
+    "N10": "0.2044971",
+    "N14": "0.006348575",
+    "N3": "0.09578820",
+    "N5": "0.0644379",
+    "N8": "0.10138375",
+    "cliente_simulado": "0.04416330"
+  },
+  "costo_sistema": "0.472455525",
+  "costo_cliente_simulado": "0.04416330"
+}

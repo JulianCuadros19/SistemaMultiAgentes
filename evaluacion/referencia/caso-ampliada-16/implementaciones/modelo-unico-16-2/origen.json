@@ -1,0 +1,158 @@
+{
+  "caso": "caso-ampliada-16",
+  "corrida": "modelo-unico-caso-ampliada-16-2",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Nuestros asesores necesitan una herramienta de terminal para calcular la cuota mensual de un crédito de vivienda y generar su tabla de amortización cuando atienden a un asociado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo sería una atención típica: qué datos ingresaría el asesor y qué resultados necesita ver o entregar al asociado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El asesor ingresa el monto del crédito, el plazo en meses y la tasa efectiva anual. Luego necesita ver la cuota mensual, la tabla de amortización completa y un resumen con el total pagado y los intereses; si lo pide, también debe poder guardar la tabla en un archivo CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué reglas usan para convertir la tasa efectiva anual a mensual y calcular la cuota y la tabla: la cuota es fija durante todo el plazo y se incluyen seguros, comisiones u otros cobros?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La tasa mensual se calcula como (1 + tasa efectiva anual) elevada a 1/12, menos 1, y con esa tasa se calcula una cuota fija para todo el plazo. Cada mes se saca el interés sobre el saldo, el resto va a capital, y la última cuota se ajusta para que el saldo quede en cero. No incluyen seguros, comisiones ni otros cobros en esta herramienta."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo ingresan el monto, el plazo y la tasa en la terminal —por ejemplo, para un crédito de 100 millones a 240 meses y una tasa anual del 12 %— y qué valores mínimos o máximos debe aceptar la herramienta para cada dato?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No sé el formato exacto en la terminal, solo que el asesor debe ingresar el monto, el plazo en meses y la tasa efectiva anual. El monto debe estar entre 10.000.000 y 500.000.000 pesos, el plazo entre 12 y 240 meses, y la tasa entre 1 % y 30 % con hasta dos decimales."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo deben redondearse y mostrarse los valores en pesos de la cuota, los intereses, el abono a capital y el saldo: a pesos enteros o con decimales, y ese redondeo debe aplicarse cada mes al calcular la tabla?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Se manejan y se muestran en pesos enteros, sin decimales. Sí deben quedar redondeados al peso y calculados sin errores de redondeo, pero no sé si ese redondeo se aplica en cada paso del cálculo o solo al final de cada valor."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Tienen un ejemplo de crédito ya calculado que podamos usar para comprobar el resultado, con su monto, plazo, tasa anual y la cuota o los totales que esperan obtener?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí: el ejemplo que usamos es un crédito de 100.000.000 pesos a 120 meses, con tasa efectiva anual del 12 %. La cuota esperada es de 1.399.472 pesos; en el primer mes el interés es 948.879, el abono a capital 450.593 y el saldo queda en 99.549.407. No tengo a mano los totales finales de ese ejemplo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que la tabla cuadre en pesos enteros, ¿les sirve que redondeemos la cuota y el interés de cada mes al peso más cercano —si hay exactamente medio peso, hacia arriba—, calculemos el abono a capital como cuota menos interés y el nuevo saldo como saldo anterior menos abono, y ajustemos únicamente la última cuota para cancelar el saldo pendiente?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No te lo puedo confirmar así, porque yo solo sé que los valores se manejan en pesos enteros, se redondean al peso y la última cuota se ajusta para que el saldo quede en cero. No sé si el redondeo debe hacerse exactamente mes a mes ni si el medio peso va siempre hacia arriba."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando un asesor ingrese un dato inválido o no se pueda guardar el CSV, ¿qué debe hacer la herramienta y qué mensajes les gustaría que mostrara?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Si el dato está fuera de rango, la herramienta debe rechazarlo con un mensaje claro y salir con un código distinto de cero. Sobre qué debe pasar si no se puede guardar el CSV, no lo sé; eso no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para la tabla en pantalla y el archivo CSV, ¿qué columnas necesita el asesor y cómo espera indicar dónde guardar el archivo? Por ejemplo: mes, cuota, interés, abono a capital y saldo, guardándolo solo cuando el asesor indique un nombre de archivo."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé con certeza; solo sé que debe mostrar la tabla de amortización completa, pero no me han definido qué columnas exactas lleva. Tampoco sé cómo se indica dónde guardarlo: solo que, si el asesor lo pide, la tabla se puede guardar en CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entiendo que la herramienta será para asesores, en la terminal: recibirán un monto entre 10.000.000 y 500.000.000 pesos, un plazo entero entre 12 y 240 meses y una tasa efectiva anual entre 1 % y 30 %, con hasta dos decimales. Calculará la tasa mensual con la fórmula indicada, una cuota fija sin seguros ni comisiones, la tabla completa y los totales pagados y de intereses; ajustará la última cuota para dejar el saldo en cero. Los importes se mostrarán en pesos enteros. Usaremos como comprobación su ejemplo de 100.000.000 a 120 meses y 12 %, con cuota de 1.399.472 y los valores del primer mes que indicó. Los datos inválidos se rechazarán con un mensaje claro y una salida distinta de cero. Para lo que no está definido, elegiré y documentaré opciones sencillas: ingreso mediante opciones de terminal, tabla con mes, cuota, interés, capital y saldo, CSV opcional indicando un archivo, y mensaje de error con salida distinta de cero si no se puede guardar. También documentaré el criterio de redondeo elegido, procurando que los importes cuadren y verificando el ejemplo. ¿Confirma este alcance para construir la herramienta?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no lo confirmo así. Lo general está bien, pero no están definidos el formato de ingreso en la terminal, las columnas exactas de la tabla o del CSV, ni qué debe pasar si no se puede guardar el archivo; tampoco tengo un criterio de redondeo más específico que redondear al peso y evitar errores."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Gracias por la aclaración: esos detalles siguen sin estar definidos y no los consideraré aprobados. Para poder entregar una herramienta utilizable, ¿prefiere que elija opciones sencillas para esos puntos y las deje claramente documentadas como decisiones de implementación, o que primero esperemos a que ustedes los definan?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Prefiero que primero ustedes lo definan con nosotros. No me gustaría dejar decisiones importantes solo como supuesto de implementación."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "De acuerdo, definamos esos puntos juntos. Para ingresar los datos, propongo que la herramienta pregunte uno por uno el monto en pesos sin puntos ni comas (por ejemplo, 100000000), el plazo en meses (120) y la tasa anual como porcentaje sin el signo % (12 o 12.50). ¿Les sirve esta forma de ingreso para los asesores?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, esa forma me serviría para los asesores, siempre que quede clara y sea fácil de usar. Yo no tengo otra exigencia sobre el formato, porque eso no lo habíamos definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que el asesor pueda revisar cómo se paga el crédito, propongo mostrar tanto en pantalla como en el CSV estas cinco columnas: mes, cuota en pesos, interés en pesos, abono a capital en pesos y saldo pendiente en pesos. ¿Está de acuerdo con estas columnas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, me sirve. Esas columnas me parecen bien para la tabla y para el CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para guardar la tabla, propongo que al terminar la herramienta pregunte si desean un CSV y, si responden que sí, pida el nombre o la ruta del archivo; si no puede guardarlo, mostrará un mensaje claro y terminará con un código distinto de cero, aunque la tabla ya se haya mostrado en pantalla. ¿Les sirve ese comportamiento?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, eso todavía no lo puedo confirmar porque con nosotros no quedó definido qué debe pasar si falla al guardar el CSV. Sí podemos definirlo así juntos, pero por ahora no lo daría por aprobado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Definámoslo ahora juntos: si falla el guardado del CSV, ¿prefieren que la herramienta permita intentar guardarlo en otro archivo, o que muestre «No se pudo guardar el CSV», conserve la tabla mostrada en pantalla y termine con un código de error?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Prefiero la segunda opción: que muestre «No se pudo guardar el CSV», conserve la tabla en pantalla y termine con un código de error. Así el asesor al menos ve la información y sabe que no quedó guardada."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para definir juntos el redondeo y que la tabla cuadre, propongo redondear la cuota fija y el interés de cada mes al peso más cercano (si queda exactamente medio peso, hacia arriba), calcular el abono a capital restando el interés de la cuota y el saldo restando ese abono; en el último mes, cobrar el saldo pendiente más el interés para dejarlo en cero. ¿Aprueban este criterio?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no lo apruebo así. Yo solo tengo claro que los valores van en pesos enteros, se redondean al peso y la última cuota se ajusta para que el saldo quede en cero; no tengo definido si el redondeo es al más cercano ni lo de medio peso hacia arriba."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para decidir el redondeo con ejemplos sencillos, ¿les sirve que un interés calculado de 948.879,40 pesos se cobre como 948.879 y uno de 948.879,50 como 948.880, y que usemos ese interés en pesos enteros para calcular cuánto de la cuota reduce la deuda y cuánto saldo queda?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, eso todavía no te lo puedo confirmar. Yo solo tengo claro que los valores se manejan en pesos enteros y se redondean al peso; no tengo definido si 948.879,40 baja a 948.879 y 948.879,50 sube a 948.880, ni si ese criterio se aplica así para calcular el resto."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para cerrar, entiendo que acordamos ingresar los datos mediante preguntas, con monto sin separadores, plazo en meses y tasa porcentual sin el signo %; mostrar y exportar mes, cuota, interés, abono a capital y saldo; y, si falla el CSV, mostrar «No se pudo guardar el CSV» y terminar con código de error conservando la tabla en pantalla. Se mantienen los rangos indicados, la conversión de tasa anual a mensual, la cuota fija sin otros cobros, los totales y el ajuste de la última cuota para cancelar el saldo. El ejemplo de comprobación es el de 100.000.000 pesos, 120 meses y 12 %, con los importes que indicó. El criterio preciso de redondeo sigue pendiente y no está aprobado, aunque los valores deben expresarse en pesos enteros. ¿Confirma que este resumen distingue correctamente lo acordado de lo que falta definir?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 18,
+  "llego_al_limite": true,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 217.96,
+  "tiempo_cliente_s": 48.22,
+  "tiempo_entrega_s": 101.24,
+  "costo_modelo_usd": "0.1902760",
+  "costo_cliente_usd": "0.03104025",
+  "llamadas_modelo": 18
+}

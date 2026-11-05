@@ -1,0 +1,56 @@
+{
+  "caso": "caso-ampliada-16",
+  "titulo": "Simulador de amortización de créditos de vivienda",
+  "sesion": "3d77f576-98bd-42f7-804e-7c30b7d7ab65",
+  "esperadas": [
+    "ARQ-05"
+  ],
+  "elegida": "ARQ-05",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 4,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 3,
+  "casos_plan": 10,
+  "rechazos_n6": [],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 0
+    }
+  ],
+  "iteracion": 1,
+  "elicitacion": {
+    "turnos": 12,
+    "exploracion": 2,
+    "sin_exploracion": 10,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 12,
+  "llamadas_n10": 1,
+  "generaciones_n10": 1,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 4.21,
+  "turno_maximo_s": 7.3,
+  "cierres_s": [
+    26.9
+  ],
+  "costo_por_nodo": {
+    "N10": "0.098671",
+    "N14": "0.001385175",
+    "N3": "0.05846445",
+    "N5": "0.0312627",
+    "N8": "0.10522125",
+    "cliente_simulado": "0.02725020"
+  },
+  "costo_sistema": "0.295004575",
+  "costo_cliente_simulado": "0.02725020"
+}

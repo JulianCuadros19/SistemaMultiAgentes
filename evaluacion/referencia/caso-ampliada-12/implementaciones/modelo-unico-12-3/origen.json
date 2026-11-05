@@ -1,0 +1,94 @@
+{
+  "caso": "caso-ampliada-12",
+  "corrida": "modelo-unico-caso-ampliada-12-3",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "El portal de registro y el sistema de facturación necesitan consultar por la red si un NIT es válido calculando su dígito de verificación; queremos un servicio único con un contrato documentado para no repetir esa lógica en cada sistema."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿De qué país son los NIT que consultarán y qué regla oficial usan para calcular y comprobar su dígito de verificación?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No te sé decir de qué país son; eso no lo tengo definido. La regla que usamos es esa: se toman los dígitos de derecha a izquierda, se multiplican por los pesos 3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67 y 71, se suman y se saca el residuo entre 11; si el residuo es 0 o 1, ese mismo es el dígito, y si no, es 11 menos el residuo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué datos enviará cada sistema al servicio: el NIT sin su dígito para que lo calcule, el NIT junto con un dígito para comprobarlo, o necesitan ambas opciones? ¿Puedes darme un ejemplo de lo que enviarían y de lo que esperan recibir?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Necesitan ambas opciones: a veces enviarían solo el número del NIT sin dígito para que el servicio les calcule el dígito, y otras veces enviarían el NIT completo con su dígito para validar si está bien. Por ejemplo, podrían enviar `900123456` y esperar que les responda `8`, o enviar `900123456-8` para que les diga que es válido; si enviaran `900123456-7`, esperaría que les diga que no es válido y que el dígito esperado es `8`."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué formatos de NIT debe aceptar el servicio y cuáles debe rechazar: por ejemplo, números con puntos o espacios, ceros al inicio, dígito separado por guion, letras, valores vacíos o números de más de 15 cifras?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Debe aceptar números de 1 a 15 dígitos; si vienen con puntos o con guion, se quitan antes de calcular, y para validar puede venir el número completo con el dígito separado por guion. Debe rechazar letras y más de 15 dígitos; sobre espacios, ceros al inicio y valores vacíos no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para evitar interpretar mal el número, ¿te parece que usemos dos operaciones: calcular, que recibe el NIT base y quita sus puntos y guiones, y validar, que recibe el NIT base y su dígito por separado o en el formato «NIT-dígito», conservando los ceros iniciales y rechazando espacios y valores vacíos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Lo de usar dos operaciones sí me parece bien. Pero no tengo definido lo de conservar los ceros iniciales ni lo de rechazar espacios y valores vacíos; para validar, sí puede venir el NIT completo con el dígito separado por guion, y para calcular se quitan puntos y guion antes de hacerlo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que ambos sistemas puedan consultarlo por la red, ¿les sirve un servicio HTTP que reciba y responda mensajes JSON, con una dirección para calcular el dígito y otra para validar el NIT?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí les sirve que sea por HTTP, porque lo consultan por la red. Pero no tengo definido que tenga que ser JSON ni que haya una dirección distinta para calcular y otra para validar; lo importante es que quede bien documentado qué se envía y qué se recibe."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando llegue una consulta con letras, demasiadas cifras o un dígito de verificación que no sea una sola cifra, ¿qué mensaje debe recibir el sistema que consulta, y debe distinguir esos errores de un NIT bien escrito cuyo dígito simplemente no coincide?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, debe distinguirlos: si hay letras, el mensaje es «El NIT solo admite dígitos»; si tiene más de 15 dígitos, es «El NIT admite como máximo 15 dígitos». Para un NIT bien escrito pero cuyo dígito no coincide, debe decir que no es válido e indicar cuál era el dígito esperado; lo de un dígito de verificación que no sea una sola cifra no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿El servicio solo debe calcular y comprobar el dígito, o también debe consultar si el NIT existe o está registrado ante alguna entidad?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo debe calcular y comprobar el dígito de verificación. No debe consultar si el NIT existe o está registrado ante alguna entidad, eso no aplica a este servicio."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirmas este resumen para construir el servicio: lo consultarán por HTTP el portal de registro y facturación; tendrá una operación para calcular y otra para validar, aplicando de derecha a izquierda los 15 pesos y la regla del residuo que indicaste; aceptará NIT base de 1 a 15 cifras, quitará puntos y guiones al calcular y permitirá validar «NIT-dígito»; devolverá el dígito calculado o si coincide y cuál es el esperado, con los ejemplos 900123456 → 8, 900123456-8 → válido y 900123456-7 → no válido, esperado 8; rechazará letras y exceso de cifras con los mensajes exactos que diste, y no consultará registros externos? Para los aspectos que dejaste sin definir, documentaría estas decisiones sencillas: mensajes JSON, dos direcciones distintas, NIT enviado como texto conservando ceros iniciales, rechazo de espacios y valores vacíos, y dígito de verificación de una sola cifra; los datos mal escritos producirían un error distinto de una validación que no coincide."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Casi todo coincide con lo que te dije, pero no puedo confirmar los puntos que no estaban definidos: mensajes JSON, dos direcciones distintas, conservar ceros iniciales, rechazar espacios y valores vacíos, y eso de que el dígito de verificación se maneje como una sola cifra. Lo demás sí está bien, incluido que solo calcule y valide el dígito, sin consultar registros externos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirmas entonces que el alcance acordado es un servicio por HTTP, usado por registro y facturación, con operaciones de cálculo y validación, la fórmula y los ejemplos que diste, NIT base de 1 a 15 cifras, eliminación de puntos y guiones para calcular, validación del formato «NIT-dígito», los mensajes exactos para letras y exceso de cifras, y sin consultar registros externos; dejando expresamente sin definir el formato de los mensajes, las direcciones de consulta, los ceros iniciales, los espacios, los valores vacíos y el formato del dígito, para que las decisiones mínimas necesarias de implementación queden documentadas como tales y no como requisitos tuyos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 10,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 173.75,
+  "tiempo_cliente_s": 22.13,
+  "tiempo_entrega_s": 109.48,
+  "costo_modelo_usd": "0.1352105",
+  "costo_cliente_usd": "0.01852995",
+  "llamadas_modelo": 11
+}

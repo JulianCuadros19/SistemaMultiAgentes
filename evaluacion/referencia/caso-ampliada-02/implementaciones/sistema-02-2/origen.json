@@ -1,0 +1,59 @@
+{
+  "caso": "caso-ampliada-02",
+  "titulo": "Reajuste anual del canon de arrendamiento",
+  "sesion": "f40da99e-c7c9-49bb-835b-2a2d74067680",
+  "esperadas": [
+    "ARQ-01"
+  ],
+  "elegida": "ARQ-01",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 2,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 1,
+  "casos_plan": 5,
+  "rechazos_n6": [
+    "Resolver con el cliente antes de aprobar: HU-01 · C4 Completo · preguntas_abiertas: quedan 1 preguntas sin resolver con el cliente; cuál es el mensaje exacto de error cuando falta el canon del contrato o no está el IPC"
+  ],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 0
+    }
+  ],
+  "iteracion": 1,
+  "elicitacion": {
+    "turnos": 11,
+    "exploracion": 3,
+    "sin_exploracion": 8,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 13,
+  "llamadas_n10": 1,
+  "generaciones_n10": 1,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 3.61,
+  "turno_maximo_s": 8.2,
+  "cierres_s": [
+    11.3,
+    13.5
+  ],
+  "costo_por_nodo": {
+    "N10": "0.0684189",
+    "N14": "0.00084513",
+    "N3": "0.06686295",
+    "N5": "0.02338560",
+    "N8": "0.066546",
+    "cliente_simulado": "0.03686400"
+  },
+  "costo_sistema": "0.22605858",
+  "costo_cliente_simulado": "0.03686400"
+}

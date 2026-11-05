@@ -1,0 +1,122 @@
+[
+  {
+    "etiqueta": "sistema-02-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-02",
+    "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/sistema-02-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/sistema-02-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/sistema-02-1.py"
+  },
+  {
+    "etiqueta": "sistema-02-2",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-02",
+    "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/sistema-02-2/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/sistema-02-2/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/sistema-02-2.py"
+  },
+  {
+    "etiqueta": "modelo-unico-02-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-02",
+    "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/modelo-unico-02-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-02-2",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-02",
+    "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-2/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-2/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/modelo-unico-02-2.py"
+  },
+  {
+    "etiqueta": "modelo-unico-02-3",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-02",
+    "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-3/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-3/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/modelo-unico-02-3.py"
+  },
+  {
+    "etiqueta": "sistema-12-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-12",
+    "carpeta": "evaluacion/referencia/caso-ampliada-12/implementaciones/sistema-12-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-12/implementaciones/sistema-12-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/sistema-12-1.py"
+  },
+  {
+    "etiqueta": "sistema-12-2",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-12",
+    "carpeta": "evaluacion/referencia/caso-ampliada-12/implementaciones/sistema-12-2/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-12/implementaciones/sistema-12-2/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/sistema-12-2.py"
+  },
+  {
+    "etiqueta": "modelo-unico-12-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-12",
+    "carpeta": "evaluacion/referencia/caso-ampliada-12/implementaciones/modelo-unico-12-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-12/implementaciones/modelo-unico-12-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/modelo-unico-12-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-12-2",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-12",
+    "carpeta": "evaluacion/referencia/caso-ampliada-12/implementaciones/modelo-unico-12-2/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-12/implementaciones/modelo-unico-12-2/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/modelo-unico-12-2.py"
+  },
+  {
+    "etiqueta": "modelo-unico-12-3",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-12",
+    "carpeta": "evaluacion/referencia/caso-ampliada-12/implementaciones/modelo-unico-12-3/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-12/implementaciones/modelo-unico-12-3/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/modelo-unico-12-3.py"
+  },
+  {
+    "etiqueta": "sistema-16-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-16",
+    "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/sistema-16-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/sistema-16-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/sistema-16-1.py"
+  },
+  {
+    "etiqueta": "sistema-16-2",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-16",
+    "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/sistema-16-2/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/sistema-16-2/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/sistema-16-2.py"
+  },
+  {
+    "etiqueta": "modelo-unico-16-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-16",
+    "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/modelo-unico-16-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-16-2",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-16",
+    "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-2/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-2/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/modelo-unico-16-2.py"
+  },
+  {
+    "etiqueta": "modelo-unico-16-3",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-16",
+    "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-3/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-3/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/modelo-unico-16-3.py"
+  }
+]

@@ -1,0 +1,142 @@
+{
+  "caso": "caso-ampliada-12",
+  "corrida": "modelo-unico-caso-ampliada-12-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "El portal de registro y el sistema de facturación necesitan consultar por la red si un NIT es válido calculando su dígito de verificación; queremos un servicio único con un contrato documentado para no repetir esa lógica en cada sistema."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿De qué país son los NIT que consultarán y qué necesitan recibir el portal y facturación: el dígito calculado a partir del NIT, la comprobación de un dígito que ya tienen, o ambas cosas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No sé de qué país son; eso no lo tengo definido. Y lo que necesitan es ambas cosas: a veces el dígito calculado a partir del número, y a veces validar un NIT completo con el dígito que ya traen."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Como el cálculo depende del país, ¿pueden definir con la persona responsable del registro qué regla oficial debemos usar, o facilitarnos la fórmula que ya aplican y ejemplos de números con sus dígitos correctos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, podemos facilitarles la fórmula que usamos y ejemplos de números con su dígito correcto. Lo del país todavía no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cuál es la fórmula que usan para calcular el dígito de verificación y qué ejemplos de números con su dígito correcto pueden compartir para comprobarla?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Tomamos los dígitos del número de derecha a izquierda, los multiplicamos por los pesos 3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67 y 71, en ese orden; sumamos todo y calculamos el residuo al dividir entre 11. Si el residuo es 0 o 1, ese es el dígito; si no, es 11 menos el residuo. Como ejemplos, el número 900123456 tiene dígito 8 y el número 123456789 tiene dígito 6."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Al aplicar la fórmula que nos dieron, para 123456789 obtengo el dígito 6, pero para 900123456 obtengo 7, no 8; ¿confirmamos que debemos seguir esa fórmula y corregir el segundo ejemplo a 7, o hay alguna regla adicional que debamos aplicar?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no habría que cambiar ese ejemplo a 7; el dígito correcto que tengo para 900123456 es 8. La fórmula que les dimos es esa, y no conozco ninguna regla adicional."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "La fórmula y el ejemplo de 900123456 dan resultados distintos, por lo que no podemos cumplir ambos sin una aclaración: ¿pueden revisar con la persona responsable cuál debe prevalecer y confirmar el dato corregido antes de construir el servicio?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, por ahora no tengo otro dato que corregir. El ejemplo correcto para 900123456 sigue siendo 8 y no conozco ninguna regla adicional."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Dejaremos registrada esa discrepancia como pendiente, sin añadir una excepción que no nos han indicado; para definir cómo consultarán el servicio, ¿qué datos enviarán el portal y facturación en cada caso, y en qué formato esperan recibir el dígito calculado o el resultado de la validación?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No tengo definido el formato exacto que enviarán ni el de respuesta. Solo sé que a veces mandarán el número del NIT para calcular el dígito, y otras el NIT completo con su dígito para validarlo; si no es válido, deben recibir que no lo es y cuál era el dígito esperado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué formas del NIT debe aceptar el servicio: solo números sin separadores, o también números con puntos, espacios o guion antes del dígito, y deben conservarse los ceros al principio?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo tengo definido que puede venir con puntos o con guion, y eso se quita antes de calcular. Lo de los espacios y si se conservan los ceros al principio no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para distinguir el número del NIT de su dígito de verificación, ¿les sirve enviar el número en un campo y, cuando quieran validarlo, enviar el dígito en otro campo separado, incluso si el NIT original venía con guion?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, me sirve que el número vaya en un campo y el dígito en otro cuando quieran validar. Si el NIT venía con guion, eso se quita antes de calcular. No tengo definido otro detalle del formato."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "La fórmula permite calcular números de hasta 15 dígitos; ¿qué debe responder el servicio si recibe un número vacío, letras, más de 15 dígitos o un dígito de verificación que no sea una sola cifra?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "De letras y de más de 15 dígitos sí: deben responder con error, con estos mensajes: «El NIT solo admite dígitos» y «El NIT admite como máximo 15 dígitos». Del número vacío y de un dígito de verificación que no sea una sola cifra no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que ambos sistemas puedan consultarlo por la red, ¿les sirve un servicio HTTP que reciba y responda datos en JSON, con una consulta para calcular el dígito y otra para validarlo, sin consultar registros externos ni certificar que el NIT exista?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, me sirve que sea por HTTP y en JSON, con una consulta para calcular el dígito y otra para validar el NIT. No necesitan consultar registros externos ni certificar que el NIT exista; solo hacer ese cálculo y esa validación."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirman este resumen para la entrega: un servicio HTTP con datos JSON y dos consultas, una para calcular el dígito y otra para validar enviando número y dígito por separado; se quitan puntos y guiones del número, se aplica la fórmula indicada con hasta 15 dígitos y, al validar, se devuelve si coincide y el dígito esperado; las letras y el exceso de longitud producen los mensajes acordados; no se consulta si el NIT existe? Los formatos concretos y los casos aún no definidos se resolverán de la forma más simple y quedarán documentados. También quedará documentada la discrepancia: esa fórmula produce 7 para 900123456, aunque ustedes indican 8; sin una regla adicional, el servicio aplicará la fórmula, no una excepción para ese número."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no está del todo correcto. Sí queda lo de HTTP con JSON, dos consultas, quitar puntos y guiones, validar con el número y el dígito por separado, y los mensajes de error por letras y por más de 15 dígitos; pero no tengo definido que los formatos y los casos no definidos se resuelvan “de la forma más simple”, ni puedo confirmar lo de aplicar la fórmula aunque contradiga el ejemplo de 900123456, porque yo indiqué que el dígito correcto es 8 y no conozco una regla adicional."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entendido: esos puntos siguen sin acordarse y no los daré por confirmados. Para poder entregar un servicio que ustedes puedan aceptar, ¿quién puede autorizar la regla de cálculo definitiva y resolver la diferencia entre la fórmula y el dígito 8 que tienen para 900123456?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; no tengo definido quién es esa persona responsable. Habría que revisarlo con quien lleva el tema del registro para que confirme la regla y ese ejemplo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Mientras queda pendiente la revisión del cálculo con quien lleva el registro, ¿qué respuesta quieren que reciban los sistemas si falta el número del NIT o si, al validar, el dígito enviado está vacío, contiene letras o tiene más de una cifra?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Eso no lo tengo definido. Solo tengo claro que de letras en el número y de más de 15 dígitos debe responderse con error, pero para el número faltante y para un dígito vacío, con letras o con más de una cifra no tengo una respuesta acordada."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿El servicio se usará solo dentro de la red de ustedes, o estará disponible por Internet y necesitará controlar quién puede consultarlo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido. Solo sé que lo consultarán por la red mediante HTTP, pero no sé si será solo dentro de la red de ustedes o si estará abierto por Internet, ni qué control de acceso necesitaría."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirman que lo acordado es un servicio HTTP con JSON, con una consulta para calcular y otra para validar enviando número y dígito por separado, que quite puntos y guiones del número, devuelva si el dígito coincide y cuál se esperaba, rechace letras con «El NIT solo admite dígitos» y más de 15 dígitos con «El NIT admite como máximo 15 dígitos», y no compruebe si el NIT existe; y que siguen pendientes la contradicción entre la fórmula y el ejemplo 900123456 con dígito 8, los formatos exactos, los demás errores y las condiciones de acceso por la red?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 16,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 235.84,
+  "tiempo_cliente_s": 43.09,
+  "tiempo_entrega_s": 125.81,
+  "costo_modelo_usd": "0.1821160",
+  "costo_cliente_usd": "0.02672520",
+  "llamadas_modelo": 17
+}

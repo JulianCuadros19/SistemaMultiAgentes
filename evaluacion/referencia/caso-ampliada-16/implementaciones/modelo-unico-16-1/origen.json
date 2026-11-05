@@ -1,0 +1,126 @@
+{
+  "caso": "caso-ampliada-16",
+  "corrida": "modelo-unico-caso-ampliada-16-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Nuestros asesores necesitan una herramienta de terminal para calcular la cuota mensual de un crédito de vivienda y generar su tabla de amortización cuando atienden a un asociado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo espera que el asesor use la herramienta durante la atención, desde que ingresa los datos del crédito hasta que obtiene la cuota y la tabla para el asociado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El asesor debe ingresar el monto, el plazo en meses y la tasa efectiva anual desde su terminal, mientras atiende al asociado. Después puede pedir la cuota o la tabla por separado: la cuota le muestra el valor mensual y la tabla le muestra toda la amortización; si la solicita, también la puede guardar en CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué reglas usan para convertir la tasa efectiva anual en una tasa mensual y calcular la cuota, y qué conceptos deben incluirse o excluirse, como seguros, comisiones o abonos adicionales?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La tasa mensual se calcula como \n(1 + tasa efectiva anual) elevado a 1/12, menos 1, y con esa tasa se obtiene la cuota fija: monto por tasa mensual, dividido entre 1 menos (1 + tasa mensual) elevado a menos el plazo. En cada mes el inter\u0000e9s es el saldo por la tasa mensual y el abono a capital es la cuota menos ese inter\u0000e9s; la \u0000faltima cuota se ajusta para que el saldo quede en cero. Sobre seguros, comisiones o abonos adicionales no lo s\u0000e9, porque eso no hace parte de esta herramienta."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿En qué moneda trabajan, cómo debe ingresar el asesor los montos y la tasa anual (por ejemplo, 200000000 y 12 para una tasa del 12 %), y cuántos decimales y qué redondeo deben usarse en la cuota y en cada mes de la tabla?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Trabajan en pesos. El asesor ingresa el monto como número en pesos y la tasa efectiva anual como porcentaje, por ejemplo 200000000 y 12 para una tasa del 12 %; la tasa puede llevar hasta dos decimales. La cuota y los valores de cada mes se redondean al peso, sin centavos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que todos los asesores obtengan exactamente los mismos valores, ¿cómo redondean cuando un resultado queda en medio peso y, al calcular el mes siguiente, usan el saldo ya redondeado al peso o conservan sus decimales internos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé con ese nivel de detalle. Solo sé que los valores se redondean al peso y que el cálculo se hace sin errores de redondeo de punto flotante."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué montos, plazos y tasas se permiten, y qué debe mostrar la herramienta si el asesor ingresa un dato inválido, incluyendo monto cero o negativo, meses con decimales y tasa cero o negativa?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Se permiten montos entre 10.000.000 y 500.000.000 pesos, plazos entre 12 y 240 meses, y tasa efectiva anual entre 1 % y 30 %, con hasta dos decimales. Si el asesor ingresa un dato inválido, como monto cero o negativo, meses con decimales, o tasa cero o negativa, la herramienta debe rechazarlo con un mensaje claro y salir con un código distinto de cero."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Puede darme un ejemplo de crédito que ustedes usen para verificar el resultado, con monto, plazo y tasa, indicando la cuota esperada y, si los tienen, los valores del primer y último mes de la tabla?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, el ejemplo que usamos es un crédito de 100.000.000 pesos a 120 meses con una tasa del 12 % efectiva anual, y la cuota esperada es de 1.399.472 pesos. En el primer mes, el interés es 948.879, el abono a capital 450.593 y el saldo queda en 99.549.407; del último mes no tengo el valor exacto, solo que se ajusta para que el saldo quede en cero."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué columnas y orden debe tener la tabla, tanto en pantalla como en el CSV, y cómo quieren escribir allí los números y separar las columnas para poder abrir el archivo en su herramienta habitual?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; ese detalle de las columnas y del formato del CSV no está definido para esta herramienta. Solo sé que la tabla debe mostrar la amortización completa y, si el asesor lo pide, se puede guardar en CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿El monto del crédito debe ingresarse siempre en pesos enteros, como 100000000, o también se permiten centavos, como 100000000.50?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El monto se ingresa como número en pesos y se maneja redondeado al peso, así que no se consideran centavos. Sería como 100000000, no como 100000000.50."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen de lo que debemos entregar? Los asesores usarán una herramienta de terminal para ingresar el monto en pesos enteros (entre 10.000.000 y 500.000.000), el plazo en meses enteros (entre 12 y 240) y la tasa efectiva anual como porcentaje (entre 1 y 30, con hasta dos decimales). Podrán consultar por separado la cuota mensual o la tabla completa y, al pedir la tabla, guardarla también en CSV. Aplicaremos las fórmulas que indicó, mostrando importes redondeados al peso y ajustando la última cuota para dejar el saldo en cero, sin errores de punto flotante. Verificaremos el ejemplo de 100.000.000 a 120 meses al 12 %: cuota de 1.399.472 y primer mes con interés de 948.879, capital de 450.593 y saldo de 99.549.407. Los datos inválidos producirán un mensaje claro y una salida con código distinto de cero. No se incluyen seguros, comisiones ni abonos adicionales. Como el detalle del redondeo y el formato de la tabla y del CSV no están definidos, elegiremos opciones sencillas y las dejaremos documentadas junto con las instrucciones de uso."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo puedo confirmar así, porque el detalle del formato de la tabla y del CSV no está definido y no dijimos que vayamos a escoger unas opciones sencillas ni a documentarlas de esa manera. Lo demás sí coincide con lo que sé: la terminal, los rangos de monto/plazo/tasa, la cuota y la tabla por separado, el ejemplo de verificación y el rechazo con mensaje claro y código distinto de cero."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entendido: el formato de la tabla y del CSV sigue pendiente y no lo daré por acordado. ¿Quién puede indicarnos cómo necesitan ver la amortización en pantalla y cómo necesitan recibir el archivo CSV?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; eso no está definido en lo que me dijeron. Solo sé que la tabla debe mostrar la amortización completa y, si el asesor lo pide, se puede guardar en CSV."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma que el alcance acordado es calcular la cuota y mostrar la amortización completa desde la terminal, con exportación opcional a CSV, usando los rangos, las fórmulas, el ejemplo de verificación y el rechazo de datos inválidos que indicó, sin seguros, comisiones ni abonos adicionales, y dejando expresamente sin definir el formato de la tabla y del CSV, el redondeo de medios pesos y el uso de decimales internos en los saldos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: además de la cuota y la tabla, también está la opción de resumen con el total pagado y el total de intereses. Lo demás sí coincide, y el formato de la tabla y del CSV sigue sin estar definido; del redondeo de medios pesos y de usar o no decimales internos, yo no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para la opción de resumen, ¿el total pagado debe ser la suma de todas las cuotas de la tabla, incluida la última ajustada, y el total de intereses la suma de los intereses de esos mismos meses, ambos en pesos enteros?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé con ese nivel de detalle; solo sé que la opción de resumen muestra el total pagado y el total de intereses. No me dijeron explícitamente si se calcula como la suma de todas las cuotas y de todos los intereses de la tabla, aunque eso sería lo esperable."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este alcance: los asesores ingresan por terminal un monto en pesos enteros entre 10.000.000 y 500.000.000, un plazo entero entre 12 y 240 meses y una tasa efectiva anual entre 1 % y 30 %, con hasta dos decimales; pueden consultar por separado la cuota, la amortización completa con exportación opcional a CSV y un resumen con total pagado y total de intereses; se aplican las fórmulas indicadas, se muestran valores redondeados al peso sin errores de punto flotante y se ajusta la última cuota para dejar el saldo en cero; se verifica el ejemplo que proporcionó y se rechazan entradas inválidas con un mensaje claro y código de salida distinto de cero; no se incluyen seguros, comisiones ni abonos adicionales; quedan sin definir el formato de tabla y CSV, el redondeo de medios pesos, el manejo de decimales internos y el cálculo exacto de los totales del resumen?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 14,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 238.07,
+  "tiempo_cliente_s": 53.47,
+  "tiempo_entrega_s": 130.2,
+  "costo_modelo_usd": "0.1820050",
+  "costo_cliente_usd": "0.03028305",
+  "llamadas_modelo": 15
+}

@@ -1,0 +1,150 @@
+{
+  "caso": "caso-ampliada-02",
+  "corrida": "modelo-unico-caso-ampliada-02-2",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Cada año debemos reajustar el canon de los contratos de arriendo según el IPC sin pasarnos de lo pactado; hoy lo hacemos en hojas de cálculo y cometemos errores."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Quién hace hoy el reajuste y cómo debería usar la herramienta: calcular un contrato a la vez o revisar una lista de contratos y obtener los nuevos cánones?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Hoy lo hace el analista de cartera. La herramienta la usaría para calcular un contrato a la vez, con los datos de cada contrato; no me dijeron que revise una lista completa."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo determinan el reajuste de un contrato: qué IPC toman, sobre qué canon lo aplican y qué límites pactados deben respetar?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Tomamos el IPC del año calendario anterior y lo comparamos con el porcentaje pactado en el contrato; se aplica el menor de los dos. Ese porcentaje se calcula sobre el canon actual, y si el IPC del año anterior es cero o negativo, el canon no cambia."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué datos ingresaría el analista para cada contrato y cómo los expresa hoy: el canon en qué moneda, los porcentajes como 5 para indicar 5 % o de otra forma, y el IPC lo ingresaría él o espera que la herramienta lo busque?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El canon lo ingresaría en pesos. Los porcentajes los manejamos como porcentajes, por ejemplo 5,20 para indicar 5,20 %; y el IPC del año anterior lo ingresa el analista, no tengo entendido que la herramienta lo busque sola."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo deben redondearse el nuevo canon y el aumento en pesos, y qué resultados necesita ver el analista además del nuevo canon?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El nuevo canon y el aumento en pesos se redondean a la centena de peso más cercana; por ejemplo, 1.234.567 quedaría en 1.234.600. Además del nuevo canon, el analista necesita ver el porcentaje aplicado y el valor del incremento."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que el redondeo no genere diferencias: si el canon actual es 1.234.567 pesos y se aplica un 5 %, ¿esperan redondear por separado el aumento de 61.728,35 a 61.700 y el nuevo canon de 1.296.295,35 a 1.296.300, aunque la diferencia entre los cánones no coincida exactamente con el aumento mostrado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; solo tenemos claro que tanto el nuevo canon como el incremento se redondean a la centena más cercana. No me han dicho si deben redondearse por separado aunque no coincidan exactamente entre sí."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando un valor queda justo a mitad de dos centenas, por ejemplo 1.234.550 pesos, ¿debe redondearse hacia arriba a 1.234.600 o hacia abajo a 1.234.500?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; no nos han definido una regla especial para los casos justo a la mitad. Solo sabemos que se redondea a la centena más cercana."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué valores consideran inválidos para el canon y el porcentaje pactado —por ejemplo, cero, negativos o un porcentaje mayor de 100 %— y qué debería informar la herramienta cuando recibe uno de ellos o falta un dato?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El canon no puede ser cero ni negativo; debe ser mayor que cero. El porcentaje pactado debe estar entre 0 y 100, así que tampoco servirían valores negativos ni mayores a 100. Si falta algún dato o viene fuera de esos rangos, no me han dicho cuál sería el mensaje exacto que debe mostrar la herramienta."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo escribiría el analista los importes y porcentajes al ingresarlos: usaría puntos para separar miles y coma para los decimales (por ejemplo, canon «1.234.567,50» e IPC «5,20»), y el canon puede incluir centavos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El porcentaje sí lo manejamos como 5,20 para indicar 5,20 %. Del formato exacto de escritura, como puntos para miles, comas para decimales o si el canon puede llevar centavos, no lo sé; solo me dijeron que el canon se ingresa en pesos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Pueden darme un ejemplo que ya hayan verificado, con el canon actual, el IPC del año anterior, el porcentaje pactado y el nuevo canon y aumento que esperan obtener?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, por ejemplo: con un canon actual de 1.200.000 pesos, un IPC del año anterior de 5,20 % y un porcentaje pactado de 10 %, se aplica 5,20 %. El nuevo canon queda en 1.262.400 pesos y el incremento esperado es de 62.400 pesos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si el IPC es cero o negativo, o el porcentaje pactado es 0 %, y el canon actual no es una centena exacta —por ejemplo, 1.234.567 pesos—, ¿debe conservarse ese canon tal cual, con incremento de cero, sin redondearlo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, en esos casos no hay incremento y se mantiene el canon actual tal cual. Si el porcentaje aplicado termina en 0 %, no habría ajuste ni redondeo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si al redondear a la centena más cercana el nuevo canon queda ligeramente por encima del aumento pactado —por ejemplo, canon de 1.000 pesos y límite de 5 %: el cálculo da 1.050 y podría redondearse a 1.100—, ¿debe prevalecer el redondeo a la centena más cercana o debe evitarse superar el límite pactado incluso después de redondear?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; solo nos han dicho que el nuevo canon se redondea a la centena más cercana. No tengo una regla adicional para evitar pasar el límite pactado después de redondear."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen para construir la herramienta? El analista calculará un contrato a la vez, ingresando el canon actual en pesos, el IPC del año anterior y el porcentaje pactado, sin búsqueda automática del IPC. El canon debe ser mayor que cero y el porcentaje pactado estar entre 0 y 100 %. Con IPC positivo se aplica el menor entre el IPC y el porcentaje pactado; con IPC cero o negativo se aplica 0 %. Si el porcentaje aplicado es cero, se conserva el canon exacto y el incremento es cero. Se muestran el porcentaje aplicado, el nuevo canon y el incremento. El ejemplo de 1.200.000 pesos, IPC de 5,20 % y pacto de 10 % da 1.262.400 pesos y 62.400 pesos de incremento. Para lo que no está definido, usaré estas decisiones y las dejaré documentadas: redondear por separado el nuevo canon y el incremento a la centena más cercana, llevando las mitades hacia arriba, sin añadir una corrección posterior por el límite pactado; aceptar importes con decimales y porcentajes como «5,20», sin separadores de miles; e informar claramente qué dato falta o es inválido. No se incluirán cálculos por lotes ni gestión de contratos."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, hay partes que no están definidas así en lo que sabemos: no nos dijeron que las mitades se redondeen hacia arriba, ni que se deban aceptar importes con decimales o sin separadores de miles. Tampoco está definido el texto exacto del error; solo sabemos que si falta un dato o está fuera de rango, no hay un mensaje establecido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Gracias por la aclaración. ¿Confirma este resumen, dejando expresamente pendientes las decisiones que no les han definido? Se calculará un contrato a la vez, con el canon actual en pesos, el IPC del año anterior ingresado por el analista y el porcentaje pactado. El canon debe ser mayor que cero y el porcentaje pactado estar entre 0 y 100 %. Si el IPC es positivo, se aplica el menor entre el IPC y el porcentaje pactado; si es cero o negativo, se aplica 0 %. Cuando el porcentaje aplicado es 0 %, se conserva el canon sin redondear y el incremento es cero. En los demás casos, el nuevo canon y el incremento se redondean a la centena más cercana. Se muestran esos dos valores y el porcentaje aplicado. El ejemplo confirmado es: canon de 1.200.000, IPC de 5,20 % y pacto de 10 % da un nuevo canon de 1.262.400 e incremento de 62.400. Quedan sin definir el redondeo de las mitades, la relación entre los dos valores redondeados, qué hacer si el redondeo supera el límite pactado, el formato exacto del canon y los mensajes de error; no los consideraré reglas acordadas. No se incluye buscar el IPC automáticamente ni calcular una lista de contratos."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, falta una parte importante: también deben ingresarse la fecha de inicio o del último reajuste y la fecha del reajuste, y solo se puede reajustar cuando ya pasaron al menos doce meses; si no, se rechaza con el mensaje «El contrato aún no cumple doce meses desde el último reajuste». Lo demás que puso sobre el cálculo sí coincide con lo que sabemos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para comprobar esos doce meses, ¿se toma el aniversario de la fecha de inicio o del último reajuste (por ejemplo, del 15 de marzo de 2025 al 15 de marzo de 2026), y qué fecha habilita el reajuste si el inicio o último reajuste fue el 29 de febrero?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; no nos han definido esa regla exacta para el aniversario ni para el caso del 29 de febrero. Solo sabemos que deben haber pasado al menos doce meses desde la fecha de inicio o del último reajuste, y si no, se rechaza."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen actualizado? El analista calculará un contrato a la vez e ingresará el canon actual en pesos, el IPC del año calendario anterior, el porcentaje pactado, la fecha de inicio o del último reajuste y la fecha del reajuste solicitado. Solo se permite reajustar cuando hayan transcurrido al menos doce meses; de lo contrario, se rechaza con «El contrato aún no cumple doce meses desde el último reajuste». El canon debe ser mayor que cero y el porcentaje pactado debe estar entre 0 y 100 %. Con IPC positivo se aplica el menor entre el IPC y el porcentaje pactado; con IPC cero o negativo se aplica 0 %. Si el porcentaje aplicado es cero, se conserva el canon exacto y el incremento es cero; en los demás casos, el nuevo canon y el incremento se redondean a la centena más cercana. Se entregan el porcentaje aplicado, el nuevo canon y el incremento. El ejemplo confirmado es: canon de 1.200.000 pesos, IPC de 5,20 % y pacto de 10 % produce un nuevo canon de 1.262.400 pesos y un incremento de 62.400 pesos. Quedan sin definir el criterio exacto para contar los doce meses y el caso del 29 de febrero, los formatos de entrada, el redondeo de las mitades, la relación entre los valores redondeados, qué hacer si el redondeo supera el límite pactado y los demás mensajes de error; las decisiones necesarias para estos puntos se documentarán como decisiones de implementación, no como reglas acordadas. No se incluye buscar el IPC automáticamente ni calcular contratos por lotes."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, falta precisar que el IPC del año anterior también es obligatorio y se ingresa como porcentaje con hasta dos decimales, igual que el porcentaje pactado. Además, las dos fechas son obligatorias; el resto de lo que resumió sí coincide."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma el resumen con estas precisiones incorporadas? El analista calculará un contrato a la vez. Son obligatorios el canon actual en pesos, el IPC del año calendario anterior, el porcentaje pactado, la fecha de inicio o del último reajuste y la fecha del reajuste solicitado. Ambos porcentajes se ingresan como porcentajes con hasta dos decimales, por ejemplo 5,20 para indicar 5,20 %. El canon debe ser mayor que cero y el porcentaje pactado estar entre 0 y 100 %. Solo se permite reajustar tras al menos doce meses; antes se rechaza con «El contrato aún no cumple doce meses desde el último reajuste». Con IPC positivo se aplica el menor entre el IPC y el porcentaje pactado; con IPC cero o negativo se aplica 0 %. Si el porcentaje aplicado es cero, se mantiene el canon exacto y el incremento es cero; de lo contrario, el nuevo canon y el incremento se redondean a la centena más cercana. Se entregan ambos valores y el porcentaje aplicado. El ejemplo de canon de 1.200.000, IPC de 5,20 % y pacto de 10 % da nuevo canon de 1.262.400 e incremento de 62.400. Quedan sin definir el criterio exacto para contar los doce meses y tratar el 29 de febrero, los demás detalles de los formatos de entrada, el redondeo de las mitades, la relación entre los valores redondeados, qué hacer si el redondeo supera el límite pactado y los demás mensajes de error; las decisiones necesarias se documentarán como decisiones de implementación, no como reglas acordadas. No se incluye buscar el IPC automáticamente ni calcular contratos por lotes."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 17,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 255.96,
+  "tiempo_cliente_s": 67.18,
+  "tiempo_entrega_s": 120.2,
+  "costo_modelo_usd": "0.2000535",
+  "costo_cliente_usd": "0.04329585",
+  "llamadas_modelo": 18
+}
