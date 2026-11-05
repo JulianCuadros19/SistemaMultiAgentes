@@ -1,0 +1,74 @@
+{
+  "caso": "caso-ampliada-14",
+  "titulo": "Herramienta para validar y renombrar escaneos de expedientes",
+  "sesion": "939b3bfc-edb4-4615-b746-7b329ea8a164",
+  "esperadas": [
+    "ARQ-05"
+  ],
+  "elegida": "ARQ-05",
+  "coincide": true,
+  "desenlace": "escalado",
+  "motivo_pausa": "N17: El tester no aprobó el módulo y no puede aprobarse: devuélvalo con observaciones al desarrollador o al arquitecto, pida una enmienda de los requerimientos, o cierre la sesión.",
+  "modulos": 10,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 4,
+  "casos_plan": 14,
+  "rechazos_n6": [],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-001": 5
+      },
+      "bajas": 0
+    },
+    {
+      "numero": 2,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-001": 2
+      },
+      "bajas": 0
+    },
+    {
+      "numero": 3,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-001": 1
+      },
+      "bajas": 0
+    }
+  ],
+  "iteracion": 3,
+  "elicitacion": {
+    "turnos": 17,
+    "exploracion": 3,
+    "sin_exploracion": 14,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 17,
+  "llamadas_n10": 4,
+  "generaciones_n10": 3,
+  "primeros_intentos_rechazados_n10": 1,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 10.28,
+  "turno_maximo_s": 9.8,
+  "cierres_s": [
+    15.6
+  ],
+  "costo_por_nodo": {
+    "N10": "0.4588764",
+    "N14": "0.008372530",
+    "N3": "0.09382110",
+    "N5": "0.01785255",
+    "N8": "0.11132700",
+    "cliente_simulado": "0.04972695"
+  },
+  "costo_sistema": "0.690249580",
+  "costo_cliente_simulado": "0.04972695"
+}

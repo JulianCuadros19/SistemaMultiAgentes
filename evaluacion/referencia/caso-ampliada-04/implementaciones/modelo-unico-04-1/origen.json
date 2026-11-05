@@ -1,0 +1,142 @@
+{
+  "caso": "caso-ampliada-04",
+  "corrida": "modelo-unico-caso-ampliada-04-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Necesitamos controlar el ciclo de vida de los contratos de arrendamiento sin que se crucen dos contratos vigentes sobre el mismo inmueble. Las reglas son delicadas y queremos probarlas sin base de datos, porque el almacenamiento lo vamos a cambiar el próximo año."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Quién va a usar este control y qué acciones necesita realizar sobre un contrato desde que se prepara hasta que termina?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Lo va a usar el área jurídica, o sea nosotros, que somos quienes gestionamos los contratos. Necesitamos poder dejarlos en borrador, activarlos cuando cumplan las condiciones y, después, terminarlos; también puede anularse un contrato mientras sigue en borrador."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué condiciones debe cumplir un borrador para poder activarse, y cómo determinan si se cruza con otro contrato vigente del mismo inmueble?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Para activarse, el borrador debe tener arrendatario identificado, documento del arrendatario, canon mayor que cero y una fecha de fin posterior a la de inicio, con una duración mínima de seis meses. Para ver si se cruza con otro contrato, revisamos si en el mismo inmueble ya hay otro contrato vigente cuyo periodo se empalme con esas fechas; si se solapan, se rechaza."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo cuentan los seis meses mínimos y los días de cruce: por ejemplo, un contrato del 1 de enero al 1 de julio cumple el mínimo, y otro que empieza exactamente el día en que termina un contrato vigente se considera cruzado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Lo de los seis meses no lo tengo definido con precisión; solo sé que debe cumplir una duración mínima de seis meses. Y sobre el cruce, si empieza exactamente el mismo día en que termina otro contrato, no me lo han aclarado; solo sé que si los periodos se solapan, se rechaza."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que jurídica pueda validar estas reglas, ¿qué criterio prefieren adoptar: contar seis meses de calendario desde el inicio (si ese día no existe en el mes final, usar su último día) y permitir que un contrato empiece el mismo día en que termina otro, o necesitan un criterio distinto?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido con precisión, así que no puedo preferir un criterio distinto. Solo sé que debe cumplir una duración mínima de seis meses y que se rechaza si los periodos se solapan; si empieza exactamente el día que termina otro, no me lo han aclarado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cuándo permiten terminar un contrato vigente o anular un borrador, qué información debe quedar registrada en cada caso y qué debe ocurrir si alguien intenta una acción que no corresponde al estado actual del contrato?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Un contrato vigente se puede terminar solo con un motivo y con una fecha de terminación dentro de su periodo; un borrador solo se puede anular, y de cada cambio debe quedar la fecha y el usuario que hizo la gestión. Si alguien intenta una acción que no corresponde al estado actual, se rechaza indicando ese estado actual del contrato."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué datos deben guardarse al crear un borrador, cuáles pueden faltar hasta la activación y cómo identifican de forma única tanto el contrato como el inmueble?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Hasta donde sé, al crear el borrador se guarda el código del contrato, el código del inmueble, el canon, las fechas de inicio y fin, y el usuario que hace la gestión. Lo que puede faltar hasta la activación es el documento del arrendatario, porque ese dato solo es obligatorio para activar. El contrato se identifica por su código y el inmueble por su código de inmueble."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Además del documento, ¿cómo registran la identificación del arrendatario (por ejemplo, su nombre), y qué datos del borrador puede corregir jurídica antes de activarlo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Del arrendatario, hasta donde sé, solo nos piden el documento; el nombre no lo tengo definido. Y sobre qué datos del borrador se pueden corregir antes de activarlo, no lo sé, no está definido en lo que me han dicho."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando una gestión se rechaza, ¿qué explicación necesita recibir jurídica en cada caso: datos incompletos, canon o fechas inválidos, cruce con otro contrato, código de contrato repetido o contrato que no existe?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Para el cruce con otro contrato, sí debe decir: «El inmueble ya tiene un contrato vigente en ese periodo». Si la gestión no corresponde al estado actual, debe indicar cuál es ese estado actual del contrato. Para datos incompletos, canon o fechas inválidos, código repetido o contrato que no existe, no lo tengo definido; solo sé que se rechaza con el motivo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo quieren entregar los datos y recibir el resultado de cada gestión: qué formato usan para los códigos, el canon y las fechas, y necesitan recibir el contrato actualizado con el historial de fechas y usuarios de sus cambios?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El formato exacto de los códigos y de las fechas no lo tengo definido; solo sé que el canon va en pesos sin decimales y que se manejan fecha de inicio y fecha de fin. Como resultado, queremos recibir el contrato con su nuevo estado o, si se rechaza, el motivo; el registro de fecha y usuario de cada cambio queda guardado, pero no me han dicho que deba venir en la respuesta."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Pueden darnos un ejemplo concreto de un contrato que deba activarse y otro que deba rechazarse por cruce, con códigos de inmueble, canon y fechas, para comprobar que el control se comporta como esperan?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí: por ejemplo, si el inmueble INM-100 ya tiene un contrato vigente del 2026-01-01 al 2026-12-31, con canon de $1.000.000, un nuevo contrato para INM-100 del 2027-01-01 al 2027-12-31, con canon de $1.200.000, sí se activaría. En cambio, otro para INM-100 del 2026-06-01 al 2027-05-31, con canon de $1.200.000, se rechazaría con «El inmueble ya tiene un contrato vigente en ese periodo»."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que el cambio de almacenamiento no altere estas reglas, ¿el control debe consultar y guardar los contratos mediante un almacenamiento reemplazable, con una versión en memoria para las pruebas, y queda fuera de este encargo resolver que dos personas activen contratos al mismo tiempo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, la idea es que las reglas no dependan de dónde se guarden los contratos, porque queremos poder probarlas sin base de datos y cambiar el almacenamiento después sin tocar las reglas. Lo de dos personas activando contratos al mismo tiempo no me lo han definido; no sé si entra en este encargo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirman este resumen para construir el módulo: jurídica crea contratos en borrador, los activa, termina los vigentes con motivo y fecha dentro de su periodo, y anula únicamente borradores; cada cambio guarda fecha y usuario. Para activar se exige documento del arrendatario, canon positivo en pesos enteros, fin posterior al inicio, al menos seis meses y ausencia de cruce con otro vigente del mismo inmueble. Los códigos identifican contratos e inmuebles; se rechazan códigos de contrato repetidos, contratos inexistentes y datos inválidos explicando el motivo. Una acción incompatible indica el estado actual, y el cruce devuelve exactamente «El inmueble ya tiene un contrato vigente en ese periodo». Cada gestión devuelve el contrato actualizado o el motivo del rechazo; el historial queda guardado. El almacenamiento será reemplazable y habrá una versión en memoria, sin base de datos. Como decisiones simples para lo que quedó sin definir, usaré códigos de texto, fechas de calendario, seis meses de calendario ajustando al último día si hace falta, permitiré que un contrato empiece el día en que termina otro y admitiré la terminación en cualquiera de los dos extremos del periodo. No incluiré nombres de arrendatarios, edición de borradores ni control de gestiones simultáneas; dejaré documentadas estas decisiones y probaré también los ejemplos de INM-100 que nos dieron?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: sí es correcto lo del ciclo de estados, el registro de fecha y usuario, el cruce con otro contrato vigente del mismo inmueble, el mensaje exacto del cruce y que la respuesta sea el contrato actualizado o el motivo del rechazo. Pero no puedo confirmar como decisiones las de usar códigos de texto, contar los seis meses como calendario ajustando al último día, permitir que empiece el mismo día en que termina otro, ni admitir la terminación en cualquiera de los extremos, porque eso no quedó definido; tampoco me consta lo de una versión en memoria. Los ejemplos de INM-100 sí son los que dimos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entendido: esos puntos quedan pendientes de definición, no como reglas confirmadas. Como el documento puede faltar al crear el borrador, ¿jurídica debe poder aportarlo al momento de activar el contrato?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo sé que para activar el contrato el documento del arrendatario debe estar informado, pero no me han definido si jurídica puede aportarlo justo en ese momento. Lo que sí está claro es que sin ese dato no debería activarse."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirman este resumen limitado a lo que sí está definido: jurídica crea borradores con códigos de contrato e inmueble, canon en pesos sin decimales, inicio, fin y usuario; el documento del arrendatario puede faltar en el borrador, pero es obligatorio para activar. La activación exige canon positivo, fin posterior al inicio, duración mínima de seis meses y ausencia de solapamiento con otro vigente del mismo inmueble. Solo se terminan vigentes, con motivo y fecha dentro de su periodo, y solo se anulan borradores. Cada cambio registra fecha y usuario; cada gestión devuelve el contrato actualizado o el motivo del rechazo. Las acciones incompatibles indican el estado actual y el cruce dice exactamente «El inmueble ya tiene un contrato vigente en ese periodo». Las reglas deben ser independientes del almacenamiento y probarse sin base de datos, incluyendo los dos ejemplos de INM-100. Siguen sin definir los formatos, cómo contar los seis meses, qué ocurre en los extremos de los periodos, cómo aportar o corregir datos y cómo manejar gestiones simultáneas; no los presentaré como reglas aprobadas y documentaré por separado cualquier decisión mínima necesaria para entregar el módulo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: falta incluir que para activar también debe estar identificado el arrendatario, no solo su documento. Lo demás sí coincide con lo que está definido: estados, registro de fecha y usuario, rechazo por cruce con el mensaje exacto, resultado de cada gestión y que las reglas no dependan del almacenamiento ni de base de datos, con los ejemplos de INM-100."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Corrijo el resumen: para activar deben estar informados tanto la identificación del arrendatario como su documento, además del canon positivo, fin posterior al inicio, duración mínima de seis meses y ausencia de solapamiento con otro vigente del mismo inmueble. Jurídica crea borradores, activa, termina solo vigentes con motivo y fecha dentro del periodo, y anula solo borradores; cada cambio registra fecha y usuario. Cada gestión devuelve el contrato actualizado o el motivo; una acción incompatible indica el estado actual y el cruce dice exactamente «El inmueble ya tiene un contrato vigente en ese periodo». Las reglas serán independientes del almacenamiento y se probarán sin base de datos, incluidos los ejemplos de INM-100. Permanecen sin definir los formatos, cómo representar la identificación del arrendatario, cómo contar los seis meses, los extremos de los periodos, cómo aportar o corregir datos y las gestiones simultáneas; cualquier decisión mínima para implementarlos se documentará como decisión técnica, no como regla aprobada por ustedes. ¿Confirman este resumen corregido?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 16,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 264.76,
+  "tiempo_cliente_s": 45.57,
+  "tiempo_entrega_s": 159.16,
+  "costo_modelo_usd": "0.2219615",
+  "costo_cliente_usd": "0.03918960",
+  "llamadas_modelo": 17
+}

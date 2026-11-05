@@ -1,0 +1,94 @@
+{
+  "caso": "caso-ampliada-01",
+  "corrida": "modelo-unico-caso-ampliada-01-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Necesitamos calcular la comisión que gana cada asesor por cada negocio cerrado; hoy la calculamos a mano y los asesores reclaman porque los valores no cuadran."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Quién calcula hoy las comisiones y cómo espera usar el resultado para revisar y pagar a cada asesor?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Hoy las calcula la auxiliar de pagos de asesores, al cierre de cada mes. Usa el resultado para pagarle a cada asesor lo correcto y también para poder explicarle cómo se calculó."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué reglas usan para calcular la comisión de un negocio cerrado, incluidos los porcentajes y las condiciones que hacen que cambie el valor o que no se pague?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Si es una venta, la comisión de la inmobiliaria es el 3 % del valor de venta; si es un arriendo, es el 100 % del primer canon mensual. De esa comisión, los asesores reciben el 40 % y, si son dos, se divide en partes iguales; además, cada asesor debe recibir mínimo 300.000 pesos por negocio, aunque el cálculo dé menos. Solo se paga si el negocio está cerrado; si no, se rechaza con “El negocio aún no está cerrado”."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué datos tendrá disponibles la auxiliar para cada negocio y cómo los entregará para calcular la comisión (por ejemplo, en una planilla), y qué información necesita recibir como resultado para explicar el pago?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No sé en qué formato se los entrega, pero para cada negocio la auxiliar necesita tener el tipo de negocio, el valor, el número de asesores y el estado del negocio. Como resultado necesita recibir la comisión de la inmobiliaria y la comisión de cada asesor, para poder explicar y pagar lo que corresponde."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Puede darme algunos negocios con cifras y los pagos que consideran correctos, incluyendo uno con dos asesores y otro donde se aplique el mínimo de 300.000 pesos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí: por ejemplo, en una venta de 300.000.000 pesos con un asesor, la inmobiliaria gana 9.000.000 y ese asesor recibe 3.600.000. Y en un arriendo con canon de 1.000.000 y dos asesores, la inmobiliaria gana 1.000.000; a los asesores les corresponderían 200.000 a cada uno, pero como aplica el mínimo, cada uno recibe 300.000."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cuáles son los valores permitidos para el tipo de negocio, el estado y el número de asesores, y qué debe ocurrir si falta alguno de esos datos o el valor del negocio es cero o negativo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El tipo de negocio puede ser venta o arriendo, el estado puede ser cerrado o abierto y el número de asesores debe ser 1 o 2. Si el valor es cero o negativo, se rechaza; y si el negocio está abierto, se rechaza con «El negocio aún no está cerrado». Si falta alguno de esos datos, sé que son obligatorios, pero no me dijeron la regla exacta de rechazo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando el cálculo dé fracciones de peso, ¿cómo deben redondearse la comisión de la inmobiliaria y el pago de cada asesor, y los valores que ingresan pueden incluir centavos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Se redondea al peso más cercano, sin decimales. Los valores de entrada van en pesos colombianos y no incluyen centavos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si el cálculo queda exactamente en medio peso, por ejemplo 300.000,50 pesos, ¿se paga 300.001 o 300.000; y el pago del asesor se calcula sobre la comisión de la inmobiliaria antes o después de redondearla?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; solo me dijeron que se redondea al peso más cercano, pero no me explicaron qué pasa exactamente cuando queda en 0,50. Tampoco me dijeron si el asesor se calcula sobre la comisión ya redondeada o sobre el valor antes de redondear."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen: la auxiliar calculará cada negocio por separado para revisar y explicar los pagos mensuales; los datos obligatorios son tipo (venta o arriendo), valor en pesos colombianos enteros y mayor que cero, número de asesores (1 o 2) y estado (cerrado o abierto); en venta la inmobiliaria recibe el 3 % del valor y en arriendo el primer canon completo; el 40 % de esa comisión se reparte por igual entre los asesores, garantizando al menos 300.000 pesos a cada uno por negocio, incluso si la suma supera ese 40 %; se entregan la comisión de la inmobiliaria y el pago de cada asesor, redondeados al peso más cercano; un negocio abierto se rechaza con «El negocio aún no está cerrado»; quedan sin definir los mensajes para otros datos inválidos, el desempate de medio peso y si se calcula sobre la comisión antes o después de redondear, por lo que documentaré decisiones simples para esos puntos; no se incluyen lectura de planillas, ejecución de pagos ni acumulados mensuales?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: falta que, si se omite alguno de esos datos obligatorios, no me dijeron la regla exacta de rechazo; solo sé que son obligatorios. Y tampoco puedo confirmar lo del desempate de 0,50 ni si el cálculo del asesor va antes o después de redondear, porque eso no me lo dijeron."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma entonces las reglas y ejemplos que sí nos indicó, dejando expresamente sin definir cómo rechazar los datos obligatorios omitidos, qué hacer con el empate de medio peso y si calcular el pago del asesor antes o después de redondear la comisión de la inmobiliaria, para que esos tres puntos se resuelvan con decisiones simples documentadas, sin presentarlas como reglas que usted haya confirmado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto. Solo deje claro que esos tres puntos no me los definieron: qué pasa si falta un dato obligatorio, cómo resolver el empate de 0,50 y si el pago del asesor se calcula antes o después de redondear la comisión de la inmobiliaria."
+    }
+  ],
+  "turnos_cliente": 10,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 125.37,
+  "tiempo_cliente_s": 25.61,
+  "tiempo_entrega_s": 66.99,
+  "costo_modelo_usd": "0.0990175",
+  "costo_cliente_usd": "0.01971930",
+  "llamadas_modelo": 11
+}

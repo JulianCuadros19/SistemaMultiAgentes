@@ -1,0 +1,110 @@
+{
+  "caso": "caso-ampliada-10",
+  "corrida": "modelo-unico-caso-ampliada-10-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Varios sistemas de la alcaldía, como el portal de pagos y el de liquidación, necesitan consultar por la red la tarifa del impuesto predial de un predio según su destino y estrato; queremos un servicio con un contrato de consulta documentado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué tabla o reglas oficiales debe usar el servicio para determinar la tarifa según el destino y el estrato del predio, y en qué unidad se expresa esa tarifa?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La tarifa oficial es: residencial estrato 1, 5 por mil; estrato 2, 6 por mil; estrato 3, 8 por mil; estrato 4, 10 por mil; estrato 5, 12 por mil; estrato 6, 14 por mil. Para comercial es 11 por mil, para industrial 12 por mil y para lote urbanizable no edificado 33 por mil. La tarifa se expresa en pesos por cada mil pesos de avalúo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo quieren que los sistemas hagan la consulta por la red y qué datos necesitan recibir como respuesta, además de la tarifa?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La consulta debe hacerse por la red, por HTTP, desde los otros sistemas de la alcaldía. Además de la tarifa, deben poder recibir el valor del impuesto calculado cuando envíen el avalúo, el destino y el estrato; si es residencial, también el estrato va en la consulta."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo debe calcularse el impuesto a partir del avalúo y la tarifa, cómo se redondea el resultado y podrían darme un ejemplo con cifras del resultado esperado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El impuesto se calcula tomando el avalúo, multiplicándolo por la tarifa y dividiéndolo entre mil. El resultado se redondea al peso, con las mitades hacia arriba, porque todo se maneja en pesos sin decimales. Por ejemplo, un predio residencial de estrato 3 con avalúo de 120.000.000 tiene tarifa de 8 por mil y el impuesto esperado es 960.000."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué datos son obligatorios en cada consulta y qué valores aceptan para el destino, el estrato y el avalúo, incluidos sus límites y qué hacer con el estrato cuando el predio no es residencial?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "En la consulta deben enviar el destino; si es para calcular el impuesto, también el avalúo, y solo si el destino es residencial, el estrato. El destino puede ser residencial, comercial, industrial o lote urbanizable no edificado; el estrato solo aplica para residencial y debe ser de 1 a 6, y si no es residencial no se envía. El avalúo debe ser mayor que cero."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Cuando una consulta tenga datos faltantes o incorrectos —por ejemplo, un destino desconocido, un estrato fuera de 1 a 6, un estrato enviado para un predio no residencial o un avalúo de cero—, ¿qué respuesta y mensajes quieren que reciban los sistemas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Para esos casos sí quieren una respuesta de error con un mensaje claro: «Destino económico no reconocido» si el destino no existe, «Estrato inválido» si el estrato está fuera de 1 a 6 en residencial, y «El avalúo debe ser mayor que cero» si el avalúo es cero o negativo. Sobre una consulta con datos faltantes o con estrato enviado para un predio no residencial, eso no lo tengo definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para dejar claras las consultas de los otros sistemas, ¿les parece que cuando falte el destino respondamos «El destino es obligatorio», cuando falte el estrato residencial «El estrato es obligatorio para residencial», y cuando envíen estrato para otro destino «El estrato solo aplica para residencial», mientras que sin avalúo devolvamos únicamente la tarifa?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, eso no me cuadra del todo. Los mensajes por dato faltante y por estrato enviado para otro destino no los tengo definidos, y sin avalúo no se puede calcular el impuesto, así que no diría que ahí se devuelva únicamente la tarifa."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Quieren ofrecer dos consultas distintas, una para conocer solo la tarifa y otra para calcular el impuesto con avalúo obligatorio, o una única consulta que siempre exija el avalúo y devuelva tanto la tarifa como el impuesto?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Quieren dos consultas distintas: una para consultar solo la tarifa de un destino, y otra para calcular el impuesto con avalúo obligatorio. No me cuadra una única consulta que siempre exija el avalúo, porque también necesitan poder pedir solo la tarifa."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para documentar cómo se conectarán los sistemas, ¿ya tienen definido el método HTTP, las direcciones de las dos consultas y el formato de los datos y las respuestas, o prefieren que los proponga como parte de la entrega?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, eso no lo tenemos definido; yo no conozco el método HTTP, las direcciones ni el formato técnico de los datos y las respuestas. Sí necesito que eso quede propuesto y bien documentado en la entrega."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿El avalúo debe enviarse siempre en pesos enteros, sin puntos ni comas, y tienen algún valor máximo permitido, o también necesitan aceptar avalúos con decimales?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, el avalúo se maneja en pesos sin decimales, o sea entero. No tengo definido un valor máximo permitido, y no necesitamos aceptar avalúos con decimales."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué debe quedar fuera de este servicio: por ejemplo, consultar datos del predio en otros sistemas, guardar las consultas, aplicar descuentos o exenciones, o exigir identificación y permisos a quien consulta?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido. Solo sé que este servicio es para consultar la tarifa y calcular el impuesto; lo demás, como consultar otros datos del predio, guardar consultas, aplicar descuentos o exenciones, o exigir identificación y permisos, no me consta que haga parte."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen para preparar la entrega: un servicio HTTP para los sistemas de la alcaldía, con dos consultas separadas —tarifa e impuesto— y su contrato documentado; destinos residencial, comercial, industrial y lote urbanizable no edificado; para residencial, estrato obligatorio de 1 a 6 y tarifas respectivas de 5, 6, 8, 10, 12 y 14 por mil; para los otros destinos, sin estrato, tarifas respectivas de 11, 12 y 33 por mil; para calcular el impuesto, avalúo obligatorio en pesos enteros mayor que cero, sin máximo definido, aplicando avalúo × tarifa ÷ 1.000 y redondeando al peso con mitades hacia arriba (120.000.000, residencial estrato 3: 960.000); los tres mensajes de error acordados se conservarán literalmente, y propondré y documentaré las direcciones, los formatos y el tratamiento de datos faltantes o estrato enviado para otro destino, que siguen sin definir; la entrega cubrirá únicamente consultar tarifas y calcular el impuesto, sin añadir otras funciones?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 12,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 197.03,
+  "tiempo_cliente_s": 30.57,
+  "tiempo_entrega_s": 128.22,
+  "costo_modelo_usd": "0.1478595",
+  "costo_cliente_usd": "0.02752185",
+  "llamadas_modelo": 13
+}

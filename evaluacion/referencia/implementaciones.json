@@ -1,5 +1,29 @@
 [
   {
+    "etiqueta": "sistema-01-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-01",
+    "carpeta": "evaluacion/referencia/caso-ampliada-01/implementaciones/sistema-01-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-01/implementaciones/sistema-01-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-01/adaptadores/sistema-01-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-01-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-01",
+    "carpeta": "evaluacion/referencia/caso-ampliada-01/implementaciones/modelo-unico-01-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-01/implementaciones/modelo-unico-01-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-01/adaptadores/modelo-unico-01-1.py"
+  },
+  {
+    "etiqueta": "un-prompt-01-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-01",
+    "carpeta": "evaluacion/referencia/caso-ampliada-01/implementaciones/un-prompt-01-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-01/implementaciones/un-prompt-01-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-01/adaptadores/un-prompt-01-1.py"
+  },
+  {
     "etiqueta": "sistema-02-1",
     "enfoque": "sistema",
     "caso": "caso-ampliada-02",
@@ -38,6 +62,86 @@
     "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-3/codigo",
     "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/modelo-unico-02-3/origen.json",
     "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/modelo-unico-02-3.py"
+  },
+  {
+    "etiqueta": "un-prompt-02-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-02",
+    "carpeta": "evaluacion/referencia/caso-ampliada-02/implementaciones/un-prompt-02-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-02/implementaciones/un-prompt-02-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-02/adaptadores/un-prompt-02-1.py"
+  },
+  {
+    "etiqueta": "sistema-04-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-04",
+    "carpeta": "evaluacion/referencia/caso-ampliada-04/implementaciones/sistema-04-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-04/implementaciones/sistema-04-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-04/adaptadores/sistema-04-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-04-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-04",
+    "carpeta": "evaluacion/referencia/caso-ampliada-04/implementaciones/modelo-unico-04-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-04/implementaciones/modelo-unico-04-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-04/adaptadores/modelo-unico-04-1.py"
+  },
+  {
+    "etiqueta": "un-prompt-04-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-04",
+    "carpeta": "evaluacion/referencia/caso-ampliada-04/implementaciones/un-prompt-04-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-04/implementaciones/un-prompt-04-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-04/adaptadores/un-prompt-04-1.py"
+  },
+  {
+    "etiqueta": "sistema-07-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-07",
+    "carpeta": "evaluacion/referencia/caso-ampliada-07/implementaciones/sistema-07-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-07/implementaciones/sistema-07-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-07/adaptadores/sistema-07-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-07-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-07",
+    "carpeta": "evaluacion/referencia/caso-ampliada-07/implementaciones/modelo-unico-07-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-07/implementaciones/modelo-unico-07-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-07/adaptadores/modelo-unico-07-1.py"
+  },
+  {
+    "etiqueta": "un-prompt-07-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-07",
+    "carpeta": "evaluacion/referencia/caso-ampliada-07/implementaciones/un-prompt-07-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-07/implementaciones/un-prompt-07-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-07/adaptadores/un-prompt-07-1.py"
+  },
+  {
+    "etiqueta": "sistema-10-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-10",
+    "carpeta": "evaluacion/referencia/caso-ampliada-10/implementaciones/sistema-10-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-10/implementaciones/sistema-10-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-10/adaptadores/sistema-10-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-10-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-10",
+    "carpeta": "evaluacion/referencia/caso-ampliada-10/implementaciones/modelo-unico-10-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-10/implementaciones/modelo-unico-10-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-10/adaptadores/modelo-unico-10-1.py"
+  },
+  {
+    "etiqueta": "un-prompt-10-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-10",
+    "carpeta": "evaluacion/referencia/caso-ampliada-10/implementaciones/un-prompt-10-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-10/implementaciones/un-prompt-10-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-10/adaptadores/un-prompt-10-1.py"
   },
   {
     "etiqueta": "sistema-12-1",
@@ -80,6 +184,38 @@
     "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/modelo-unico-12-3.py"
   },
   {
+    "etiqueta": "un-prompt-12-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-12",
+    "carpeta": "evaluacion/referencia/caso-ampliada-12/implementaciones/un-prompt-12-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-12/implementaciones/un-prompt-12-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-12/adaptadores/un-prompt-12-1.py"
+  },
+  {
+    "etiqueta": "sistema-14-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-14",
+    "carpeta": "evaluacion/referencia/caso-ampliada-14/implementaciones/sistema-14-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-14/implementaciones/sistema-14-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-14/adaptadores/sistema-14-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-14-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-14",
+    "carpeta": "evaluacion/referencia/caso-ampliada-14/implementaciones/modelo-unico-14-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-14/implementaciones/modelo-unico-14-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-14/adaptadores/modelo-unico-14-1.py"
+  },
+  {
+    "etiqueta": "un-prompt-14-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-14",
+    "carpeta": "evaluacion/referencia/caso-ampliada-14/implementaciones/un-prompt-14-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-14/implementaciones/un-prompt-14-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-14/adaptadores/un-prompt-14-1.py"
+  },
+  {
     "etiqueta": "sistema-16-1",
     "enfoque": "sistema",
     "caso": "caso-ampliada-16",
@@ -118,5 +254,37 @@
     "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-3/codigo",
     "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/modelo-unico-16-3/origen.json",
     "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/modelo-unico-16-3.py"
+  },
+  {
+    "etiqueta": "un-prompt-16-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-16",
+    "carpeta": "evaluacion/referencia/caso-ampliada-16/implementaciones/un-prompt-16-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-16/implementaciones/un-prompt-16-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-16/adaptadores/un-prompt-16-1.py"
+  },
+  {
+    "etiqueta": "sistema-17-1",
+    "enfoque": "sistema",
+    "caso": "caso-ampliada-17",
+    "carpeta": "evaluacion/referencia/caso-ampliada-17/implementaciones/sistema-17-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-17/implementaciones/sistema-17-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-17/adaptadores/sistema-17-1.py"
+  },
+  {
+    "etiqueta": "modelo-unico-17-1",
+    "enfoque": "modelo_unico",
+    "caso": "caso-ampliada-17",
+    "carpeta": "evaluacion/referencia/caso-ampliada-17/implementaciones/modelo-unico-17-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-17/implementaciones/modelo-unico-17-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-17/adaptadores/modelo-unico-17-1.py"
+  },
+  {
+    "etiqueta": "un-prompt-17-1",
+    "enfoque": "un_prompt",
+    "caso": "caso-ampliada-17",
+    "carpeta": "evaluacion/referencia/caso-ampliada-17/implementaciones/un-prompt-17-1/codigo",
+    "origen": "evaluacion/referencia/caso-ampliada-17/implementaciones/un-prompt-17-1/origen.json",
+    "adaptador": "evaluacion/referencia/caso-ampliada-17/adaptadores/un-prompt-17-1.py"
   }
 ]

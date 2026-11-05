@@ -1,0 +1,150 @@
+{
+  "caso": "caso-ampliada-17",
+  "corrida": "modelo-unico-caso-ampliada-17-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Cuando el sistema de radicación cambia el estado de un trámite catastral, publica un aviso. Necesitamos que varios procesos reaccionen a ese aviso por separado (bitácora, indicador de tiempos y mensaje al ciudadano) sin que el sistema de radicación tenga que esperarlos ni conocerlos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo ocurre hoy ese cambio de estado y dónde deben recibir el aviso la bitácora, el indicador de tiempos y el envío de mensajes: dentro del mismo sistema en ejecución o en aplicaciones separadas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No sé cómo ocurre hoy ese cambio de estado, eso no me corresponde. Lo que sí necesito es que la bitácora, el indicador de tiempos y el mensaje al ciudadano reaccionen al mismo aviso, cada uno por su lado; no tengo definido si eso debe estar en el mismo sistema en ejecución o en aplicaciones separadas."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué información debe traer cada aviso de cambio de estado para que la bitácora, el indicador de tiempos y el mensaje al ciudadano puedan hacer su trabajo, y puede darme un aviso de ejemplo con datos ficticios?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Cada aviso debe traer el número del trámite, el tipo de trámite, el estado anterior y el estado nuevo, la fecha y hora, y el funcionario. Por ejemplo: trámite T-0456, tipo mutación, de en revisión a aprobado, fecha 2026-11-05 10:30, funcionario Marta Pérez."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué debe pasar si uno de los procesos no puede atender un aviso, por ejemplo si falla el envío al ciudadano: los otros deben continuar y ese aviso debe guardarse para volver a intentar después?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, los otros procesos deben seguir atendiendo ese mismo aviso aunque uno falle. Lo de guardarlo para volver a intentar después no lo tengo definido; no lo sé."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Necesita que entreguemos también el trabajo concreto de registrar la bitácora, calcular el indicador y enviar el mensaje al ciudadano, o solamente el mecanismo para repartir el aviso a esos procesos, que se conectarán después?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, necesito que quede funcionando también la bitácora, el indicador de tiempos y la preparación del mensaje; no solo repartir el aviso. El sistema de radicación solo publica el aviso, y cada proceso lo atiende por su lado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para que esos tres procesos queden funcionando como espera, ¿qué debe registrar la bitácora, cómo se calcula el indicador de tiempos y qué texto y datos debe contener el mensaje preparado para el ciudadano?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La bitácora debe registrar cada aviso con todos sus datos: número del trámite, tipo, estado anterior, estado nuevo, fecha y hora, y funcionario. El indicador de tiempos se calcula cuando el trámite llega a aprobado o rechazado, contando los días hábiles desde que se radicó y sacando el promedio por tipo de trámite. El mensaje preparado debe llevar el número del trámite y el texto según el estado: «Su trámite N fue aprobado», «Su trámite N fue rechazado; puede consultar el motivo en la oficina» o «Su trámite N está en revisión»."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para calcular los días hábiles, ¿de dónde obtenemos la fecha de radicación de cada trámite y qué días se cuentan: se incluyen la fecha de radicación y la de aprobación o rechazo, y se excluyen solo sábados y domingos o también festivos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No tengo definido de dónde sale exactamente la fecha de radicación; solo sé que se toma la fecha en que el trámite quedó radicado. Para el cálculo, sé que se cuentan días hábiles de lunes a viernes, pero no me dijeron si se incluyen o no la fecha de radicación y la de aprobación o rechazo, ni si los festivos se excluyen."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Podemos dejar estas reglas para que el indicador funcione: registrar previamente la fecha de radicación de cada trámite, contar de lunes a viernes sin descontar festivos, excluir el día de radicación e incluir el de aprobación o rechazo, y, si falta la fecha de radicación, dejar constancia del error sin impedir la bitácora ni la preparación del mensaje? Por ejemplo, radicado el viernes 30 de octubre de 2026 y aprobado el jueves 5 de noviembre daría 4 días hábiles."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: sí sé que para el indicador se toma la fecha en que el trámite quedó radicado y se cuentan días hábiles de lunes a viernes hasta que llegue a aprobado o rechazado, pero no tengo definido si se excluye la fecha de radicación, si se incluyen los festivos o qué pasa si falta esa fecha. Tampoco me queda definido eso de registrar previamente la fecha ni que haya que dejar constancia del error sin más."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Puede mostrarnos un ejemplo de un trámite real o ficticio, con su fecha de radicación, fecha de aprobación o rechazo y el número de días hábiles que ustedes considerarían correcto para el indicador?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, por ejemplo el trámite T-0001, radicado el lunes 2026-11-02 y aprobado el viernes 2026-11-06, lo consideraríamos como 4 días hábiles. Ese es el ejemplo que usamos para validar el indicador."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿El aviso de cuando un trámite queda radicado puede traer también su fecha y hora, para que el indicador conserve esa fecha y la use al recibir después el aviso de aprobación o rechazo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, puede traer la fecha y hora, porque ese dato hace parte de cada aviso. Lo que necesito es que el indicador use la fecha en que el trámite quedó radicado cuando después llegue el aviso de aprobado o rechazado."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si llega un aviso de aprobación o rechazo pero aún no se recibió el aviso de radicación de ese trámite, ¿qué espera que haga el indicador: dejar pendiente el cálculo hasta recibir la radicación, o informar que no puede calcularlo, mientras la bitácora y el mensaje siguen funcionando?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido; no sé si el indicador debe dejarlo pendiente o informar que no puede calcularlo cuando aún no está el aviso de radicación. De la bitácora y el mensaje solo sé que siguen funcionando con normalidad, pero esa situación del cálculo no me la han definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si el sistema publica dos veces el mismo aviso de aprobación de un trámite, ¿la bitácora y el mensaje deben conservar ambos avisos y el promedio contar dos resultados, o cada trámite debe contarse una sola vez?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido; no me han dicho si el sistema debe evitar contar dos veces un mismo aviso. Lo que sí sé es que la bitácora registra cada aviso que llega y el mensaje se prepara por cada aviso, pero no puedo confirmar si el promedio debe tomarlo una sola vez o dos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué debe ocurrir si llega un aviso incompleto, con fecha y hora inválidas o con un estado distinto de radicado, en revisión, aprobado o rechazado: deben rechazarlo con algún mensaje específico, o hay otros estados que también debamos admitir?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo sé que los estados que manejamos son radicado, en revisión, aprobado y rechazado, y que una transición inválida no se procesa y queda en la bitácora marcada como inválida. Lo de un aviso incompleto o con fecha y hora inválidas no lo tengo definido; no sé si debe rechazarse con un mensaje específico o si se admite de otra forma."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cuáles cambios entre radicado, en revisión, aprobado y rechazado consideran válidos, y cómo debe figurar el estado anterior en el primer aviso de radicación?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo consideramos válidas las transiciones de radicado a en revisión y de en revisión a aprobado o rechazado. El estado anterior en el primer aviso de radicación no lo tengo definido; no sé cómo debe figurar."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para poder conocer la fecha de radicación sin tratarla como un cambio inválido, ¿le parece que el primer aviso indique estado nuevo «radicado» y no tenga estado anterior, que se registre en la bitácora y que el indicador conserve su fecha, sin preparar mensaje al ciudadano para ese aviso?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido; no puedo confirmar que el primer aviso deba venir con estado nuevo «radicado» y sin estado anterior. Lo que sí sé es que la fecha de radicación se usa para el indicador y que la bitácora guarda cada aviso con sus datos, pero ese primer aviso no me dijeron cómo debe quedar para el ciudadano."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma este resumen de lo acordado? Entregaremos un módulo que recibe avisos con número y tipo de trámite, estado anterior y nuevo, fecha y hora y funcionario, y los reparte sin que radicación espere a los procesos ni tenga que conocerlos. La bitácora guarda cada aviso con todos sus datos. El indicador usa la fecha en que quedó radicado y, al llegar a aprobado o rechazado, calcula días de lunes a viernes y el promedio por tipo; el ejemplo de control es del 2 al 6 de noviembre de 2026: 4 días. Se prepara un mensaje por cada aviso válido de en revisión, aprobado o rechazado, con los textos que indicó. Solo son válidos los cambios de radicado a en revisión y de en revisión a aprobado o rechazado; los demás quedan marcados como inválidos en la bitácora y no se procesan. Si un proceso falla, los otros continúan. Quedan sin definir el formato del primer aviso de radicación, los festivos y extremos del conteo fuera del ejemplo, la falta de fecha de radicación, los duplicados en el promedio, los avisos incompletos, los reintentos y si los procesos viven en aplicaciones separadas; documentaremos las decisiones mínimas necesarias sobre esos puntos, sin presentarlas como reglas confirmadas por usted. El envío real al ciudadano queda fuera: se prepara el mensaje."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: falta incluir que, para las pruebas, el canal de los avisos puede funcionar en memoria. Y eso de \"documentaremos las decisiones mínimas necesarias\" no me lo habían confirmado como parte del acuerdo; esos puntos siguen sin definirse."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma el resumen anterior con estas correcciones: para las pruebas, el canal de avisos puede funcionar en memoria, y los puntos que enumeramos como pendientes siguen sin definirse, sin considerar acordada ninguna solución para ellos? Se mantienen los datos de los avisos, la bitácora, las transiciones válidas y el registro de las inválidas, el indicador con el ejemplo de 4 días, los textos de los mensajes y la independencia de los procesos ante fallos; se prepara el mensaje, pero no se realiza el envío al ciudadano."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto. Solo agregaría que para las pruebas el canal de los avisos puede funcionar en memoria, y que los puntos que quedaron pendientes siguen sin definirse sin tomar ninguna decisión como confirmada."
+    }
+  ],
+  "turnos_cliente": 17,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 253.34,
+  "tiempo_cliente_s": 58.93,
+  "tiempo_entrega_s": 133.68,
+  "costo_modelo_usd": "0.2040440",
+  "costo_cliente_usd": "0.04771695",
+  "llamadas_modelo": 18
+}

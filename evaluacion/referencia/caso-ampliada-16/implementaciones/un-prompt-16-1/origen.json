@@ -1,0 +1,17 @@
+{
+  "caso": "caso-ampliada-16",
+  "corrida": "llm-un-prompt-caso-ampliada-16-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.llm_un_prompt@1.0",
+  "transcripcion": [],
+  "turnos_cliente": 0,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 121.54,
+  "tiempo_cliente_s": 0.0,
+  "tiempo_entrega_s": 121.54,
+  "costo_modelo_usd": "0.0890535",
+  "costo_cliente_usd": "0",
+  "llamadas_modelo": 1
+}

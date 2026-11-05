@@ -1,0 +1,126 @@
+{
+  "caso": "caso-ampliada-07",
+  "corrida": "modelo-unico-caso-ampliada-07-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Cada día llegan archivos CSV con los pagos de tres bancos y debemos conciliarlos contra las facturas emitidas para saber qué se pagó, qué falta y qué no cuadra. Es un proceso por lotes, y si una etapa falla queremos reintentar solo esa etapa."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Quién realiza hoy la conciliación y cómo debería usar el resultado del lote diario en su trabajo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La conciliación la hace el analista de recaudo, cada mañana. Con el resultado del lote usa el reporte para ver qué facturas quedaron pagadas, cuáles tienen diferencia o están pendientes, y cuáles debe revisar."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué etapas debe tener el proceso diario y qué debe conservar de las etapas ya completadas cuando se reintenta una que falló?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Debe tener cuatro etapas: lectura, normalización, conciliación y escritura. Si una falla, se debe reintentar solo esa etapa y conservar lo que ya quedó hecho en las etapas anteriores, sin volver a ejecutarlas."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo vienen los CSV de cada uno de los tres bancos y el archivo de facturas: qué columnas tienen, cómo separan los datos y cómo escriben los importes y las fechas? Si puede, comparta una fila de ejemplo de cada archivo."
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Banco A viene con `referencia;valor;fecha`, separado por punto y coma y la fecha en formato `AAAA-MM-DD`. Banco B viene con `REF,MONTO,FECHA_PAGO` separado por coma y fecha `DD/MM/AAAA`; Banco C con `referencia_factura,valor_pagado,fecha` separado por coma y fecha `AAAA/MM/DD`; y el archivo de facturas con `referencia,valor,vencimiento` separado por coma, con los importes en pesos sin decimales. No tengo una fila de ejemplo real de cada archivo para compartir."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo deciden si una factura queda pagada, con diferencia o pendiente cuando llegan varios pagos para la misma referencia, y qué hacen con pagos cuya referencia no aparece en las facturas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "De lo que sé, si la referencia existe en la factura y el valor coincide, queda conciliada; si el valor no coincide, queda con diferencia por el monto que falte o sobre. Si la referencia no aparece en las facturas, se marca como pago sin factura, y la factura queda pendiente cuando no tiene ningún pago. No sé cómo se maneja cuando llegan varios pagos para la misma referencia, porque eso no me lo han definido."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para las referencias que reciben varios pagos, ¿prefiere que sumemos todos sus pagos para compararlos con la factura o que las dejemos marcadas para revisión, sin decidir si quedaron pagadas?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé, porque eso no me lo han definido. En ese caso prefiero que lo dejen para revisión, pero no puedo decirle si deben sumarse o no."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué información y formato debe tener el reporte final, incluyendo cómo mostrar las referencias con varios pagos que quedan para revisión?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "El reporte final debe traer un CSV con referencia, valor facturado, valor pagado, banco, estado y diferencia, y además un resumen con el total de cada estado. Sobre las referencias con varios pagos que queden para revisión, no lo sé porque eso no me lo han definido; solo sé que deberían quedar marcadas para revisión."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si un archivo trae datos incorrectos —por ejemplo, una columna faltante, un importe inválido, una fecha inválida o una referencia de factura repetida—, ¿debe detenerse la etapa completa o continuar con las filas correctas, y qué información necesita el analista para corregir el problema?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Si falta una columna, se rechaza ese archivo completo e indican cuál archivo y cuál columna faltan. Si un importe no es numérico, esa fila se rechaza y el lote sigue con las demás; de una fecha inválida o una referencia de factura repetida no me han dicho qué debe pasar, así que no lo sé. Para corregir el problema necesitan al menos saber el archivo, la columna o la fila afectada."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo recibe el analista los archivos y pone en marcha el lote, dónde debe guardar el CSV y el resumen, y cómo quiere solicitar el reintento de una etapa fallida, incluso si el proceso se cerró y debe abrirse de nuevo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé, eso no me lo han definido. Solo sé que el analista hace la conciliación cada mañana y que al final debe quedar un CSV con el detalle y un resumen con los totales; no sé dónde se guarda ni cómo se solicita el reintento de una etapa si el proceso ya se cerró."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Para comprobar los resultados, ¿sería correcto que una factura de 100 pesos con un pago de 100 quede conciliada con diferencia 0, con un pago de 80 quede con diferencia de −20, con uno de 120 quede con diferencia de 20 y sin pagos quede pendiente; y que los totales del resumen sean cantidades de registros por estado, no sumas de dinero?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No exactamente: sé que si el valor coincide queda conciliada, y si no coincide debe mostrarse la diferencia por el monto que falte o sobre, pero no me han dicho si esa diferencia va con signo negativo o positivo. Sí, el resumen es el total de cada estado, o sea la cantidad de registros por estado y no sumas de dinero."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "En los importes de los bancos, ¿pueden aparecer centavos, separadores de miles, símbolos de moneda, valores negativos o cero, y hay algún límite conocido de tamaño para los archivos o los valores?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo sé que los importes van en pesos sin decimales, así que no deberían traer centavos. No me han dicho si pueden llevar separadores de miles, símbolo de moneda, valores negativos o cero, ni tampoco conozco algún límite de tamaño para los archivos o para los valores."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Propongo entregar el módulo con estas reglas: el analista procesa cada mañana los CSV de los tres bancos y de facturas; las etapas son lectura, normalización, conciliación y escritura, y se conservan los resultados de las etapas completadas para reintentar únicamente la que falló. Se respetan las columnas, separadores y formatos de fecha indicados. Una factura con un solo pago queda conciliada si coincide el importe, o con diferencia si no coincide; sin pagos queda pendiente, y un pago sin referencia en facturas queda como pago sin factura. Las referencias con varios pagos quedan para revisión, sin sumar sus importes. El detalle será un CSV con referencia, valor facturado, valor pagado, banco, estado y diferencia; el resumen contará los registros de cada estado. Una columna faltante rechaza el archivo e identifica archivo y columna; un importe no numérico rechaza solo la fila e identifica archivo y fila. Para los puntos no definidos, propongo: diferencia = pagado menos facturado; referencias con varios pagos o facturas repetidas generan un registro para revisión, sin valor pagado ni diferencia y con los bancos identificados; fechas inválidas rechazan la fila y se informan; importes escritos como enteros, sin símbolos ni separadores de miles, admitiendo cero y negativos. El módulo recibirá las ubicaciones de los archivos y de salida, y permitirá reintentar mientras siga abierta la misma ejecución, sin recuperación después de cerrar el proceso. Documentaré estas decisiones, sin añadir una interfaz de usuario ni límites de tamaño propios. ¿Confirma este alcance y estas decisiones para lo que aún no está definido?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no puedo confirmarlo así. Me faltan o no están definidos varios puntos: la diferencia no sé si debe ir con signo, qué hacer con facturas repetidas y con fechas inválidas, y tampoco puedo aprobar que las referencias con varios pagos se sumen o que queden sin valor pagado; además, no sé si el proceso debe recibir rutas de archivos ni si el reintento queda limitado a una misma ejecución."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entiendo: esos puntos siguen abiertos y no los tomaré como aprobados. ¿Le serviría una primera entrega que concilie los casos definidos y deje identificados para revisión los casos sin regla acordada, sin calcular ni presentar como definitivos sus resultados?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, eso sí me serviría. Lo que ya está definido se puede conciliar y lo que todavía no tiene regla clara mejor dejarlo marcado para revisión, sin presentarlo como definitivo."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entonces, el alcance será procesar los CSV indicados en cuatro etapas —lectura, normalización, conciliación y escritura—, conservando las etapas completadas para reintentar solo la que falle. Se conciliarán los casos definidos: un pago igual a la factura queda conciliado, uno distinto queda con diferencia, una factura sin pagos queda pendiente y un pago sin factura se identifica como tal. Los casos sin regla clara, como varios pagos para una referencia, facturas repetidas o fechas inválidas, quedarán identificados para revisión, sin resultados definitivos. El reporte tendrá referencia, valor facturado, valor pagado, banco, estado y diferencia, y el resumen contará los registros por estado. Las columnas faltantes rechazarán el archivo, indicando archivo y columna; los importes no numéricos rechazarán solo la fila, indicando archivo y fila. La forma de representar la diferencia y los datos de revisión, así como el modo de entregar archivos y solicitar reintentos, siguen sin definición de negocio y se documentarán como decisiones mínimas de la entrega, no como reglas aprobadas por usted. ¿Confirma este resumen del alcance?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 14,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 324.09,
+  "tiempo_cliente_s": 41.42,
+  "tiempo_entrega_s": 230.07,
+  "costo_modelo_usd": "0.2289885",
+  "costo_cliente_usd": "0.03053925",
+  "llamadas_modelo": 15
+}

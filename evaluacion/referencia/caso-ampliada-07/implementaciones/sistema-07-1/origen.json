@@ -1,0 +1,61 @@
+{
+  "caso": "caso-ampliada-07",
+  "titulo": "Conciliación diaria del recaudo de tres bancos",
+  "sesion": "bf0fa0c1-d2dc-4e7b-b17d-42bfe792be70",
+  "esperadas": [
+    "ARQ-03"
+  ],
+  "elegida": "ARQ-03",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 7,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 1,
+  "casos_plan": 5,
+  "rechazos_n6": [
+    "Resolver con el cliente antes de aprobar: HU-01 · C4 Completo · preguntas_abiertas: quedan 2 preguntas sin resolver con el cliente; No se han definido los registros internos que deban guardarse de cada ejecución.; No se han definido los mensajes exactos de error."
+  ],
+  "aprobados_con_defectos": [
+    "HU-01 · C4 Completo · preguntas_abiertas: quedan 2 preguntas sin resolver con el cliente"
+  ],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 0
+    }
+  ],
+  "iteracion": 1,
+  "elicitacion": {
+    "turnos": 12,
+    "exploracion": 4,
+    "sin_exploracion": 8,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 15,
+  "llamadas_n10": 1,
+  "generaciones_n10": 1,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 7.01,
+  "turno_maximo_s": 6.9,
+  "cierres_s": [
+    36.1,
+    22.3
+  ],
+  "costo_por_nodo": {
+    "N10": "0.1446164",
+    "N14": "0.001173755",
+    "N3": "0.07672665",
+    "N5": "0.03842835",
+    "N8": "0.1157535",
+    "cliente_simulado": "0.03971430"
+  },
+  "costo_sistema": "0.376698655",
+  "costo_cliente_simulado": "0.03971430"
+}

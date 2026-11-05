@@ -1,0 +1,118 @@
+{
+  "caso": "caso-ampliada-14",
+  "corrida": "modelo-unico-caso-ampliada-14-1",
+  "despliegue": "gpt-6.1-sol",
+  "prompt": "evaluacion.modelo_unico@1.0",
+  "transcripcion": [
+    {
+      "emisor": "cliente",
+      "texto": "Necesitamos una herramienta que nuestro técnico ejecute desde la terminal para revisar la carpeta de escaneos de expedientes, validar que los nombres de los archivos sigan la convención y renombrar los que se puedan corregir."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cuál es la convención que deben seguir los nombres y puede mostrarme ejemplos de un nombre correcto, uno que se pueda corregir y otro que deba rechazarse?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "La convención es TIPO_AAAA_NNNNN.pdf, donde TIPO puede ser ESC, CER o PAZ; AAAA debe ser un año entre 1950 y el actual, y NNNNN un consecutivo de cinco dígitos. Un nombre correcto sería `ESC_2019_00042.pdf`, uno que se puede corregir es `esc-2019-42.PDF`, y uno que se debe rechazar es `XYZ_2019_00001.pdf`."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué cambios permiten hacer automáticamente para corregir un nombre, además de poner el tipo en mayúsculas, cambiar guiones por guiones bajos, completar el consecutivo con ceros y poner la extensión en minúsculas, como en su ejemplo?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, solo esos cambios automáticos. Si el tipo no existe, el año está fuera de rango o la extensión no es pdf, no se corrige; se reporta como error."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿La revisión debe incluir también las subcarpetas, o únicamente los archivos que estén directamente en la carpeta indicada?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo sé; eso no está definido para esta herramienta. Yo solo necesito que revise la carpeta de escaneos que se indique."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Cómo quiere que el técnico elija entre revisar los nombres sin modificar archivos y aplicar los cambios, y qué debe mostrarle la herramienta al terminar?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Que tenga una opción para validar sin cambiar nada, y otra para renombrar y aplicar las correcciones; además, el renombrado debe poder hacerse en simulación para ver los cambios sin guardarlos. Al terminar, debe mostrar una línea por archivo y un resumen con los totales."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si dos archivos terminarían con el mismo nombre, o ya existe un archivo con el nombre corregido, ¿qué debe hacer la herramienta y qué mensaje quiere que muestre?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Si dos archivos van a quedar con el mismo nombre, o si ya existe un archivo con el nombre corregido, no se debe renombrar ese archivo. En ese caso quiero que se muestre el mensaje «Conflicto»."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué mensajes y totales necesita ver para los archivos que ya tienen nombre correcto, los que admiten corrección y los que tienen errores, tanto al validar como al simular o aplicar el renombrado?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No tengo definido un mensaje exacto ni un desglose obligatorio de esos totales. Solo sé que debe mostrarse una línea por archivo y un resumen final; al validar, los que no cumplan deben salir con su motivo, y al renombrar o simular, los que se puedan corregir deben mostrarse como cambio, los que no se puedan corregir como error, y los conflictos con el mensaje «Conflicto»."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Qué consecutivos se admiten: puede usarse `00000`, y qué debe ocurrir si el nombre trae más de cinco dígitos, caracteres que no sean números o le falta alguna parte?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Solo sé que el consecutivo debe tener cinco dígitos; no tengo una regla aparte sobre si `00000` se admite. Si trae más de cinco dígitos, letras o le falta alguna parte, no cumple la convención y se reporta como error."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Si la carpeta indicada no existe, no se puede leer o falla el cambio de nombre de un archivo por falta de permisos, ¿cómo quiere que se informe y, cuando sea posible, que se continúe con los demás archivos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Si la carpeta no existe, quiero que termine de inmediato con un mensaje claro y un código de salida distinto de cero. Sobre que no se pueda leer la carpeta o que falle el renombrado de un archivo por permisos, no lo tengo definido; no sé cómo debería informarse ni si debe seguir con los demás archivos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Entiendo que el técnico indicará una carpeta desde la terminal y podrá validar, simular el renombrado o aplicar las correcciones. La convención será `TIPO_AAAA_NNNNN.pdf`, con tipo ESC, CER o PAZ, año entre 1950 y el año actual y consecutivo de cinco dígitos. Solo se corregirán las mayúsculas del tipo, los guiones por guiones bajos, los ceros que falten al consecutivo y las mayúsculas de la extensión PDF; tipos desconocidos, años fuera de rango, otras extensiones, consecutivos con letras o más de cinco dígitos y nombres incompletos serán errores. No se sobrescribirán archivos: si varios quedarían con el mismo nombre o el destino ya existe, se informará «Conflicto» sin renombrarlos. Habrá una línea por archivo y un resumen de totales; al validar, cada nombre que incumpla llevará su motivo. Si la carpeta no existe, se terminará con un mensaje claro y un código distinto de cero. Como los demás detalles quedaron sin definir, propongo revisar solo los archivos directamente dentro de la carpeta, admitir `00000`, usar mensajes y totales sencillos, terminar con error si no se puede leer la carpeta y, si falla un renombrado, informar el error y continuar con los demás. No se revisará el contenido de los documentos. ¿Confirma este alcance y estas decisiones para los puntos que quedaron abiertos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No, no lo confirmo. Sí coincide la convención, las correcciones automáticas, el mensaje «Conflicto», la línea por archivo, el resumen y que si la carpeta no existe se termine con un mensaje claro y un código distinto de cero. Pero no tengo definido lo de revisar solo archivos directos o también subcarpetas, si `00000` se admite, ni cómo manejar que no se pueda leer la carpeta o que falle un renombrado; eso no lo puedo confirmar."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "Dejando expresamente sin definir las subcarpetas, el consecutivo `00000` y los fallos de lectura o renombrado, ¿confirma como requisitos únicamente la convención y las correcciones que indicó, los modos de validación, simulación y renombrado, el bloqueo de cambios con el mensaje «Conflicto», una línea por archivo con su resultado y un resumen final, y la terminación inmediata con mensaje claro y código distinto de cero si la carpeta no existe?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No del todo: además de lo que resume, también falta el modo de reporte, que debe contar los archivos por año y por tipo. Lo demás que menciona sí coincide, y lo de subcarpetas, `00000` y los fallos de lectura o renombrado sigue sin definirse."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "En el modo de reporte, ¿deben contarse solo los archivos cuyo nombre ya cumple la convención, o también los que se pueden corregir, y cómo deben aparecer los archivos con errores o conflictos?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "No lo tengo definido. Solo sé que el modo de reporte debe contar los archivos por año y por tipo, pero no me dijeron si incluye también los que se pueden corregir ni cómo deben aparecer los que tienen errores o conflictos."
+    },
+    {
+      "emisor": "modelo",
+      "texto": "¿Confirma que los requisitos son los modos de validar, renombrar con opción de simulación y reportar cantidades por año y por tipo; la convención y las únicas correcciones que indicó; no renombrar ante un «Conflicto»; mostrar una línea por archivo y un resumen, con motivos para los nombres que no cumplen; y terminar con mensaje claro y código distinto de cero si la carpeta no existe, dejando expresamente sin definir las subcarpetas, `00000`, los fallos de lectura o renombrado y qué archivos incluye el conteo del reporte?"
+    },
+    {
+      "emisor": "cliente",
+      "texto": "Sí, es correcto."
+    }
+  ],
+  "turnos_cliente": 13,
+  "llego_al_limite": false,
+  "error": null,
+  "reintentos_entrega": 0,
+  "tiempo_total_s": 209.26,
+  "tiempo_cliente_s": 30.26,
+  "tiempo_entrega_s": 131.42,
+  "costo_modelo_usd": "0.1654230",
+  "costo_cliente_usd": "0.02613015",
+  "llamadas_modelo": 14
+}

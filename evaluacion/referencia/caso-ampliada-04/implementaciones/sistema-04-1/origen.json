@@ -1,0 +1,56 @@
+{
+  "caso": "caso-ampliada-04",
+  "titulo": "Ciclo de vida de contratos de arrendamiento",
+  "sesion": "b4a0ba6d-d245-4063-a7df-08cc88e62de3",
+  "esperadas": [
+    "ARQ-02"
+  ],
+  "elegida": "ARQ-02",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 3,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 3,
+  "casos_plan": 12,
+  "rechazos_n6": [],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 2
+    }
+  ],
+  "iteracion": 1,
+  "elicitacion": {
+    "turnos": 14,
+    "exploracion": 4,
+    "sin_exploracion": 10,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 14,
+  "llamadas_n10": 1,
+  "generaciones_n10": 1,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 6.11,
+  "turno_maximo_s": 8.1,
+  "cierres_s": [
+    28.0
+  ],
+  "costo_por_nodo": {
+    "N10": "0.1152789",
+    "N14": "0.00156213",
+    "N3": "0.06623280",
+    "N5": "0.021543",
+    "N8": "0.14820100",
+    "cliente_simulado": "0.04341660"
+  },
+  "costo_sistema": "0.35281783",
+  "costo_cliente_simulado": "0.04341660"
+}

@@ -1,0 +1,75 @@
+{
+  "caso": "caso-ampliada-10",
+  "titulo": "Servicio de consulta de la tarifa del impuesto predial",
+  "sesion": "1f04cab2-47b2-4443-a3e3-36cf0a994d35",
+  "esperadas": [
+    "ARQ-04"
+  ],
+  "elegida": "ARQ-04",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 3,
+  "dependencias": [
+    "fastapi",
+    "pydantic"
+  ],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 2,
+  "casos_plan": 8,
+  "rechazos_n6": [],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-002": 3
+      },
+      "bajas": 1
+    },
+    {
+      "numero": 2,
+      "veredicto": "rechazado",
+      "bloqueantes": {
+        "CAL-FS-002": 3
+      },
+      "bajas": 0
+    },
+    {
+      "numero": 3,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 1
+    }
+  ],
+  "iteracion": 3,
+  "elicitacion": {
+    "turnos": 15,
+    "exploracion": 4,
+    "sin_exploracion": 11,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 15,
+  "llamadas_n10": 3,
+  "generaciones_n10": 3,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 6.2,
+  "turno_maximo_s": 7.2,
+  "cierres_s": [
+    25.5
+  ],
+  "costo_por_nodo": {
+    "N10": "0.1985805",
+    "N14": "0.003245640",
+    "N3": "0.07936095",
+    "N5": "0.0300498",
+    "N8": "0.07887200",
+    "cliente_simulado": "0.04359225"
+  },
+  "costo_sistema": "0.390108890",
+  "costo_cliente_simulado": "0.04359225"
+}

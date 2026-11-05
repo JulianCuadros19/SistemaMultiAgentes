@@ -1,0 +1,56 @@
+{
+  "caso": "caso-ampliada-01",
+  "titulo": "Liquidación de comisiones de corretaje inmobiliario",
+  "sesion": "66cce037-ec1e-4b50-a570-05e2324ccf75",
+  "esperadas": [
+    "ARQ-01"
+  ],
+  "elegida": "ARQ-01",
+  "coincide": true,
+  "desenlace": "validado",
+  "motivo_pausa": null,
+  "modulos": 2,
+  "dependencias": [],
+  "capacidades_no_cubiertas": [],
+  "requerimientos": 1,
+  "casos_plan": 5,
+  "rechazos_n6": [],
+  "aprobados_con_defectos": [],
+  "reanudaciones": 0,
+  "versiones": [
+    {
+      "numero": 1,
+      "veredicto": "aprobado",
+      "bloqueantes": {},
+      "bajas": 0
+    }
+  ],
+  "iteracion": 1,
+  "elicitacion": {
+    "turnos": 12,
+    "exploracion": 2,
+    "sin_exploracion": 10,
+    "en_limite": false,
+    "confirmado": true
+  },
+  "turnos_cliente": 12,
+  "llamadas_n10": 1,
+  "generaciones_n10": 1,
+  "primeros_intentos_rechazados_n10": 0,
+  "llamadas_con_error": 0,
+  "tiempo_sistema_min": 3.33,
+  "turno_maximo_s": 12.4,
+  "cierres_s": [
+    13.2
+  ],
+  "costo_por_nodo": {
+    "N10": "0.0519064",
+    "N14": "0.000722255",
+    "N3": "0.05961045",
+    "N5": "0.01552575",
+    "N8": "0.05284475",
+    "cliente_simulado": "0.03400650"
+  },
+  "costo_sistema": "0.180609605",
+  "costo_cliente_simulado": "0.03400650"
+}
