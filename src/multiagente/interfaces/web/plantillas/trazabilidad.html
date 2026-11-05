@@ -1,6 +1,30 @@
 {% extends "base.html" %}
-{% block titulo %}{{ titulo or 'Trazabilidad' }}{% endblock %}
-{% block navegacion %}<a href="/">Sesiones</a> <a href="/sesiones/{{ id_sesion }}">Volver a la sesión</a>{% endblock %}
+{% block titulo %}{{ titulo }}{% endblock %}
 {% block contenido %}
-<pre class="texto documento">{{ documento }}</pre>
+<header class="sesion-cabecera">
+  <div class="sesion-identidad">
+    <h1>{{ titulo }}</h1>
+    <p class="detalle">
+      {{ vista.cliente }} · {{ vista.proyecto }} · sesión
+      <span class="dato-mono" title="{{ id_sesion }}">{{ id_sesion[:8] }}</span>
+    </p>
+  </div>
+  <nav class="sesion-enlaces" aria-label="Documentos de la sesión">
+    <a href="/sesiones/{{ id_sesion }}">Volver a la sesión</a>
+    {% if titulo == 'Trazabilidad' %}
+    <a href="/sesiones/{{ id_sesion }}/traza">Traza por nodo</a>
+    {% else %}
+    <a href="/sesiones/{{ id_sesion }}/trazabilidad">Trazabilidad</a>
+    {% endif %}
+  </nav>
+</header>
+
+<article class="documento-web">
+  {{ html }}
+</article>
+
+<details class="documento-plegable">
+  <summary>El mismo documento en Markdown, para copiarlo</summary>
+  <pre class="texto">{{ documento }}</pre>
+</details>
 {% endblock %}

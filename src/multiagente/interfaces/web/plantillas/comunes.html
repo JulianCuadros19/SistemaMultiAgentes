@@ -22,11 +22,13 @@
 {% endif %}
 {% endmacro %}
 
-{% macro turnos_de(turnos) %}
+{# En la vista del cliente, el elicitador se presenta como «Equipo»: el cliente no tiene por qué
+   conocer el nombre del agente. #}
+{% macro turnos_de(turnos, para_cliente=False) %}
 <ol class="dialogo">
   {% for turno in turnos %}
   <li class="turno {{ turno.emisor.value }}">
-    <span class="quien">{{ 'Cliente' if turno.emisor.value == 'cliente' else 'Elicitador' }}</span>
+    <span class="quien">{{ 'Cliente' if turno.emisor.value == 'cliente' else ('Equipo' if para_cliente else 'Elicitador') }}</span>
     <p>{{ turno.texto }}</p>
   </li>
   {% endfor %}

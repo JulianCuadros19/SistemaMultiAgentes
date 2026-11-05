@@ -1,23 +1,28 @@
 """Aplicación web: panel de operación del equipo y conversación del cliente (paso 12).
 
 Rutas:
-- `/`: sesiones guardadas y formulario de sesión nueva;
-- `/sesiones/{id}`: estado de la sesión y la pausa pendiente con su formulario: diálogo, N6, N9
+- `/`: sesiones guardadas, agrupadas por quién debe actuar y con la línea del flujo en miniatura,
+  y formulario de sesión nueva (ADR-0018);
+- `/sesiones/{id}`: la línea del flujo con las cinco etapas de la sesión, una a la vez (ADR-0018).
+  Cada etapa muestra sus artefactos, y la que espera a una persona, su formulario: diálogo, N6, N9
   o N17, con las pruebas propias de la persona (RF-38); en N17, el módulo se aprueba, se devuelve
   al desarrollador o al arquitecto, o se piden enmiendas de los requerimientos, que el analista
   revisa en N6 (ADR-0015);
 - `/sesiones/{id}/cerrar`: cierra sin módulo validado una sesión en pausa o detenida;
-- `/conversacion/{id}`: la vista del cliente, solo el diálogo y un estado en lenguaje de negocio;
+- `/conversacion/{id}`: la vista del cliente: el diálogo, su avance en cuatro pasos y un estado en
+  lenguaje de negocio;
 - `/sesiones/{id}/presupuesto`: amplía el presupuesto de una sesión detenida por alcanzarlo
   (RNF-10);
-- `/sesiones/{id}/trazabilidad`, `/sesiones/{id}/traza` y `/sesiones/{id}/exportar.zip` (RF-33,
-  RF-34, RF-35);
+- `/sesiones/{id}/trazabilidad` y `/sesiones/{id}/traza`, en HTML y con su Markdown para copiarlo,
+  y `/sesiones/{id}/exportar.zip` (RF-33, RF-34, RF-35);
 - `/sesiones/{id}/estado.json`, que la página consulta mientras procesa.
 
 Todo pasa por el `Operador`, como en la consola. Las plantillas escapan el contenido, incluido el
-código generado. Sin recursos externos: la página no carga nada de terceros, ni de una CDN.
+código generado. Sin recursos externos: la página no carga nada de terceros ni de una CDN, y la
+tipografía se sirve desde la propia aplicación.
 """
 
+import hashlib
 import io
 import uuid
 import zipfile
@@ -44,6 +49,13 @@ from multiagente.interfaces.operacion import (
     detalle_de_recoleccion,
     observaciones_de_pruebas,
 )
+from multiagente.interfaces.web.documento_html import a_html
+from multiagente.interfaces.web.etapas import (
+    GRUPOS,
+    etapas_de,
+    fila_del_panel,
+    pasos_del_cliente,
+)
 from multiagente.interfaces.web.tareas import EjecutorDeTareas
 from multiagente.orquestador.estado import (
     PAUSA_PRESUPUESTO,
@@ -52,6 +64,7 @@ from multiagente.orquestador.estado import (
     Enmienda,
     Fase,
     PruebasPropias,
+    PuntoControl,
     RecorridoEscenario,
 )
 
@@ -106,6 +119,25 @@ PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO = "El equipo revisará su caso antes de 
 """Lo que ve el cliente mientras la sesión espera que alguien amplíe el presupuesto."""
 
 
+def huella_de_estaticos(carpeta: Path = CARPETA / "estaticos") -> str:
+    """Huella corta del contenido de los estáticos (ADR-0018).
+
+    Las páginas la agregan a la dirección de la hoja de estilos y de los guiones: cuando cambian,
+    el navegador pide la versión nueva en lugar de usar la que guardó en caché.
+
+    Args:
+        carpeta: Carpeta de los estáticos.
+
+    Returns:
+        Los primeros diez caracteres del SHA-256 de los archivos, con sus rutas y en orden.
+    """
+    resumen = hashlib.sha256()
+    for archivo in sorted(ruta for ruta in carpeta.rglob("*") if ruta.is_file()):
+        resumen.update(archivo.relative_to(carpeta).as_posix().encode())
+        resumen.update(archivo.read_bytes())
+    return resumen.hexdigest()[:10]
+
+
 def _redirigir(url: str) -> RedirectResponse:
     return RedirectResponse(url, status_code=303)
 
@@ -138,6 +170,7 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     plantillas.env.globals["resumen_pruebas_propias"] = resumen_pruebas_propias
     plantillas.env.globals["detalle_de_prueba"] = detalle_de_prueba
     plantillas.env.globals["detalle_de_recoleccion"] = detalle_de_recoleccion
+    plantillas.env.globals["huella"] = huella_de_estaticos()
 
     def pagina(
         request: Request, plantilla: str, estado: int = 200, **datos: object
@@ -160,11 +193,32 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
 
     # Panel de operación ---------------------------------------------------------------------
 
-    def panel_con(request: Request, estado: int = 200, error: str | None = None) -> HTMLResponse:
-        sesiones = operador.sesiones()
-        en_curso = {vista.id_sesion: tareas.en_curso(vista.id_sesion) for vista in sesiones}
+    def panel_con(
+        request: Request,
+        estado: int = 200,
+        error: str | None = None,
+        valores: dict[str, str] | None = None,
+    ) -> HTMLResponse:
+        filas = []
+        for vista in operador.sesiones():
+            tarea = tareas.en_curso(vista.id_sesion)
+            try:
+                estado_grafo = operador.estado(vista.id_sesion)
+            except ErrorOperacion:
+                continue
+            filas.append(fila_del_panel(vista, estado_grafo, tarea.descripcion if tarea else None))
+        grupos = [
+            (clave, titulo, [fila for fila in filas if fila.grupo == clave])
+            for clave, titulo in GRUPOS
+        ]
         return pagina(
-            request, "panel.html", estado, sesiones=sesiones, en_curso=en_curso, error=error
+            request,
+            "panel.html",
+            estado,
+            grupos=grupos,
+            total=len(filas),
+            error=error,
+            valores=valores or {},
         )
 
     @aplicacion.get("/", response_class=HTMLResponse)
@@ -182,7 +236,10 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
         """Abre una sesión con la necesidad del cliente; la primera pregunta se prepara aparte."""
         if not all(texto.strip() for texto in (cliente, proyecto, necesidad)):
             return panel_con(
-                request, 400, "El cliente, el proyecto y la necesidad son obligatorios."
+                request,
+                400,
+                "El cliente, el proyecto y la necesidad son obligatorios.",
+                {"cliente": cliente, "proyecto": proyecto, "necesidad": necesidad},
             )
         id_sesion = str(uuid.uuid4())
         tareas.lanzar(
@@ -254,6 +311,8 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             if tarea is None and error is None:
                 raise
             vista = None
+        estado = operador.estado(id_sesion) if vista else None
+        etapas, abierta = etapas_de(vista, estado, tarea is not None) if vista else ([], None)
         return pagina(
             request,
             "sesion.html",
@@ -261,7 +320,19 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             vista=vista,
             tarea=tarea,
             error=error,
-            conversacion=operador.estado(id_sesion)["conversacion"] if vista else None,
+            conversacion=estado["conversacion"] if estado else None,
+            expediente=estado,
+            # El historial recorre los puntos de control: solo se lee si hay versiones que mostrar.
+            historial=(
+                operador.historial(id_sesion)
+                if estado is not None and tarea is None and estado["codigo"].versiones
+                else []
+            ),
+            aprobacion_final=(
+                estado["sesion"].ultima_aprobacion(PuntoControl.FINAL) if estado else None
+            ),
+            etapas=etapas,
+            abierta=abierta,
             revisor=REVISORES.get(vista.pausa.punto, "") if vista and vista.pausa else "",
             **(datos_de_la_pausa(vista) if vista and tarea is None else {}),
         )
@@ -272,6 +343,8 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
         tarea = tareas.en_curso(id_sesion)
         error = tareas.retirar_error(id_sesion)
         vista = operador.vista(id_sesion)
+        estado = operador.estado(id_sesion)
+        etapas, _ = etapas_de(vista, estado, tarea is not None)
         return pagina(
             request,
             "conversacion.html",
@@ -279,7 +352,8 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
             vista=vista,
             tarea=tarea,
             error=error,
-            turnos=operador.estado(id_sesion)["conversacion"].turnos,
+            turnos=estado["conversacion"].turnos,
+            pasos=pasos_del_cliente(etapas) if vista.fase is not Fase.CERRADA else [],
             mensaje=(
                 PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO
                 if vista.pausa is not None and vista.pausa.punto == PAUSA_PRESUPUESTO
@@ -467,22 +541,29 @@ def crear_aplicacion(operador: Operador, tareas: EjecutorDeTareas | None = None)
     @aplicacion.get("/sesiones/{id_sesion}/trazabilidad", response_class=HTMLResponse)
     def trazabilidad(request: Request, id_sesion: str) -> HTMLResponse:
         """Cadena completa de artefactos de la sesión (RF-33)."""
+        documento = operador.trazabilidad(id_sesion)
         return pagina(
             request,
             "trazabilidad.html",
             id_sesion=id_sesion,
-            documento=operador.trazabilidad(id_sesion),
+            vista=operador.vista(id_sesion),
+            titulo="Trazabilidad",
+            documento=documento,
+            html=a_html(documento, omitir_titulo=True),
         )
 
     @aplicacion.get("/sesiones/{id_sesion}/traza", response_class=HTMLResponse)
     def traza(request: Request, id_sesion: str) -> HTMLResponse:
         """Tiempo, prompts, tokens y costo de cada nodo de la sesión (RF-34)."""
+        documento = operador.traza(id_sesion)
         return pagina(
             request,
             "trazabilidad.html",
             id_sesion=id_sesion,
-            titulo="Traza",
-            documento=operador.traza(id_sesion),
+            vista=operador.vista(id_sesion),
+            titulo="Traza por nodo",
+            documento=documento,
+            html=a_html(documento, omitir_titulo=True),
         )
 
     @aplicacion.get("/sesiones/{id_sesion}/exportar.zip")

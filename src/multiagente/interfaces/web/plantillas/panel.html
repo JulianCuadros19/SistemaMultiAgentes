@@ -1,54 +1,77 @@
 {% extends "base.html" %}
 {% block titulo %}Sesiones{% endblock %}
-{% block contenido %}
-<h1>Sesiones</h1>
 
-<section class="tarjeta">
-  <h2>Nueva sesión</h2>
-  <p class="detalle">
-    La sesión se abre con la necesidad del cliente. Luego el cliente conversa en su propia vista y
-    el equipo decide en los tres puntos de control.
+{% macro fila(f) %}
+{% set vista = f.vista %}
+<li class="fila-sesion">
+  <p class="fila-nombre">
+    <a href="/sesiones/{{ vista.id_sesion }}">{{ vista.cliente }}</a>
+    <span class="detalle">· {{ vista.proyecto }}</span>
   </p>
-  {% if error %}<p class="aviso error" role="alert">{{ error }}</p>{% endif %}
-  <form method="post" action="/sesiones" class="formulario">
-    <label>Cliente <input name="cliente" required></label>
-    <label>Proyecto <input name="proyecto" required></label>
-    <label>Necesidad del cliente
-      <textarea name="necesidad" rows="3" required
-        placeholder="Por ejemplo: necesitamos registrar las solicitudes de mutación de propietario."></textarea>
-    </label>
-    <button type="submit">Abrir la sesión</button>
-  </form>
-</section>
-
-<section>
-  <h2>Guardadas</h2>
-  {% if sesiones %}
-  <table class="tabla">
-    <thead><tr><th>Abierta</th><th>Cliente · proyecto</th><th>Estado</th><th>Gastado (USD)</th><th></th></tr></thead>
-    <tbody>
-      {% for vista in sesiones %}
-      <tr>
-        <td>{{ vista.creada.strftime('%Y-%m-%d %H:%M') }}</td>
-        <td>{{ vista.cliente }} · {{ vista.proyecto }}</td>
-        <td>
-          {% if en_curso[vista.id_sesion] %}
-          <span class="etiqueta en-curso">{{ en_curso[vista.id_sesion].descripcion }}</span>
-          {% else %}
-          <span class="etiqueta {{ vista.fase.value }}">{{ vista.describir() }}</span>
-          {% endif %}
-        </td>
-        <td>{{ '%.4f' | format(vista.costo_usd) }}{% if vista.presupuesto_usd %} de {{ '%.4f' | format(vista.presupuesto_usd) }}{% endif %}</td>
-        <td class="acciones">
-          <a href="/sesiones/{{ vista.id_sesion }}">Operar</a>
-          <a href="/conversacion/{{ vista.id_sesion }}">Vista del cliente</a>
-        </td>
-      </tr>
+  <div class="fila-acciones">
+    <a class="boton-enlace" href="/sesiones/{{ vista.id_sesion }}">Operar</a>
+    <a href="/conversacion/{{ vista.id_sesion }}">Vista del cliente</a>
+  </div>
+  <div class="fila-estado tono-{{ f.tono }}">
+    {# La línea del flujo en miniatura: repite lo que dice el estado, por eso no se anuncia. #}
+    <ol class="mini-linea" aria-hidden="true">
+      {% for etapa in f.etapas %}
+      <li class="{{ etapa.estado }}{% if etapa.punto %} control{% endif %}{% if etapa.tono %} tono-{{ etapa.tono }}{% endif %}" title="{{ etapa.nombre }}: {{ etapa.detalle }}"><span></span></li>
       {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p class="detalle">Todavía no hay sesiones.</p>
-  {% endif %}
-</section>
+    </ol>
+    <span class="estado-texto">{{ f.tarea if f.tarea else vista.describir() }}</span>
+  </div>
+  <dl class="fila-datos">
+    <div><dt>Gasto</dt><dd>{{ '%.4f' | format(vista.costo_usd) }}{% if vista.presupuesto_usd %} de {{ '%.4f' | format(vista.presupuesto_usd) }}{% endif %} USD</dd></div>
+    <div><dt>Abierta</dt><dd>{{ vista.creada.strftime('%Y-%m-%d %H:%M') }}</dd></div>
+  </dl>
+</li>
+{% endmacro %}
+
+{% block contenido %}
+<header class="panel-cabecera">
+  <h1>Sesiones</h1>
+  {% if total %}<a class="boton-enlace principal ir-a-nueva" href="#nueva">Nueva sesión</a>{% endif %}
+</header>
+
+<div class="panel">
+  <div class="panel-sesiones">
+    {% if total %}
+    {% for clave, titulo, filas in grupos %}
+    {% if filas or clave == 'equipo' %}
+    <section class="grupo" aria-labelledby="grupo-{{ clave }}">
+      <h2 id="grupo-{{ clave }}">{{ titulo }} <span class="cuenta">{{ filas | length }}</span></h2>
+      {% if filas %}
+      <ul class="filas">
+        {% for f in filas %}{{ fila(f) }}{% endfor %}
+      </ul>
+      {% else %}
+      <p class="vacio">Ninguna sesión espera una decisión, un presupuesto o que la reanuden.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+    {% endfor %}
+    {% else %}
+    <p class="vacio">Todavía no hay sesiones. Abra la primera con el formulario de nueva sesión.</p>
+    {% endif %}
+  </div>
+
+  <aside class="tarjeta panel-nueva" id="nueva" aria-labelledby="titulo-nueva">
+    <h2 id="titulo-nueva">Nueva sesión</h2>
+    <p class="detalle">
+      La sesión se abre con la necesidad del cliente. Luego el cliente conversa en su propia vista y
+      el equipo decide en los tres puntos de control.
+    </p>
+    {% if error %}<p class="aviso error" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" action="/sesiones" class="formulario">
+      <label>Cliente <input name="cliente" required value="{{ valores.cliente or '' }}"{% if error %} autofocus{% endif %}></label>
+      <label>Proyecto <input name="proyecto" required value="{{ valores.proyecto or '' }}"></label>
+      <label>Necesidad del cliente
+        <textarea name="necesidad" rows="4" required
+          placeholder="Por ejemplo: necesitamos registrar las solicitudes de mutación de propietario.">{{ valores.necesidad or '' }}</textarea>
+      </label>
+      <div class="botones"><button type="submit">Abrir la sesión</button></div>
+    </form>
+  </aside>
+</div>
 {% endblock %}

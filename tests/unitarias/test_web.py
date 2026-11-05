@@ -299,7 +299,7 @@ def test_la_web_amplia_el_presupuesto_y_muestra_el_gasto_y_la_traza(entorno_fals
     assert "Pausa por presupuesto" in pagina
     assert "La sesión gastó 0.0500 USD de su presupuesto de 0.0500 USD" in pagina
     assert "N3 · diálogo con el cliente" in pagina
-    assert "gastado 0.0500 USD de\n    0.0500 USD" in pagina
+    assert "0.0500 de 0.0500 USD" in pagina
     assert f'action="/sesiones/{id_sesion}/presupuesto"' in pagina
     assert PARA_EL_CLIENTE_EN_PAUSA_DE_PRESUPUESTO in cliente.get(f"/conversacion/{id_sesion}").text
     assert "0.0500 de 0.0500" in cliente.get("/").text
@@ -409,3 +409,39 @@ def test_el_ejecutor_guarda_el_error_y_lo_muestra_una_vez():
     assert tareas.en_curso("s") is None
     assert tareas.retirar_error("s") == "RuntimeError: sin conexión con el modelo"
     assert tareas.retirar_error("s") is None
+
+
+def test_el_panel_agrupa_las_sesiones_y_la_vista_del_cliente_habla_su_idioma(entorno_falso):
+    cliente, _ = web(ServiciosSimulados(), entorno_falso)
+    guion = guion_completo()
+    en_dialogo = abrir(cliente)
+    en_n6 = abrir(cliente, guion.necesidad)
+    for respuesta in guion.respuestas_cliente[:7]:
+        cliente.post(f"/sesiones/{en_n6}/respuesta", data={"texto": respuesta})
+
+    # Arriba lo que espera al equipo; después lo que avanza o espera al cliente.
+    pagina = cliente.get("/").text
+    equipo, curso = pagina.index("Esperan al equipo"), pagina.index("En curso o con el cliente")
+    assert equipo < pagina.index(f'href="/sesiones/{en_n6}"') < curso
+    assert curso < pagina.index(f'href="/sesiones/{en_dialogo}"')
+    assert 'class="mini-linea"' in pagina
+
+    # Si falta un dato, el formulario conserva lo escrito.
+    respuesta = cliente.post(
+        "/sesiones", data={"cliente": "Cliente <x>", "proyecto": "", "necesidad": "Algo"}
+    )
+    assert respuesta.status_code == 400
+    assert 'value="Cliente &lt;x&gt;"' in respuesta.text
+    assert ">Algo</textarea>" in respuesta.text
+
+    # El cliente ve al «Equipo» y sus cuatro pasos; el equipo sigue viendo al elicitador.
+    vista_cliente = cliente.get(f"/conversacion/{en_n6}").text
+    assert '<span class="quien">Equipo</span>' in vista_cliente
+    assert "Elicitador" not in vista_cliente
+    assert 'aria-current="step"' in vista_cliente and "Revisión del equipo" in vista_cliente
+    assert '<span class="quien">Elicitador</span>' in cliente.get(f"/sesiones/{en_n6}").text
+
+    # La trazabilidad se lee en HTML y conserva su Markdown para copiarlo.
+    trazabilidad = cliente.get(f"/sesiones/{en_n6}/trazabilidad").text
+    assert "<h2>Decisiones humanas</h2>" in trazabilidad
+    assert f"# Trazabilidad de la sesión {en_n6}" in trazabilidad
