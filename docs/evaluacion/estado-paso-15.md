@@ -5,10 +5,20 @@ para retomar el paso desde otra sesión. El diseño, las métricas y las hipóte
 de medir, están en el ADR-0019 (`docs/decisiones/0019-casos-de-referencia-y-lineas-base.md`, en
 borrador).
 
+## Ajuste del diseño (2026-11-05, 14:20): sin implementación manual
+
+**Este ajuste manda sobre lo demás de este documento.** El detalle está en el ADR-0019.
+- **Sale:** la implementación manual, la revisión humana y la tarifa por hora. H2 queda retirada.
+- **Comparación:** tres enfoques en nueve casos, con el mismo oráculo: el sistema, el LLM con diálogo y
+  el LLM de un solo prompt.
+- **Casos nuevos:** 01, 04, 07, 10, 14 y 17, el primero de cada arquitectura.
+- **Secreto de resultados:** se levanta; ya no hay implementación manual que proteger.
+- **Tope:** sigue en 17 USD.
+
 ## Qué pide el paso
 
-- **Terminado cuando:** hay «métricas calculadas contra la implementación manual y contra un modelo
-  único», que también es un despliegue de Azure OpenAI.
+- **Terminado cuando:** hay métricas calculadas con un oráculo común contra líneas base de un solo
+  modelo de lenguaje, que también son despliegues de Azure OpenAI.
 - **Objetivo 4 de la tesis:** métricas de tiempo, costo y tasa de errores en corridas de extremo a
   extremo, contrastadas con los umbrales de los RNF.
 

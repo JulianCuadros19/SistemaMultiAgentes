@@ -51,7 +51,7 @@ respuestas simuladas, cada agente real encaja después sin sorpresas.
 
 | Paso | Qué se hace | Terminado cuando |
 |---|---|---|
-| 15 | Casos de referencia y líneas base | Métricas calculadas contra la implementación manual y contra un modelo único |
+| 15 | Casos de referencia y líneas base | Métricas calculadas con un oráculo común contra líneas base de un solo modelo de lenguaje (ADR-0019) |
 
 ## Riesgos que condicionan el orden
 

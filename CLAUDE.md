@@ -432,13 +432,15 @@ Mantener esta sección actualizada al cerrar cada paso.
   capturas en claro, en oscuro y a 390 px con Edge sin ventana. La imagen de la aplicación se
   reconstruye con `docker compose up -d --build --wait` para ver la web nueva en el puerto 8000.
 - **Paso actual: 15, casos de referencia y líneas base, en curso** (ADR-0019 en borrador). Terminado
-  cuando hay métricas calculadas contra la implementación manual y contra un modelo único, que
-  también es un despliegue de Azure OpenAI. **El estado exacto, las decisiones y los comandos para
+  cuando hay métricas calculadas con un oráculo común contra líneas base de un solo modelo de
+  lenguaje, que también son despliegues de Azure OpenAI (ADR-0019). **El estado exacto, las decisiones y los comandos para
   retomarlo están en `docs/evaluacion/estado-paso-15.md`: leerlo antes de seguir.**
   - **Decisiones del equipo (2026-11-05):**
-    - implementación manual por Julián y Laura, cronometrada;
-    - tres casos sintéticos: 02, 12 y 16;
-    - modelo único `gpt-6.1-sol`, que conversa con el mismo cliente simulado y entrega todo;
+    - sin implementación manual: Realtix no puede compartir sus desarrollos y los autores no son
+      independientes;
+    - nueve casos sintéticos: 01, 02, 04, 07, 10, 12, 14, 16 y 17, con las seis arquitecturas;
+    - dos líneas base con `gpt-6.1-sol`: con diálogo, ante el mismo cliente simulado, y de un solo
+      prompt, con la ficha completa;
     - métricas RAGs y una corrida ampliada para las decisiones 37 a 39;
     - tope de 17 USD para todo el paso.
   - **Fase 1, cerrada:** el oráculo de pruebas de aceptación de referencia (`evaluacion/referencia/`),
@@ -466,8 +468,8 @@ Mantener esta sección actualizada al cerrar cada paso.
       solo reciben clasificación, costo, tiempo, turnos y errores.
     - **Dónde está el detalle:** en el documento de estado.
   - **Pendiente:**
-    - la implementación manual (fase 2, del equipo);
-    - la corrida adicional y la revisión humana;
+    - los casos nuevos, las corridas del LLM y la evaluación;
+    - el despliegue de demostración en Azure (ADR-0020);
     - los adaptadores, la evaluación de referencia y las RAGs;
     - el informe `docs/evaluacion/informe-objetivo-4.md` y el cierre.
 - **Push a GitHub: manual.** El remoto `origin` es HTTPS y Ubuntu no guarda credenciales.

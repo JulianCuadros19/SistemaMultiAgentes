@@ -78,27 +78,40 @@ tendría sus propias pruebas.
    El benchmark de modelos en N3 y N5 queda fuera.
 5. **Tope de 17 USD** para todo el paso.
 
-### Ajuste del alcance (2026-11-05, decisión del equipo)
+### Ajuste del diseño (2026-11-05, decisión del equipo)
 
-La entrega es hoy y solo Julián hace la implementación manual. El oráculo no cambia. Se ajusta lo
-siguiente:
+Tomado el día de la entrega, con la corrida ampliada y el modelo único ya medidos. Reemplaza las
+decisiones 1, 2 y 3 en lo que aquí se indica. Las pruebas de referencia de 02, 12 y 16 no cambian.
 
-- **Implementación manual:** un solo autor y dos casos como máximo, 02 y 12, con un tope de 1 h 30 por
-  caso. El 12 se hace solo si a las 15:15 terminó el 02. Sin requerimientos ni especificación de
-  diseño: solo código, pruebas y `USO.md`.
-- **Revisión humana:** en el caso 16, que no se implementa a mano. Su tiempo sirve de referencia para
-  los otros dos.
-- **Tarifa:** 9 USD por hora, fijada antes de medir (`evaluacion/manual/LEEME.md`). El informe muestra
-  también 5 y 20 USD por hora.
+- **Sin implementación manual.**
+  - **Por qué:** Realtix no puede compartir sus desarrollos por el acuerdo de confidencialidad, y si
+    la hicieran los autores no sería independiente: construyeron el sistema y conocen los casos.
+  - **Qué sale:** la implementación manual, la corrida con revisión humana y la tarifa por hora. La
+    hipótesis H2 queda retirada, sin evaluar.
+  - **Qué sigue:** la comparación con desarrollo humano queda como recomendación, como ya dice la
+    tesis.
+- **Dos líneas base de un solo modelo de lenguaje,** ambas con el despliegue de N10 y sin intervención
+  humana:
+  - **con diálogo:** el modelo único de la decisión 9, con la misma información que el sistema;
+  - **de un solo prompt:** recibe en un mensaje lo que el cliente sabe (`evaluacion/llm_un_prompt.md`),
+    sin diálogo. Es el mejor caso para un modelo solo, porque tiene la información completa.
+- **Nueve casos de referencia,** con las seis arquitecturas. A 02, 12 y 16 se suma el primer caso de
+  cada arquitectura, por número y sin mirar su resultado: 01, 04, 07, 10, 14 y 17.
+  - **Oráculo:** sigue las reglas de la decisión 6. Se escribió solo desde la ficha y se versionó antes
+    de abrir las salidas de esos casos y de correr los modelos.
+  - **Lo que ya se conocía:** de 10 y 14, los hallazgos del tester en la corrida ampliada, no su código.
+  - **Corridas:** el sistema, con la corrida ampliada, más `sistema-2` en 02, 12 y 16; el modelo con
+    diálogo, una corrida más por caso nuevo; el de un solo prompt, una por caso.
 - **Matriz adicional:** el tester frente al oráculo, en cada versión dictaminada de los casos de
   referencia. Lo positivo es que el oráculo falle; la predicción positiva, que el tester rechace.
 - **Código abierto de GitHub:** se descartó como línea base, porque no implementa estas fichas y no
   trae tiempos ni costos.
 - **Sistema:** no cambia hasta terminar de medir.
-
-Los dos recortes favorecen a la implementación manual: no escribe los requerimientos ni el diseño, y
-la revisión se mide en un caso mayor. Por eso, la comparación sirve para el orden de magnitud, no
-para un porcentaje de ahorro.
+- **Hipótesis nuevas, exploratorias,** porque nacen después de ver datos de 3 casos:
+  - **H4:** el sistema cuesta y tarda más que un modelo solo;
+  - **H5:** el tester detiene defectos que un modelo solo entrega sin aviso.
+- **Lectura:** la tasa de errores es descriptiva. En costo y tiempo se agrega una prueba de signos por
+  caso, también exploratoria.
 
 ### Decisiones de implementación (fase 1)
 
