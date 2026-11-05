@@ -9,7 +9,7 @@ Sistema multiagente de IA para definición de requerimientos, diseño de arquite
 | **Campo**      | **Contenido**                                               |
 |----------------|-------------------------------------------------------------|
 | Producto       | Entregable del Objetivo Específico 2                        |
-| Versión        | 1.3                                                         |
+| Versión        | 1.4                                                         |
 | Fecha          | 14 de septiembre de 2026                                    |
 | Autores        | Cuadros Muñoz Julián Andrés / Riveros Flórez Laura Catalina |
 | Director       | MsC. Juan Carlos Barrero Calixto                            |
@@ -142,7 +142,7 @@ Se adopta un modelo de embeddings de ejecución local. La justificación es trip
 
 **4.5 Gestión de prompts**
 
-Los prompts de sistema de cada agente y la configuración de estilo se versionan como activos del repositorio y se registran en la plataforma de observabilidad. Cada artefacto producido queda asociado a la versión exacta que lo generó, conforme al RF-36. Ningún prompt se define en línea dentro del código de un nodo.
+Los prompts de sistema de cada agente y la configuración de estilo se versionan como activos del repositorio, y cada llamada a un modelo registra en la traza el identificador, la versión y la huella del prompt que usó. Cada artefacto producido queda asociado a la versión exacta que lo generó, conforme al RF-36. Ningún prompt se define en línea dentro del código de un nodo.
 
 **5. ASIGNACIÓN DE MODELOS POR NODO**
 
@@ -179,9 +179,11 @@ Los agentes no se comunican entre sí mediante mensajes conversacionales. Toda l
 | codigo         | Versiones de los módulos, pruebas y documentación generadas.                                     | N10                    |
 | validacion     | Plan de pruebas de aceptación, resultados de ejecución, hallazgos estáticos, conformidad arquitectónica, veredicto y retroalimentación. | N10, N11, N12, N14, N16, N17 |
 | contexto       | Fragmentos recuperados por colección y contexto descartado.                                      | N2, N7, N13            |
-| control        | Número de iteración, límite configurado y costo acumulado.                                       | N15                    |
+| control        | Número de iteración, límites configurados, costo acumulado, presupuesto y sus ampliaciones.      | N1, N3, N5, N8, N10, N14, N15 |
 
 *Fuente: Elaboración propia.*
+
+Los cinco nodos con modelo suman a `control` el costo de sus llamadas. Antes de correr, si la sesión alcanzó su presupuesto, pausan hasta que una persona lo amplía, lo que queda registrado, o cierra la sesión (RNF-10, ADR-0016).
 
 N10 escribe la validación solo cuando no logra una versión válida: la deja rechazada, con los problemas como retroalimentación. N17 escribe la retroalimentación de un rechazo y, si devuelve el diseño, las observaciones para el arquitecto; si pide una enmienda, la deja en curso en los requerimientos, con los defectos que el analista ya había aceptado. N16 la pasa a las enmiendas aplicadas, que conservan quién la pidió, su texto, las observaciones del analista y la versión de cada requerimiento enmendado.
 
@@ -202,7 +204,8 @@ El estado se persiste mediante puntos de control tras cada transición, lo que p
 | artefactos_codigo          | Versiones de los módulos, pruebas y documentación generadas.                   |
 | validaciones               | Veredictos por criterio, hallazgos y conformidad arquitectónica.               |
 | aprobaciones_humanas       | Decisión, observaciones, revisor y fecha de cada punto de control humano (N6, N9 y N17). |
-| ejecuciones                | Traza por nodo con tokens, costo, latencia y versión de prompt.                |
+| ejecuciones                | Traza por nodo: inicio, duración, costo y error de cada ejecución de un nodo.  |
+| llamadas_modelo            | Cada llamada al modelo de un nodo, con su prompt y versión, tokens, costo y latencia. |
 | kb_documentos              | Documentos de las bases de conocimiento con su colección, fuente y versión.    |
 | kb_fragmentos              | Fragmentos vectorizados con su embedding, colección y referencia al documento. |
 | checkpoints                | Persistencia del estado del grafo gestionada por el orquestador.               |
@@ -225,7 +228,7 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 
 - **Sandbox.** Contenedor efímero sin red, creado y destruido por cada ejecución de código.
 
-- **Observabilidad.** Plataforma de trazas que registra prompts, tokens, costo y latencia por nodo.
+- **Observabilidad.** Traza por nodo en la misma base de datos (`ejecuciones` y `llamadas_modelo`), consultable desde la consola y la web: prompts, tokens, costo y tiempo de cada nodo. No requiere un servicio aparte (ADR-0016).
 
 **Modos de operación.** El sistema admite dos modos intercambiables por configuración. El modo remoto accede a modelos mediante interfaz de proveedor y se emplea durante el desarrollo y la medición de desempeño. El modo local emplea modelos open-weights servidos por el propio contenedor y no requiere credenciales ni conectividad. La entrega debe demostrar el funcionamiento completo en modo local: es la condición que hace verificable el RF-37.
 
@@ -262,6 +265,7 @@ El sistema se entrega empaquetado en contenedores orquestados mediante un archiv
 | Composición en contenedores con inferencia local          | RF-37, RNF-07                      |
 | Estado tipado con puntos de control                       | RF-26, RF-28, RF-33, RNF-02        |
 | Traza por nodo con tokens y costo                         | RF-34, RNF-10                      |
+| Presupuesto por módulo con pausa antes de los nodos con modelo | RNF-10                       |
 
 *Fuente: Elaboración propia.*
 
@@ -292,3 +296,4 @@ El presente documento se considera aprobado cuando el equipo técnico de Realtix
 | 1.1 | 8 de octubre de 2026 | Alineación con el documento de tesis (ADR-0004): especificación de diseño en lugar de contrato; nodo N16 (plan de pruebas de aceptación del tester) y nodo N17 (validación y aprobación humana final); retornos con observaciones desde los tres puntos de control; entidad `aprobaciones_humanas`. |
 | 1.2 | 9 de octubre de 2026 | Flujo sin bloqueos (ADR-0014): N10 pasa a N15 si no logra una versión válida; agotado el ciclo de corrección, N15 escala la sesión a N17, donde no puede aprobarse; N17 devuelve el módulo al desarrollador (N10) o al arquitecto (N8), y cada devolución abre un ciclo nuevo; toda sesión en pausa o detenida puede cerrarse en la fase `cerrada`, con su registro. |
 | 1.3 | 4 de noviembre de 2026 | Calidad de la primera salida (ADR-0015): N12 detecta las pruebas que simulan el efecto del módulo (CAL-FS-006), y el juez de N14 ve las interfaces y el modelo de datos de la especificación y confirma cada rechazo con una segunda opinión. N8 declara el recorrido de cada escenario con interfaces públicas, fuera del Anexo B, y N9 lo verifica; el registro de decisión gana una sección de revisiones. Los métodos se declaran como interfaces `Clase.metodo`, que N9, N10 y N12 verifican. Tras un rediseño, N10 recibe la versión anterior como referencia, con la retroalimentación de N17 y la revisión del diseño, y antes de entregar aplica el estilo que rechazaría el tester. N3 pregunta por casos límite antes del resumen y una vez por algo más, con un límite de 18 turnos; el registro guarda los casos especiales, los ejemplos con cifras y quién más usa lo pedido, aparte del rol, y con el resumen confirmado N5 toma las preguntas abiertas del registro. N6 corrige los defectos que N5 puede resolver aunque haya preguntas abiertas, y escala estas al analista. N17 gana un tercer destino: una enmienda de los requerimientos por el elicitador, que recorre N5, N6 y N16 hasta N10 sin pasar por el diseño, con una arista nueva de N16 a N10. Al cierre, N9 rechaza `self` y `cls` en las funciones de módulo, el resumen muestra la obligatoriedad de un dato solo si el cliente la dijo y N3 reconoce «no aplica» como no saber. |
+| 1.4 | 4 de noviembre de 2026 | Control de costo y traza por nodo (ADR-0016): los nodos con modelo suman su costo al de la sesión y, si alcanzó su presupuesto (1,50 USD por defecto), pausan hasta que una persona lo amplía o la cierra; la traza por nodo pasa a PostgreSQL (`ejecuciones` y `llamadas_modelo`), consultable desde la consola y la web, y Langfuse sale de la vista de despliegue. |

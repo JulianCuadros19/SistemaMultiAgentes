@@ -6,6 +6,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 # ADR-0001 · Empaquetado del sistema y gestión de dependencias
 
+> El ADR-0016 retira Langfuse de las dependencias: la traza por nodo vive en PostgreSQL.
+
 ## Contexto y planteamiento del problema
 
 El paso 1 del plan exige que el paquete `multiagente` se pueda importar. Hay que definir cómo

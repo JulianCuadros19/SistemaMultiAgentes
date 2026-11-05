@@ -8,6 +8,8 @@ decisores: [Julián Andrés Cuadros Muñoz, Laura Catalina Riveros Flórez]
 
 > El ADR-0010 permite fijar el tiempo de espera por nodo. El ADR-0011 agrega al costo la escritura
 > en caché, que los modelos GPT-6 cobran aparte y la API reporta en `cache_write_tokens`.
+> El ADR-0016 suma el costo de cada nodo al de la sesión, lo limita con un presupuesto y guarda la
+> traza por nodo en PostgreSQL; el JSONL queda para los scripts de medición.
 
 ## Contexto y planteamiento del problema
 

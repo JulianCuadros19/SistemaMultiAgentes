@@ -28,7 +28,6 @@ dependencies = [
     "pydantic-settings>=2.15,<3",
     "psycopg[binary,pool]>=3.3,<4",
     "openai>=3.19,<4",
-    "langfuse>=4.15,<5",
     "httpx>=0.28,<1",
     "pyyaml>=6.0,<7",
     # Interfaz web del paso 12 (ADR-0014).
