@@ -81,6 +81,9 @@ La primera vez, el comando:
 La web queda en `http://127.0.0.1:8000/` y solo responde en esa máquina. Las imágenes se
 construyen localmente y no se publican en ningún registro, porque llevan el corpus.
 
+La construcción descarga las dependencias de PyPI. Con una red lenta puede tardar más de media hora
+o fallar; en ese caso basta repetir el comando, que retoma desde la última capa construida.
+
 ### Operar el sistema
 
 En la web, el equipo opera desde el panel y el cliente conversa en su propia vista

@@ -168,6 +168,8 @@ Para la web:
 - **`docker compose exec` entra como root.** Lo que escriba en `data/local` queda a nombre de root;
   por eso la consola se usa con `run`.
 - **El código va dentro de la imagen.** Un cambio exige reconstruirla con `--build`.
+- **La primera construcción depende de PyPI.** Sin caché, descarga las dependencias de las dos
+  imágenes. Con una red lenta puede tardar más de media hora o fallar; en ese caso basta repetirla.
 - **macOS no se verificó** (RNF-07). Se verificó en Windows, con Docker Desktop y WSL2.
 - **Dos procesos sobre la misma sesión,** como en el ADR-0014: la web y la consola no se
   coordinan.
@@ -184,6 +186,57 @@ Para la web:
   recuperados y los artefactos. Con datos reales de Realtix se prefieren los despliegues de zona
   de datos de EE. UU. sobre los globales.
 - **Desfavorable:** el contenedor de la aplicación tiene acceso al Docker del anfitrión.
+
+### Confirmación
+
+- `pytest tests/unitarias/test_empaquetado.py`: la composición, las imágenes y `.dockerignore`, sin
+  Docker.
+- Desde un clon limpio, con otro nombre de proyecto, `docker compose up -d --build --wait` y una
+  sesión dentro del contenedor con `scripts/evaluar_extremo_a_extremo.py --solo CASO`. Es la
+  condición de terminado del paso 14 y el criterio del RF-37.
+
+## Verificación
+
+- **Sin costo:** 754 pruebas unitarias, 34 de integración, 19 de embeddings y 33 del entorno
+  aislado. La imagen del entorno aislado, reconstruida sin caché, coincide con las versiones y los
+  cierres versionados.
+- **En la composición de desarrollo:**
+  - `docker compose up -d --build --wait` levanta los seis servicios; la ingesta sin cambios tarda
+    0,2 s;
+  - la web corre con el UID 1000 y los grupos 1000 y 1001, el del socket;
+  - el entorno aislado, lanzado desde la aplicación, corre con el UID 10001 y sin red.
+- **Desde un clon limpio** (proyecto `multiagente-limpio`, volúmenes nuevos), el 2026-11-04:
+  - **Arranque:** la imagen de la aplicación se construyó sin caché. Después se descargó y
+    verificó el modelo, se migró la base y se indexaron los 36 documentos del corpus en 42,7 s, en
+    unos 5 min en total.
+  - **Interfaces vacías:** la web respondió desde Ubuntu y desde Windows, y la consola en
+    contenedor vio la base sin sesiones.
+  - **Primera sesión,** con `scripts/producir_modulo.py --simulado … --aprobar` sobre el caso de
+    mutaciones: quedó en pausa en N6, como está previsto. El elicitador dejó una pregunta abierta y
+    ese guion no aprueba con defectos escalados. Costó 0,088 USD.
+  - **Segunda sesión,** con el analista simulado de las corridas medidas
+    (`scripts/evaluar_extremo_a_extremo.py --solo caso-ampliada-05`): salió validada en N17 en la
+    v1, en 3,7 min y por 0,245 USD. El tester la aprobó sin hallazgos, y sus 46 pruebas pasaron en
+    el entorno aislado.
+  - **Interfaces con esa sesión:**
+    - la web mostró la sesión y su traza, con los prompts y sus versiones, y exportó el módulo, de
+      13 archivos;
+    - la consola la listó, la exportó a `data/local/` a nombre del UID 1000 y mostró su traza: 51
+      ejecuciones de nodos y 30 llamadas.
+  - **Costo:** las dos sesiones costaron 0,40 USD con el cliente simulado, registrados en
+    `docs/mediciones/paso-14-contenedores.jsonl`.
+- **Resultado inesperado: la imagen del entorno aislado y PyPI.**
+  - **El fallo:** en el clon, su construcción sin caché falló a los 998 s con `ERROR: Exception`
+    de pip. Estaba descargando las ruedas grandes, pandas y numpy, de PyPI, que respondía a unos
+    17 KB/s. La composición siguió con la imagen que ya existía.
+  - **La repetición:** terminó en 1.958 s, sin errores. La traza completa del primer fallo no se
+    conservó.
+  - **Atribución:** se atribuye a la red. Si la construcción falla por la red, basta repetir el
+    comando, que retoma desde la última capa construida.
+- **Observaciones fuera del alcance del paso,** en el caso 05:
+  - el arquitecto eligió ARQ-01 donde el caso espera ARQ-02; en la corrida final del ADR-0015 había
+    elegido ARQ-02;
+  - el diálogo llegó al límite de 18 turnos.
 
 ## Cambios para el documento de tesis
 
